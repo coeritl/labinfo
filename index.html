@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#11733c" />
+    <meta name="description" content="Sistema de chamados dos Laboratórios de Informática do IFMS Campus Três Lagoas" />
+    <title>LabInfo | Chamados IFMS</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="LabInfo - início">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+        <span><strong>LabInfo</strong><small>IFMS Campus Três Lagoas</small></span>
+      </a>
+      <button class="admin-link" id="adminToggle" type="button">Área técnica</button>
+    </header>
+
+    <main>
+      <section id="teacherView" class="teacher-view">
+        <div class="hero">
+          <span class="eyebrow">SUPORTE DOS LABORATÓRIOS</span>
+          <h1>Como podemos ajudar?</h1>
+          <p>Abra um chamado em menos de um minuto. Você receberá as atualizações no e-mail institucional.</p>
+        </div>
+
+        <div class="teacher-grid">
+          <form id="ticketForm" class="card ticket-form">
+            <div class="section-title"><span>1</span><div><h2>Identificação</h2><p>Confirme seus dados funcionais</p></div></div>
+            <div class="field-row">
+              <label>SIAPE<input id="siape" inputmode="numeric" autocomplete="off" placeholder="0000000" required /></label>
+              <label>E-mail institucional<input id="email" type="email" autocomplete="email" placeholder="nome@ifms.edu.br" required /></label>
+            </div>
+            <div class="section-title"><span>2</span><div><h2>Detalhes do chamado</h2><p>Conte o que está acontecendo</p></div></div>
+            <label>Categoria<select id="category" required><option value="">Selecione uma categoria</option><option>Computador não liga</option><option>Internet ou rede</option><option>Projetor ou áudio</option><option>Software ou acesso</option><option>Periféricos</option><option>Outro</option></select></label>
+            <label>Laboratório<select id="lab" required><option value="">Selecione o local</option><option>LabInfo 01</option><option>LabInfo 02</option><option>LabInfo 03</option><option>LabInfo 04</option><option>Outro ambiente</option></select></label>
+            <label>Descreva o problema<textarea id="description" rows="5" maxlength="800" placeholder="Ex.: O computador 12 não inicia e apresenta uma tela preta..." required></textarea><small class="counter"><span id="charCount">0</span>/800</small></label>
+            <button class="primary" type="submit">Abrir chamado <span>→</span></button>
+            <p class="privacy">Seus dados serão usados somente para identificação e acompanhamento do atendimento.</p>
+          </form>
+
+          <aside class="side-column">
+            <div class="card status-card">
+              <span class="status-icon">⌕</span><h2>Acompanhar chamado</h2><p>Consulte o andamento usando o ID recebido por e-mail.</p>
+              <div class="protocol-search"><input id="protocolInput" placeholder="Ex.: LAB-2026-0012" /><button id="protocolButton" type="button">Consultar</button></div>
+              <div id="protocolResult" class="protocol-result" aria-live="polite"></div>
+            </div>
+            <div class="service-note"><strong>Horário de atendimento</strong><span>Segunda a sexta, das 7h às 22h</span></div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="adminView" class="admin-view" hidden>
+        <div class="admin-heading"><div><span class="eyebrow">PAINEL TÉCNICO</span><h1>Central de chamados</h1><p>Acompanhe, atribua e resolva as solicitações dos laboratórios.</p></div><button id="newCategory" class="secondary" type="button">+ Nova categoria</button></div>
+        <div class="metrics">
+          <article><span class="metric-icon red">!</span><div><small>Aguardando</small><strong>8</strong><em>2 urgentes</em></div></article>
+          <article><span class="metric-icon amber">↻</span><div><small>Em atendimento</small><strong>5</strong><em>3 técnicos ativos</em></div></article>
+          <article><span class="metric-icon green">✓</span><div><small>Resolvidos hoje</small><strong>12</strong><em>+20% nesta semana</em></div></article>
+          <article><span class="metric-icon blue">◷</span><div><small>Tempo médio</small><strong>42 min</strong><em>Meta: 60 min</em></div></article>
+        </div>
+        <div class="dashboard-grid">
+          <section class="card queue">
+            <div class="queue-head"><div><h2>Fila de atendimento</h2><span>18 chamados encontrados</span></div><div class="filters"><input id="ticketSearch" placeholder="Buscar chamado..." /><select id="statusFilter"><option>Todos os status</option><option>Aguardando</option><option>Em atendimento</option><option>Resolvido</option></select></div></div>
+            <div id="ticketList" class="ticket-list"></div>
+          </section>
+          <aside id="ticketDetail" class="card ticket-detail"></aside>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <footer><span>LabInfo • IFMS Campus Três Lagoas</span><span>Suporte de Tecnologia da Informação</span></footer>
+    <script src="app.js"></script>
+  </body>
+</html>
