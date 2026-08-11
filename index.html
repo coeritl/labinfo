@@ -54,14 +54,14 @@
       <section id="adminView" class="admin-view" hidden>
         <div class="admin-heading"><div><span class="eyebrow">PAINEL TÉCNICO</span><h1>Central de chamados</h1><p>Acompanhe, atribua e resolva as solicitações dos laboratórios.</p></div><button id="newCategory" class="secondary" type="button">+ Nova categoria</button></div>
         <div class="metrics">
-          <article><span class="metric-icon red">!</span><div><small>Aguardando</small><strong>8</strong><em>2 urgentes</em></div></article>
+          <article><span class="metric-icon red">!</span><div><small>Recebido</small><strong>8</strong><em>2 urgentes</em></div></article>
           <article><span class="metric-icon amber">↻</span><div><small>Em atendimento</small><strong>5</strong><em>3 técnicos ativos</em></div></article>
-          <article><span class="metric-icon green">✓</span><div><small>Resolvidos hoje</small><strong>12</strong><em>+20% nesta semana</em></div></article>
+          <article><span class="metric-icon green">✓</span><div><small>Concluídos hoje</small><strong>12</strong><em>+20% nesta semana</em></div></article>
           <article><span class="metric-icon blue">◷</span><div><small>Tempo médio</small><strong>42 min</strong><em>Meta: 60 min</em></div></article>
         </div>
         <div class="dashboard-grid">
           <section class="card queue">
-            <div class="queue-head"><div><h2>Fila de atendimento</h2><span>18 chamados encontrados</span></div><div class="filters"><input id="ticketSearch" placeholder="Buscar chamado..." /><select id="statusFilter"><option>Todos os status</option><option>Aguardando</option><option>Em atendimento</option><option>Resolvido</option></select></div></div>
+            <div class="queue-head"><div><h2>Fila de atendimento</h2><span>18 chamados encontrados</span></div><div class="filters"><input id="ticketSearch" placeholder="Buscar chamado..." /><select id="statusFilter"><option>Todos os status</option><option>Recebido</option><option>Em atendimento</option><option>Concluído</option></select></div></div>
             <div id="ticketList" class="ticket-list"></div>
           </section>
           <aside id="ticketDetail" class="card ticket-detail"></aside>
