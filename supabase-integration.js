@@ -111,5 +111,6 @@
     });
   };
 
+  $('#adminOpenTicket').addEventListener('click',()=>{$('#adminTeacher').querySelectorAll('option').forEach(option=>{if(option.value&&data.teachers.find(x=>x.siape===option.value)?.active===false)option.remove()})});
   catalogs();loadServiceHours();
 })();
