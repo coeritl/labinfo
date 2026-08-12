@@ -9,6 +9,11 @@
   const replace=(target,rows)=>{target.splice(0,target.length,...rows)};
   const fmt=d=>new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date(d));
   const fail=(e,msg='Não foi possível concluir a operação.')=>{console.error(e);toast(e?.message||msg)};
+  const dayMeta=[['mon','Segunda-feira'],['tue','Terça-feira'],['wed','Quarta-feira'],['thu','Quinta-feira'],['fri','Sexta-feira'],['sat','Sábado'],['sun','Domingo']];
+  let serviceHours={days:Object.fromEntries(dayMeta.map(([k])=>[k,{enabled:!['sat','sun'].includes(k),start:'07:00',end:'22:00'}])),note:''};
+  const hourLabel=v=>(v||'').replace(/^0/,'').replace(':00','h').replace(':','h');
+  function serviceHoursSummary(value=serviceHours){const d=value.days||{},week=dayMeta.slice(0,5).every(([k])=>d[k]?.enabled&&d[k].start===d.mon?.start&&d[k].end===d.mon?.end),weekend=!d.sat?.enabled&&!d.sun?.enabled;if(week&&weekend)return `Segunda a sexta, das ${hourLabel(d.mon.start)} às ${hourLabel(d.mon.end)}`;const enabled=dayMeta.filter(([k])=>d[k]?.enabled);return enabled.length?enabled.map(([k,n])=>`${n.replace('-feira','')}: ${hourLabel(d[k].start)}–${hourLabel(d[k].end)}`).join(' • '):'Atendimento temporariamente indisponível'}
+  async function loadServiceHours(){const {data:row,error}=await sb.from('system_settings').select('value').eq('key','service_hours').maybeSingle();if(error){console.warn(error);return}if(row?.value)serviceHours=row.value;const text=$('#serviceHoursText');if(text)text.textContent=serviceHours.note||serviceHoursSummary()}
 
   document.body.insertAdjacentHTML('beforeend',`<div id="loginModal" class="modal-backdrop" hidden><div class="card login-card"><div class="modal-heading"><div><span class="eyebrow">ACESSO RESTRITO</span><h2>Entrar no painel</h2><p>Use as credenciais cadastradas no Supabase.</p></div><button id="closeLogin" class="modal-close">×</button></div><form id="loginForm"><label>E-mail do usuário<input id="loginEmail" type="email" autocomplete="username" required></label><label>Senha<input id="loginPassword" type="password" autocomplete="current-password" required></label><p id="loginError" class="login-error"></p><button class="primary" type="submit">Entrar</button></form></div></div>`);
   const loginModal=$('#loginModal');
@@ -16,6 +21,12 @@
   const closeLogin=()=>{loginModal.hidden=true;document.body.classList.remove('modal-open')};
   $('#closeLogin').onclick=closeLogin;
   $('#loginForm').onsubmit=async e=>{e.preventDefault();$('#loginError').textContent='';const {data:auth,error}=await sb.auth.signInWithPassword({email:$('#loginEmail').value.trim(),password:$('#loginPassword').value});if(error){$('#loginError').textContent='Usuário ou senha inválidos.';return}state.session=auth.session;await enterAdmin();closeLogin()};
+
+  $('#adminMenuDropdown').insertAdjacentHTML('beforeend','<button id="hoursMenuButton">Horários de atendimento</button>');
+  $('#supervisorSection').insertAdjacentHTML('afterend','<section id="hoursSection" class="admin-section" hidden><form id="hoursForm" class="card hours-card"><span class="eyebrow">CONFIGURAÇÃO PÚBLICA</span><h2>Horários de atendimento</h2><p>Defina os dias e horários exibidos na página de abertura de chamados.</p><div id="hoursGrid" class="hours-grid"></div><label>Observação pública (opcional)<input id="hoursNote" maxlength="140" placeholder="Ex.: Atendimento reduzido durante o recesso"></label><button class="primary" type="submit">Salvar horários</button></form></section>');
+  function renderHoursForm(){const grid=$('#hoursGrid');grid.innerHTML=dayMeta.map(([key,name])=>{const d=serviceHours.days?.[key]||{enabled:false,start:'07:00',end:'18:00'};return `<div class="hours-row"><label class="hours-day"><input type="checkbox" name="${key}-enabled" ${d.enabled?'checked':''}>${name}</label><label>Início<input type="time" name="${key}-start" value="${d.start||'07:00'}" ${d.enabled?'':'disabled'}></label><label>Fim<input type="time" name="${key}-end" value="${d.end||'18:00'}" ${d.enabled?'':'disabled'}></label></div>`}).join('');$('#hoursNote').value=serviceHours.note||'';grid.querySelectorAll('input[type=checkbox]').forEach(c=>c.onchange=()=>c.closest('.hours-row').querySelectorAll('input[type=time]').forEach(i=>i.disabled=!c.checked))}
+  $('#hoursMenuButton').onclick=()=>{document.querySelectorAll('.admin-section').forEach(x=>x.hidden=true);$('#hoursSection').hidden=false;$('#adminTitle').textContent='Horários de atendimento';$('#adminSubtitle').textContent='Configure a disponibilidade exibida aos servidores.';$('#adminMenuDropdown').hidden=true;renderHoursForm()};
+  $('#hoursForm').onsubmit=async e=>{e.preventDefault();const form=new FormData(e.target),days={};for(const [key] of dayMeta){const enabled=form.has(`${key}-enabled`),start=form.get(`${key}-start`)||'07:00',end=form.get(`${key}-end`)||'18:00';if(enabled&&start>=end)return toast('O horário final deve ser posterior ao inicial.');days[key]={enabled,start,end}}const value={days,note:$('#hoursNote').value.trim()};const {error}=await sb.from('system_settings').upsert({key:'service_hours',value,updated_by:state.profile.id,updated_at:new Date().toISOString()});if(error)return fail(error);serviceHours=value;$('#serviceHoursText').textContent=value.note||serviceHoursSummary(value);toast('Horários atualizados com sucesso.')};
 
   async function catalogs(){
     const [{data:cats,error:ce},{data:labs,error:le}]=await Promise.all([sb.from('categories').select('*').eq('active',true).order('name'),sb.from('labs').select('*').eq('active',true).order('name')]);
@@ -67,5 +78,5 @@
     });
   };
 
-  catalogs();
+  catalogs();loadServiceHours();
 })();

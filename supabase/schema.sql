@@ -33,6 +33,10 @@ create table public.labs (
 create table public.protocol_sequences (
   prefix text primary key, last_value bigint not null default 0
 );
+create table public.system_settings (
+  key text primary key, value jsonb not null,
+  updated_by uuid references public.profiles(id), updated_at timestamptz not null default now()
+);
 create table public.tickets (
   id uuid primary key default gen_random_uuid(), protocol text not null unique,
   server_id uuid not null references public.servers(id),
@@ -121,6 +125,7 @@ alter table public.profiles enable row level security; alter table public.server
 alter table public.categories enable row level security; alter table public.labs enable row level security;
 alter table public.tickets enable row level security; alter table public.ticket_updates enable row level security;
 alter table public.attachments enable row level security; alter table public.protocol_sequences enable row level security;
+alter table public.system_settings enable row level security;
 
 create policy profiles_read on public.profiles for select to authenticated using(public.current_role() in ('tecnico','supervisor'));
 create policy profiles_write on public.profiles for all to authenticated using(public.current_role()='tecnico') with check(public.current_role()='tecnico');
@@ -136,6 +141,8 @@ create policy updates_read on public.ticket_updates for select to authenticated 
 create policy updates_write on public.ticket_updates for all to authenticated using(public.current_role()='tecnico') with check(public.current_role()='tecnico');
 create policy attachments_read on public.attachments for select to authenticated using(public.current_role() in ('tecnico','supervisor'));
 create policy attachments_write on public.attachments for all to authenticated using(public.current_role()='tecnico') with check(public.current_role()='tecnico');
+create policy settings_public_read on public.system_settings for select to anon,authenticated using(true);
+create policy settings_tech_write on public.system_settings for all to authenticated using(public.current_role()='tecnico') with check(public.current_role()='tecnico');
 
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values('ticket-attachments','ticket-attachments',false,5242880,array['image/jpeg','image/png','image/webp'])
@@ -149,6 +156,7 @@ using(bucket_id='ticket-attachments' and public.current_role()='tecnico');
 
 insert into public.categories(name) values ('Computador não liga'),('Internet ou rede'),('Projetor ou áudio'),('Software ou acesso'),('Periféricos'),('Outro') on conflict do nothing;
 insert into public.labs(name,code,location) values ('LabInfo 01','LAB01','Bloco A'),('LabInfo 02','LAB02','Bloco A'),('LabInfo 03','LAB03','Bloco B'),('LabInfo 04','LAB04','Bloco B'),('Outro ambiente',null,'Campus') on conflict do nothing;
+insert into public.system_settings(key,value) values ('service_hours','{"days":{"mon":{"enabled":true,"start":"07:00","end":"22:00"},"tue":{"enabled":true,"start":"07:00","end":"22:00"},"wed":{"enabled":true,"start":"07:00","end":"22:00"},"thu":{"enabled":true,"start":"07:00","end":"22:00"},"fri":{"enabled":true,"start":"07:00","end":"22:00"},"sat":{"enabled":false,"start":"07:00","end":"12:00"},"sun":{"enabled":false,"start":"07:00","end":"12:00"}},"note":""}'::jsonb) on conflict do nothing;
 
 -- Após criar o usuário em Authentication > Users, vincule-o assim:
 -- insert into public.profiles(id,siape,full_name,email,role)
