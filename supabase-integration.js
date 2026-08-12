@@ -61,6 +61,7 @@
     replace(data.categories,ca.data.map(x=>({id:x.id,name:x.name,active:x.active})));replace(data.labs,la.data.map(x=>({id:x.id,name:x.name,location:x.location,code:x.code,active:x.active})));
     const paths=at.data||[],signed={};await Promise.all(paths.map(async a=>{const {data:s}=await sb.storage.from('ticket-attachments').createSignedUrl(a.storage_path,3600);signed[a.id]=s?.signedUrl}));
     replace(tickets,ti.data.map(x=>({dbId:x.id,id:x.protocol,title:x.title,category:x.categories?.name||'Sem categoria',categoryId:x.category_id,status:x.status,teacher:x.servers?.full_name||`SIAPE ${x.guest_siape} (cadastro pendente)`,teacherSiape:x.servers?.siape||x.guest_siape,teacherEmail:x.servers?.email||x.guest_email,serverId:x.server_id,registrationPending:!x.server_id,lab:x.labs?.name||'Não informado',labId:x.lab_id,time:fmt(x.created_at),createdAt:x.created_at,technician:x.profiles?.full_name||(x.status==='Recebido'?'Não atribuído':'Toda a equipe'),technicianId:x.assigned_to,description:x.description,resolution:x.resolution,closedAt:x.closed_at?fmt(x.closed_at):null,closedAtRaw:x.closed_at,attachments:paths.filter(a=>a.ticket_id===x.id).map(a=>({id:a.id,path:a.storage_path,name:a.file_name,url:signed[a.id]}))})));
+    replace(data.teachers,data.teachers.filter(x=>x.active!==false));
     selected=tickets[0]||null;options();renderTickets();renderDetail();refreshMetrics();
   }
   renderTickets=function(){const q=$('#ticketSearch').value.toLowerCase(),f=$('#statusFilter').value,rows=tickets.filter(t=>(f==='Todos os status'||t.status===f)&&Object.values(t).join(' ').toLowerCase().includes(q));$('.queue-head>div:first-child span').textContent=rows.length+' chamado(s) encontrado(s)';$('#ticketList').innerHTML=rows.map(t=>`<article class="ticket-row ${selected?.id===t.id?'active':''}" data-id="${t.id}"><div><span class="ticket-id">${t.id}</span><h3>${t.title}</h3><div class="ticket-meta"><span>● ${t.teacher}</span><span>▣ ${t.lab}</span><span>◷ ${t.time}</span></div></div>${badge(t.status)}</article>`).join('')||'<p class="empty">Nenhum chamado registrado.</p>';document.querySelectorAll('.ticket-row').forEach(r=>r.onclick=()=>{selected=tickets.find(t=>t.id===r.dataset.id);renderTickets();renderDetail()})};
@@ -111,6 +112,5 @@
     });
   };
 
-  $('#adminOpenTicket').addEventListener('click',()=>{$('#adminTeacher').querySelectorAll('option').forEach(option=>{if(option.value&&data.teachers.find(x=>x.siape===option.value)?.active===false)option.remove()})});
   catalogs();loadServiceHours();
 })();
