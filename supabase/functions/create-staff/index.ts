@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const cors = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type"};
 Deno.serve(async (req) => {
@@ -22,6 +22,7 @@ Deno.serve(async (req) => {
     if (profileError) { await admin.auth.admin.deleteUser(created.user.id); throw profileError; }
     return new Response(JSON.stringify({ok:true,id:created.user.id}),{headers:{...cors,"Content-Type":"application/json"}});
   } catch (error) {
-    return new Response(JSON.stringify({ok:false,error:String(error.message||error)}),{status:400,headers:{...cors,"Content-Type":"application/json"}});
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ok:false,error:message}),{status:400,headers:{...cors,"Content-Type":"application/json"}});
   }
 });
