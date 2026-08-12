@@ -112,5 +112,9 @@
     });
   };
 
+  const adminTeacherSelect=$('#adminTeacher');adminTeacherSelect.insertAdjacentHTML('beforebegin','<input id="adminTeacherSearch" type="search" autocomplete="off" placeholder="Digite o nome ou SIAPE para buscar..." aria-label="Buscar servidor">');
+  const normalizeSearch=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  function filterAdminTeachers(){const query=normalizeSearch($('#adminTeacherSearch').value),current=adminTeacherSelect.value,rows=data.teachers.filter(x=>x.active!==false&&(!query||normalizeSearch(x.name).split(/\s+/).some(part=>part.startsWith(query))||x.siape.startsWith(query)));adminTeacherSelect.innerHTML='<option value="">'+(rows.length?'Selecione o servidor':'Nenhum servidor encontrado')+'</option>'+rows.map(x=>`<option value="${x.siape}">${x.name} — SIAPE ${x.siape}</option>`).join('');if(rows.some(x=>x.siape===current))adminTeacherSelect.value=current;else if(rows.length===1)adminTeacherSelect.value=rows[0].siape;adminTeacherSelect.dispatchEvent(new Event('change'))}
+  $('#adminTeacherSearch').oninput=filterAdminTeachers;$('#adminOpenTicket').addEventListener('click',()=>{$('#adminTeacherSearch').value='';filterAdminTeachers();setTimeout(()=>$('#adminTeacherSearch').focus(),0)});
   catalogs();loadServiceHours();
 })();
