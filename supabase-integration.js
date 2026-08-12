@@ -4,7 +4,7 @@
     document.body.insertAdjacentHTML('afterbegin','<div class="db-banner">Modo demonstração — preencha <code>supabase-config.js</code> para ativar o banco.</div>');
     return;
   }
-  const sb=window.supabase.createClient(cfg.url,cfg.anonKey), state={profile:null,session:null};
+  const sb=window.supabase.createClient(cfg.url,cfg.anonKey), state={profile:null,session:null};tickets.splice(0,tickets.length);selected=null;
   window.labinfoDb=sb;
   const replace=(target,rows)=>{target.splice(0,target.length,...rows)};
   const fmt=d=>new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date(d));
@@ -54,13 +54,13 @@
 
   async function getProfile(){const {data:{session}}=await sb.auth.getSession();if(!session)return null;state.session=session;const {data:p,error}=await sb.from('profiles').select('*').eq('id',session.user.id).single();if(error||!p?.active)return null;state.profile=p;return p}
   async function loadAdmin(){
-    const [sv,pr,ca,la,ti,at,ta]=await Promise.all([sb.from('servers').select('*').order('full_name'),sb.from('profiles').select('*').eq('active',true).order('full_name'),sb.from('categories').select('*').order('name'),sb.from('labs').select('*').order('name'),sb.from('tickets').select('*,servers(*),categories(*),labs(*),profiles(*)').order('created_at',{ascending:false}),sb.from('attachments').select('*'),sb.from('ticket_assignees').select('ticket_id,profile_id,profiles(full_name)')]);
+    const [sv,pr,ca,la,ti,at,ta]=await Promise.all([sb.from('servers').select('*').order('full_name'),sb.from('profiles').select('*').eq('active',true).order('full_name'),sb.from('categories').select('*').order('name'),sb.from('labs').select('*').order('name'),sb.from('tickets').select('*,servers(*),categories(*),labs(*),primary_assignee:profiles!tickets_assigned_to_fkey(*)').order('created_at',{ascending:false}),sb.from('attachments').select('*'),sb.from('ticket_assignees').select('ticket_id,profile_id,assignee_profile:profiles!ticket_assignees_profile_id_fkey(full_name)')]);
     const err=[sv,pr,ca,la,ti,at,ta].find(x=>x.error)?.error;if(err)return fail(err);
     replace(data.teachers,sv.data.map(x=>({id:x.id,siape:x.siape,name:x.full_name,email:x.email,active:x.active})));
     replace(data.technicians,pr.data.map(x=>({id:x.id,siape:x.siape,name:x.full_name,email:x.email,role:x.role,active:x.active})));
     replace(data.categories,ca.data.map(x=>({id:x.id,name:x.name,active:x.active})));replace(data.labs,la.data.map(x=>({id:x.id,name:x.name,location:x.location,code:x.code,active:x.active})));
     const paths=at.data||[],signed={};await Promise.all(paths.map(async a=>{const {data:s}=await sb.storage.from('ticket-attachments').createSignedUrl(a.storage_path,3600);signed[a.id]=s?.signedUrl}));
-    replace(tickets,ti.data.map(x=>{const assigned=(ta.data||[]).filter(a=>a.ticket_id===x.id);return {dbId:x.id,id:x.protocol,title:x.title,category:x.categories?.name||'Sem categoria',categoryId:x.category_id,status:x.status,teacher:x.servers?.full_name||`SIAPE ${x.guest_siape} (cadastro pendente)`,teacherSiape:x.servers?.siape||x.guest_siape,teacherEmail:x.servers?.email||x.guest_email,serverId:x.server_id,registrationPending:!x.server_id,lab:x.labs?.name||'Não informado',labId:x.lab_id,time:fmt(x.created_at),createdAt:x.created_at,technician:assigned.length?assigned.map(a=>a.profiles?.full_name).filter(Boolean).join(', '):(x.status==='Recebido'?'Não atribuído':'Toda a equipe'),technicianIds:assigned.map(a=>a.profile_id),technicianId:x.assigned_to,description:x.description,resolution:x.resolution,closedAt:x.closed_at?fmt(x.closed_at):null,closedAtRaw:x.closed_at,attachments:paths.filter(a=>a.ticket_id===x.id).map(a=>({id:a.id,path:a.storage_path,name:a.file_name,url:signed[a.id]}))}}));
+    replace(tickets,ti.data.map(x=>{const assigned=(ta.data||[]).filter(a=>a.ticket_id===x.id);return {dbId:x.id,id:x.protocol,title:x.title,category:x.categories?.name||'Sem categoria',categoryId:x.category_id,status:x.status,teacher:x.servers?.full_name||`SIAPE ${x.guest_siape} (cadastro pendente)`,teacherSiape:x.servers?.siape||x.guest_siape,teacherEmail:x.servers?.email||x.guest_email,serverId:x.server_id,registrationPending:!x.server_id,lab:x.labs?.name||'Não informado',labId:x.lab_id,time:fmt(x.created_at),createdAt:x.created_at,technician:assigned.length?assigned.map(a=>a.assignee_profile?.full_name).filter(Boolean).join(', '):(x.status==='Recebido'?'Não atribuído':'Toda a equipe'),technicianIds:assigned.map(a=>a.profile_id),technicianId:x.assigned_to,description:x.description,resolution:x.resolution,closedAt:x.closed_at?fmt(x.closed_at):null,closedAtRaw:x.closed_at,attachments:paths.filter(a=>a.ticket_id===x.id).map(a=>({id:a.id,path:a.storage_path,name:a.file_name,url:signed[a.id]}))}}));
     replace(data.teachers,data.teachers.filter(x=>x.active!==false));
     selected=tickets[0]||null;options();renderTickets();renderDetail();refreshMetrics();
   }
