@@ -14,7 +14,21 @@ Deno.serve(async (req) => {
     const admin = createClient(url, service);
     const {data:profile} = await admin.from("profiles").select("role,active").eq("id",user.id).single();
     if (!profile?.active || profile.role !== "tecnico") throw new Error("Sem permissão");
-    const {email,password,siape,full_name,role} = await req.json();
+    const body = await req.json();
+    if (body.action === "update-email") {
+      const targetId = String(body.user_id || "");
+      const newEmail = String(body.email || "").trim().toLowerCase();
+      if (!targetId || !/^[^\s@]+@ifms\.edu\.br$/i.test(newEmail)) throw new Error("Informe um e-mail institucional @ifms.edu.br.");
+      const {data:emailOwner,error:ownerError} = await admin.from("profiles").select("id").eq("email",newEmail).neq("id",targetId).maybeSingle();
+      if (ownerError) throw ownerError;
+      if (emailOwner) throw new Error("Este e-mail já pertence a outro usuário.");
+      const {error:authEmailError} = await admin.auth.admin.updateUserById(targetId,{email:newEmail,email_confirm:true});
+      if (authEmailError) throw authEmailError;
+      const {error:profileEmailError} = await admin.from("profiles").update({email:newEmail}).eq("id",targetId);
+      if (profileEmailError) throw profileEmailError;
+      return new Response(JSON.stringify({ok:true,email:newEmail}),{headers:{...cors,"Content-Type":"application/json"}});
+    }
+    const {email,password,siape,full_name,role} = body;
     if (!email || !password || !siape || !full_name || !["tecnico","supervisor"].includes(role)) throw new Error("Dados inválidos");
     const {data:created,error} = await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{full_name,siape,role}});
     if (error) throw error;
