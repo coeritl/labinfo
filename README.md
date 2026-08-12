@@ -4,7 +4,7 @@ Interface responsiva para abertura e gerenciamento de chamados dos Laboratórios
 
 ## Protótipo atual
 
-- formulário docente com validação de e-mail institucional;
+- formulário servidor com validação de e-mail institucional;
 - categorias e laboratórios;
 - consulta por protocolo;
 - painel técnico responsivo;
@@ -13,7 +13,7 @@ Interface responsiva para abertura e gerenciamento de chamados dos Laboratórios
 
 ## Próxima etapa
 
-Conectar a interface a um Google Apps Script para persistência em Planilhas Google, validação do cadastro docente e envio de notificações por e-mail.
+Conectar a interface a um Google Apps Script para persistência em Planilhas Google, validação do cadastro servidor e envio de notificações por e-mail.
 
 ## Publicação
 
