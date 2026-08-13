@@ -20,4 +20,6 @@ Depois execute manualmente `configurarIntegracao` uma única vez e autorize Gmai
 - Exemplo: `LAB01 - Projetor sem imagem`.
 - O corpo do e-mail será a descrição do chamado.
 
-Somente remetentes que correspondam ao e-mail de um servidor ativo no painel geram chamados. Outros remetentes são ignorados. Mensagens processadas recebem o marcador `LabInfo-Processado`, o que impede duplicidade.
+Somente remetentes que correspondam ao e-mail de um servidor ativo no painel geram chamados. Outros remetentes são ignorados. Mensagens processadas recebem o marcador `LabInfo-Processado`; o controle definitivo de duplicidade é feito no Supabase pelo ID individual da mensagem. Se uma importação falhar, a conversa não é marcada como concluída e será tentada novamente.
+
+Respostas que contenham um protocolo no assunto são adicionadas ao histórico. Se o atendimento já estava concluído, ele volta para **Em atendimento** e a equipe recebe um aviso. Os textos citados de mensagens anteriores são removidos sempre que o formato do Gmail puder ser identificado.

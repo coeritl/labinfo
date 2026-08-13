@@ -45,9 +45,12 @@ function processarSaidaProgramada() {
 
 function processarChamadosRecebidos_() {
   const label = GmailApp.getUserLabelByName(LABINFO.processedLabel) || GmailApp.createLabel(LABINFO.processedLabel);
+  const ownAddresses = [Session.getActiveUser().getEmail()].concat(GmailApp.getAliases()).map(email => String(email).toLowerCase());
   GmailApp.search(LABINFO.incomingQuery, 0, LABINFO.maxThreads).forEach(thread => {
+    let threadOk = true;
     thread.getMessages().forEach(message => {
       const sender = extrairEmail_(message.getFrom());
+      if (ownAddresses.includes(sender)) return;
       try {
         const result = rpc_('apps_script_register_inbound', {
           p_secret: segredo_(), p_message_id: message.getId(), p_sender: sender,
@@ -57,11 +60,14 @@ function processarChamadosRecebidos_() {
         // Remetentes não cadastrados são apenas ignorados; nenhum chamado é criado.
       } catch (error) {
         console.error('Falha ao importar ' + message.getId() + ': ' + error.message);
+        threadOk = false;
         return;
       }
     });
-    thread.addLabel(label);
-    thread.markRead();
+    if (threadOk) {
+      thread.addLabel(label);
+      thread.markRead();
+    }
   });
 }
 
@@ -113,7 +119,7 @@ function enviarNotificacoesPendentes_() {
 }
 
 function registrarMetricas_(kind, sent) {
-  try { rpc_('apps_script_report_metrics', {p_secret: segredo_(), p_kind: kind, p_sent: sent || 0, p_remaining: null}); }
+  try { rpc_('apps_script_report_metrics', {p_secret: segredo_(), p_kind: kind, p_sent: sent || 0, p_remaining: MailApp.getRemainingDailyQuota()}); }
   catch (error) { console.error('Falha ao registrar métricas: ' + error.message); }
 }
 
@@ -125,6 +131,8 @@ function montarEmail_(eventType, data) {
     em_atendimento: ['Chamado em atendimento', 'A equipe técnica iniciou o atendimento do seu chamado.', '#2167a8', '&#9881;', 'Atendimento em andamento'],
     atualizacao: ['Atualização do chamado', data.message || 'Há uma nova atualização no seu chamado.', '#d66a00', '!', 'Atenção: aguardando sua verificação'],
     concluido: ['Chamado concluído', 'O atendimento foi concluído pela equipe técnica.', '#086c3c', '&#10003;&#65038;', 'Atendimento resolvido']
+    ,novo_chamado_tecnico: ['Novo chamado na fila', 'Um novo chamado foi registrado e está disponível para atribuição.', '#2167a8', '&#128276;', 'Atenção da equipe']
+    ,resposta_servidor_tecnico: ['Servidor respondeu ao chamado', data.message || 'Há uma nova resposta aguardando análise da equipe.', '#d66a00', '!', 'Resposta pendente']
   };
   const content = names[eventType] || ['Atualização do LabInfo TL', 'Há uma novidade em seu chamado.', '#07852a', 'i', 'Nova informação'];
   return {
@@ -144,14 +152,20 @@ function layout_(title, message, data, visual) {
   <h1 style="font-size:25px;margin:10px 0 14px">${escapar_(title)}</h1><p style="font-size:16px;line-height:1.6;margin:0 0 22px">${escapar_(message)}</p>
   <table role="presentation" width="100%" style="background:${visual.color}12;border-left:4px solid ${visual.color};border-radius:12px"><tr><td style="padding:16px;font-size:14px;line-height:1.7">
   <b>Assunto:</b> ${escapar_(data.title || 'Não informado')}<br><b>Laboratório:</b> ${escapar_(data.lab || 'Não informado')}<br><b>Categoria:</b> ${escapar_(data.category || 'Não informada')}
-  </td></tr></table><p style="margin:24px 0 0"><a href="${LABINFO.portalUrl}" style="display:inline-block;background:${visual.color};color:#fff;text-decoration:none;font-weight:bold;padding:13px 22px;border-radius:10px">Consultar meus chamados</a></p>
+  </td></tr></table><p style="margin:24px 0 0"><a href="${LABINFO.portalUrl}" style="display:inline-block;background:${visual.color};color:#fff;text-decoration:none;font-weight:bold;padding:13px 22px;border-radius:10px">Consultar minhas solicitações</a>${data.status === 'Concluído' && data.feedback_url ? ` <a href="${escapar_(data.feedback_url)}" style="display:inline-block;margin-left:8px;background:#ffffff;color:${visual.color};border:2px solid ${visual.color};text-decoration:none;font-weight:bold;padding:11px 20px;border-radius:10px">Confirmar atendimento</a>` : ''}</p>
   </td></tr><tr><td style="background:#073d25;color:#dcebe2;padding:18px 30px;font-size:12px">LabInfo TL · Suporte dos Laboratórios de Informática · IFMS Campus Três Lagoas</td></tr>
   </table></td></tr></table></body></html>`;
 }
 
 function htmlAviso_(message) { return layout_('Não foi possível registrar o chamado', message, {}); }
 function enviarHtml_(to, subject, html) { GmailApp.sendEmail(to, subject, 'Abra este e-mail em um cliente compatível com HTML.', {htmlBody: html, name: 'LabInfo TL'}); }
-function textoMensagem_(message) { return (message.getPlainBody() || '').replace(/\r/g,'').trim().slice(0, 2000); }
+function textoMensagem_(message) {
+  const plain = (message.getPlainBody() || '').replace(/\r/g,'').trim();
+  const markers = [/^Em .* escreveu:$/im,/^On .* wrote:$/im,/^De: .*$/im,/^-{2,}\s*Mensagem original\s*-{2,}$/im];
+  let cut = plain.length;
+  markers.forEach(pattern => { const match = pattern.exec(plain); if (match && match.index < cut) cut = match.index; });
+  return plain.slice(0, cut).replace(/\n>{1,}.*(?:\n|$)/g,'\n').trim().slice(0, 2000);
+}
 function extrairEmail_(from) { const m = String(from).match(/<([^>]+)>/); return (m ? m[1] : from).trim().toLowerCase(); }
 function escapar_(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function segredo_() { return PropertiesService.getScriptProperties().getProperty('INTEGRATION_SECRET'); }
