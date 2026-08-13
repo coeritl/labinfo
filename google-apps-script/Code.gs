@@ -49,6 +49,7 @@ function processarChamadosRecebidos_() {
           p_secret: segredo_(), p_message_id: message.getId(), p_sender: sender,
           p_subject: message.getSubject(), p_body: textoMensagem_(message)
         });
+        if (result && result.accepted) importarImagens_(message, result);
         // Remetentes não cadastrados são apenas ignorados; nenhum chamado é criado.
       } catch (error) {
         console.error('Falha ao importar ' + message.getId() + ': ' + error.message);
@@ -59,6 +60,36 @@ function processarChamadosRecebidos_() {
     thread.markRead();
   });
 }
+
+function importarImagens_(message, ticket) {
+  const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+  const images = message.getAttachments({includeInlineImages: true, includeAttachments: true})
+    .filter(file => allowed.includes(String(file.getContentType()).toLowerCase()) && file.getBytes().length <= 5 * 1024 * 1024)
+    .slice(0, 3);
+  images.forEach((file, index) => {
+    const original = file.getName() || `imagem-${index + 1}.${extensaoImagem_(file.getContentType())}`;
+    const safeName = original.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 160);
+    const path = `tickets/${ticket.ticket_id}/${Utilities.getUuid()}-${safeName}`;
+    uploadStorage_(path, file);
+    rpc_('register_public_attachment', {
+      p_ticket: ticket.ticket_id, p_siape: ticket.siape, p_path: path,
+      p_name: original.slice(0, 180), p_type: file.getContentType(), p_size: file.getBytes().length
+    });
+  });
+}
+
+function uploadStorage_(path, blob) {
+  const props = PropertiesService.getScriptProperties();
+  const key = props.getProperty('SUPABASE_ANON_KEY');
+  const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+  const response = UrlFetchApp.fetch(props.getProperty('SUPABASE_URL') + '/storage/v1/object/ticket-attachments/' + encodedPath, {
+    method: 'post', contentType: blob.getContentType(), payload: blob.getBytes(), muteHttpExceptions: true,
+    headers: {apikey: key, Authorization: 'Bearer ' + key, 'x-upsert': 'false'}
+  });
+  if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) throw new Error('Falha ao enviar imagem: ' + response.getContentText());
+}
+
+function extensaoImagem_(mime) { return ({'image/jpeg':'jpg','image/png':'png','image/webp':'webp'})[String(mime).toLowerCase()] || 'jpg'; }
 
 function enviarNotificacoesPendentes_() {
   const items = rpc_('apps_script_pull_outbox', {p_secret: segredo_(), p_limit: 25}) || [];

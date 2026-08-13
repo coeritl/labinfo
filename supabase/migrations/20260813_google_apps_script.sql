@@ -134,7 +134,7 @@ begin
   insert into public.tickets(protocol,server_id,lab_id,title,description,source)
   values(v_protocol,v_server.id,v_lab,left(v_title,100),left(btrim(p_body),2000),'Email') returning id into v_ticket;
   insert into public.email_inbox_log values(p_message_id,lower(p_sender),left(p_subject,300),v_ticket,'criado',now());
-  return jsonb_build_object('accepted',true,'ticket_id',v_ticket,'protocol',v_protocol);
+  return jsonb_build_object('accepted',true,'ticket_id',v_ticket,'protocol',v_protocol,'siape',v_server.siape);
 end $$;
 
 create or replace function public.apps_script_pull_outbox(p_secret text,p_limit integer default 25)
