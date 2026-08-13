@@ -128,6 +128,14 @@
     if(result.error)return fail(result.error,'Não foi possível salvar o laboratório.');
     form.reset();await loadAdmin();registration();toast('Laboratório salvo e disponibilizado no sistema.');
   },true);
+  document.addEventListener('submit',async event=>{
+    if(!event.target.matches('#registrationForm')||regType!=='categories')return;
+    event.preventDefault();event.stopImmediatePropagation();setProcessing(true,'Salvando categoria…');
+    const form=event.target,entry=Object.fromEntries(new FormData(form)),name=String(entry.name||'').trim();
+    const result=await sb.from('categories').upsert({name,active:true},{onConflict:'name'}).select().single();
+    if(result.error)return fail(result.error,'Não foi possível salvar a categoria.');
+    form.reset();await loadAdmin();registration();toast('Categoria salva e disponibilizada no sistema.');
+  },true);
   const registryHead=$('.registry-head');registryHead.insertAdjacentHTML('beforeend','<button id="deleteAllRegistry" class="delete-all-registry" type="button">Apagar todos</button>');
   $('#deleteAllRegistry').onclick=async()=>{const labels={teachers:'servidores',technicians:'técnicos e supervisores',categories:'categorias',labs:'laboratórios'},tables={teachers:'servers',technicians:'profiles',categories:'categories',labs:'labs'},active=data[regType].filter(x=>x.active!==false);if(!active.length)return toast('Não há cadastros ativos para apagar.');const typed=prompt(`Esta ação retirará ${active.length} ${labels[regType]} das seleções do sistema. Registros ligados ao histórico serão preservados como inativos.\n\nDigite APAGAR para confirmar:`);if(typed!=='APAGAR')return;let query=sb.from(tables[regType]).update({active:false}).eq('active',true);if(regType==='technicians')query=query.neq('id',state.profile.id);const {error}=await query;if(error)return fail(error);await loadAdmin();registration();toast(regType==='technicians'?'Todos os demais usuários foram desativados. Seu acesso foi preservado.':'Todos os cadastros deste grupo foram removidos das seleções.')};
 
