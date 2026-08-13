@@ -10,17 +10,29 @@ function configurarIntegracao() {
   validarConfiguracao_();
   GmailApp.createLabel(LABINFO.processedLabel);
   ScriptApp.getProjectTriggers()
-    .filter(t => t.getHandlerFunction() === 'executarIntegracao')
+    .filter(t => ['executarIntegracao', 'processarEntradaProgramada', 'processarSaidaProgramada'].includes(t.getHandlerFunction()))
     .forEach(t => ScriptApp.deleteTrigger(t));
-  ScriptApp.newTrigger('executarIntegracao').timeBased().everyHours(1).create();
-  executarIntegracao();
+  ScriptApp.newTrigger('processarEntradaProgramada').timeBased().everyHours(1).create();
+  ScriptApp.newTrigger('processarSaidaProgramada').timeBased().everyMinutes(1).create();
+  processarEntradaProgramada();
 }
 
-function executarIntegracao() {
+function processarEntradaProgramada() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(1000)) return;
   try {
     processarChamadosRecebidos_();
+    // Envia imediatamente a confirmação dos chamados encontrados nesta consulta.
+    enviarNotificacoesPendentes_();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function processarSaidaProgramada() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return;
+  try {
     enviarNotificacoesPendentes_();
   } finally {
     lock.releaseLock();
