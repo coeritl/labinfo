@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#11733c" />
     <meta name="description" content="Sistema de chamados dos Laboratórios de Informática do IFMS Campus Três Lagoas" />
-    <title>LabInfo | Chamados IFMS</title>
+    <title>LabInfo | Suporte IFMS</title>
     <link rel="stylesheet" href="styles.css?v=20260813-12" />
   </head>
   <body>
     <header class="topbar">
-      <a class="brand brand-new" href="#" aria-label="LabInfo TL - Chamados, início">
+      <a class="brand brand-new" href="#" aria-label="LabInfo TL - Suporte, início">
         <img class="brand-logo" src="assets/labinfo-logo.png" width="168" height="33" style="display:block;width:168px;height:33px;object-fit:contain" alt="LabInfo TL" />
-        <span class="brand-system-name">Chamados</span>
+        <span class="brand-system-name">Suporte</span>
       </a>
       <button class="admin-link" id="adminToggle" type="button">Área técnica</button>
     </header>
@@ -22,7 +22,7 @@
         <div class="hero">
           <span class="eyebrow">SUPORTE DOS LABORATÓRIOS</span>
           <h1>Como podemos ajudar?</h1>
-          <p>Abra um chamado em menos de um minuto. Você receberá as atualizações no e-mail institucional.</p>
+          <p>Solicite apoio técnico em menos de um minuto. Você receberá as atualizações no e-mail institucional.</p>
         </div>
 
         <div class="service-note public-service-hours"><strong>Horário de atendimento</strong><span id="serviceHoursText">Segunda a sexta, das 7h às 22h</span></div>
@@ -34,17 +34,17 @@
               <label>SIAPE<input id="siape" inputmode="numeric" autocomplete="off" placeholder="0000000" required /></label>
               <label>E-mail institucional<input id="email" type="email" autocomplete="email" placeholder="nome@ifms.edu.br" required /></label>
             </div>
-            <div class="section-title"><span>2</span><div><h2>Detalhes do chamado</h2><p>Conte o que está acontecendo</p></div></div>
+            <div class="section-title"><span>2</span><div><h2>Como podemos ajudar?</h2><p>Conte o que está acontecendo</p></div></div>
             <label>Categoria<select id="category" required><option value="">Selecione uma categoria</option><option>Computador não liga</option><option>Internet ou rede</option><option>Projetor ou áudio</option><option>Software ou acesso</option><option>Periféricos</option><option>Outro</option></select></label>
             <label>Laboratório<select id="lab" required><option value="">Selecione o local</option><option>LabInfo 01</option><option>LabInfo 02</option><option>LabInfo 03</option><option>LabInfo 04</option><option>Outro ambiente</option></select></label>
             <label>Descreva o problema<textarea id="description" rows="5" maxlength="800" placeholder="Ex.: O computador 12 não inicia e apresenta uma tela preta..." required></textarea><small class="counter"><span id="charCount">0</span>/800</small></label>
-            <button class="primary" type="submit">Abrir chamado <span>→</span></button>
+            <button class="primary" type="submit">Solicitar apoio técnico <span>→</span></button>
             <p class="privacy">Seus dados serão usados somente para identificação e acompanhamento do atendimento.</p>
           </form>
 
           <aside class="side-column">
             <div class="card status-card">
-              <span class="status-icon">⌕</span><h2>Meus chamados</h2><p>Informe seu SIAPE para visualizar seus chamados e o status atual.</p>
+              <span class="status-icon">⌕</span><h2>Minhas solicitações</h2><p>Informe seu SIAPE para acompanhar suas solicitações e o status atual.</p>
               <div class="protocol-search"><input id="protocolInput" inputmode="numeric" placeholder="Digite seu SIAPE" /><button id="protocolButton" type="button">Buscar</button></div>
               <div id="protocolResult" class="protocol-result" aria-live="polite"></div>
             </div>
