@@ -115,6 +115,14 @@ function registrarMetricas_(kind, sent) {
   catch (error) { console.error('Falha ao registrar métricas: ' + error.message); }
 }
 
+// Execute manualmente uma vez após adicionar o escopo script.send_mail.
+// A chamada sem try/catch força o Google a exibir a nova tela de consentimento.
+function autorizarMetricas() {
+  const remaining = MailApp.getRemainingDailyQuota();
+  rpc_('apps_script_report_metrics', {p_secret: segredo_(), p_kind: 'outbox', p_sent: 0, p_remaining: remaining});
+  console.log('Métricas autorizadas. Cota diária restante: ' + remaining);
+}
+
 function montarEmail_(eventType, data) {
   const names = {
     recebido: ['Chamado recebido pela equipe', 'Recebemos seu chamado e ele já está na fila de atendimento.', '#07852a', '&#10003;', 'Solicitação registrada'],
