@@ -111,17 +111,10 @@ function enviarNotificacoesPendentes_() {
 }
 
 function registrarMetricas_(kind, sent) {
-  try { rpc_('apps_script_report_metrics', {p_secret: segredo_(), p_kind: kind, p_sent: sent || 0, p_remaining: MailApp.getRemainingDailyQuota()}); }
+  try { rpc_('apps_script_report_metrics', {p_secret: segredo_(), p_kind: kind, p_sent: sent || 0, p_remaining: null}); }
   catch (error) { console.error('Falha ao registrar métricas: ' + error.message); }
 }
 
-// Execute manualmente uma vez após adicionar o escopo script.send_mail.
-// A chamada sem try/catch força o Google a exibir a nova tela de consentimento.
-function autorizarMetricas() {
-  const remaining = MailApp.getRemainingDailyQuota();
-  rpc_('apps_script_report_metrics', {p_secret: segredo_(), p_kind: 'outbox', p_sent: 0, p_remaining: remaining});
-  console.log('Métricas autorizadas. Cota diária restante: ' + remaining);
-}
 
 function montarEmail_(eventType, data) {
   const names = {
