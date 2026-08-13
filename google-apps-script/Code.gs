@@ -108,6 +108,7 @@ function enviarNotificacoesPendentes_() {
 function montarEmail_(eventType, data) {
   const names = {
     recebido: ['Chamado recebido pela equipe', 'Recebemos seu chamado e ele já está na fila de atendimento.'],
+    aberto_pelo_tecnico: ['Abrimos um chamado para você', 'A equipe técnica registrou um chamado vinculado ao seu cadastro. Você receberá por e-mail as próximas atualizações do atendimento.'],
     em_atendimento: ['Chamado em atendimento', 'A equipe técnica iniciou o atendimento do seu chamado.'],
     atualizacao: ['Atualização do chamado', data.message || 'Há uma nova atualização no seu chamado.'],
     concluido: ['Chamado concluído', 'O atendimento foi concluído pela equipe técnica.']

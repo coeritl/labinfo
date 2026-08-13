@@ -11,7 +11,7 @@ create table if not exists public.email_outbox (
   id bigint generated always as identity primary key,
   ticket_id uuid references public.tickets(id) on delete cascade,
   recipient text not null check (lower(recipient) ~ '^[^[:space:]@]+@ifms[.]edu[.]br$'),
-  event_type text not null check (event_type in ('recebido','em_atendimento','atualizacao','concluido')),
+  event_type text not null check (event_type in ('recebido','aberto_pelo_tecnico','em_atendimento','atualizacao','concluido')),
   payload jsonb not null default '{}'::jsonb,
   status text not null default 'pending' check (status in ('pending','processing','sent','failed')),
   attempts integer not null default 0,
@@ -78,7 +78,8 @@ declare v_email text; v_event text;
 begin
   v_email:=public.ticket_email(new);
   if v_email is null then return new; end if;
-  if tg_op='INSERT' then v_event:='recebido';
+  if tg_op='INSERT' then
+    v_event:=case when new.source='Tecnico' then 'aberto_pelo_tecnico' else 'recebido' end;
   elsif new.status is distinct from old.status and new.status='Em atendimento' then v_event:='em_atendimento';
   elsif new.status is distinct from old.status and new.status='Concluído' then v_event:='concluido';
   else return new;
