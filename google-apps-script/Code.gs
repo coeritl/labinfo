@@ -23,7 +23,8 @@ function processarEntradaProgramada() {
   try {
     processarChamadosRecebidos_();
     // Envia imediatamente a confirmação dos chamados encontrados nesta consulta.
-    enviarNotificacoesPendentes_();
+    const sent = enviarNotificacoesPendentes_();
+    registrarMetricas_('inbox', sent);
   } finally {
     lock.releaseLock();
   }
@@ -33,7 +34,8 @@ function processarSaidaProgramada() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(1000)) return;
   try {
-    enviarNotificacoesPendentes_();
+    const sent = enviarNotificacoesPendentes_();
+    registrarMetricas_('outbox', sent);
   } finally {
     lock.releaseLock();
   }
@@ -93,16 +95,24 @@ function extensaoImagem_(mime) { return ({'image/jpeg':'jpg','image/png':'png','
 
 function enviarNotificacoesPendentes_() {
   const items = rpc_('apps_script_pull_outbox', {p_secret: segredo_(), p_limit: 25}) || [];
+  let sent = 0;
   items.forEach(item => {
     try {
       const mail = montarEmail_(item.event_type, item.payload || {});
       enviarHtml_(item.recipient, mail.subject, mail.html);
       rpc_('apps_script_finish_outbox', {p_secret: segredo_(), p_id: item.id, p_success: true, p_error: null});
+      sent++;
     } catch (error) {
       console.error('Falha no item ' + item.id + ': ' + error.message);
       rpc_('apps_script_finish_outbox', {p_secret: segredo_(), p_id: item.id, p_success: false, p_error: error.message});
     }
   });
+  return sent;
+}
+
+function registrarMetricas_(kind, sent) {
+  try { rpc_('apps_script_report_metrics', {p_secret: segredo_(), p_kind: kind, p_sent: sent || 0, p_remaining: MailApp.getRemainingDailyQuota()}); }
+  catch (error) { console.error('Falha ao registrar métricas: ' + error.message); }
 }
 
 function montarEmail_(eventType, data) {
