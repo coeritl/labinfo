@@ -133,5 +133,28 @@
   const expandedDetailRender=renderDetail;renderDetail=function(){expandedDetailRender();if(!selected)return;$('#ticketDetail').querySelector('.detail-close')?.remove();$('#ticketDetail').insertAdjacentHTML('afterbegin','<button class="detail-close" type="button" aria-label="Voltar para a fila">←</button>');$('.detail-close').onclick=()=>{$('#ticketDetail').classList.remove('detail-expanded');document.body.classList.remove('detail-open')};const reply=$('#reply'),send=$('#sendReply'),close=$('#closeTicket');if(reply)reply.closest('label').hidden=true;if(send){send.textContent='Enviar atualização';send.onclick=()=>{const label=reply.closest('label');if(label.hidden){label.hidden=false;send.textContent='Registrar e enviar atualização';reply.focus();return}const msg=reply.value.trim();if(!msg)return toast('Digite a atualização antes de enviar.');sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:msg}).then(async({error})=>{if(error)return fail(error);reply.value='';label.hidden=true;send.textContent='Enviar atualização';toast('Atualização registrada para envio ao servidor.')})}}if(close)close.onclick=async()=>{if(selected.attachments?.length){const {error:se}=await sb.storage.from('ticket-attachments').remove(selected.attachments.map(x=>x.path));if(se)return fail(se);await sb.from('attachments').delete().eq('ticket_id',selected.dbId)}const {error}=await sb.from('tickets').update({status:'Concluído',resolution:null,closed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',selected.dbId);if(error)return fail(error);await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:'Atendimento concluído',kind:'fechamento'});await loadAdmin();toast('Chamado concluído e fechado.')}};
   const detailWithMessages=renderDetail;renderDetail=function(){detailWithMessages();if(!selected)return;if(selected.serverReplyPending)$('#ticketDetail .detail-top')?.insertAdjacentHTML('afterend','<div class="server-reply-alert"><strong>! Nova resposta do servidor</strong><span>Verifique o histórico de mensagens abaixo.</span></div>');const history=(selected.updates||[]).filter(u=>['atualizacao','resposta_servidor'].includes(u.kind));if(!history.length)return;const anchor=$('#ticketDetail .detail-actions')||$('#ticketDetail .resolution-box');anchor?.insertAdjacentHTML('beforebegin',`<section class="ticket-history"><h3>Histórico de mensagens</h3>${history.map(u=>`<article class="${u.kind==='resposta_servidor'?'server-reply':'staff-update'}"><header><strong>${safe(u.author)}</strong><time>${fmt(u.createdAt)}</time></header><p>${safe(u.message)}</p></article>`).join('')}</section>`)};
   const queueWithReplyNotice=renderTickets;renderTickets=function(){queueWithReplyNotice();document.querySelectorAll('.ticket-row').forEach(row=>{const ticket=tickets.find(t=>t.id===row.dataset.id);if(!ticket?.serverReplyPending)return;row.classList.add('has-server-reply');row.querySelector('div')?.insertAdjacentHTML('afterbegin','<span class="server-reply-badge">! Resposta do servidor</span>');if(state.profile?.role==='tecnico')row.addEventListener('click',async()=>{ticket.serverReplyPending=false;await sb.rpc('mark_server_reply_read',{p_ticket:ticket.dbId});row.classList.remove('has-server-reply');row.querySelector('.server-reply-badge')?.remove()},{once:true})})};
+
+  // Interações consistentes por teclado, foco e clique externo.
+  $('#protocolInput').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();$('#protocolButton').click()}});
+  $('#adminTeacherSearch').addEventListener('keydown',event=>{if(event.key!=='Enter')return;event.preventDefault();const choices=[...adminTeacherSelect.options].filter(option=>option.value);if(choices.length===1){adminTeacherSelect.value=choices[0].value;adminTeacherSelect.dispatchEvent(new Event('change'));adminTeacherSelect.focus()}});
+
+  document.addEventListener('click',event=>{
+    if(!accountDropdown.hidden&&!event.target.closest('.account-menu')){$('#accountButton').setAttribute('aria-expanded','false');accountDropdown.hidden=true}
+    const menu=$('#adminMenuDropdown'),menuButton=$('#adminMenuButton');
+    if(menu&&!menu.hidden&&!event.target.closest('.admin-menu')&&event.target!==menuButton)menu.hidden=true;
+    if(event.target.classList.contains('modal-backdrop'))event.target.querySelector('.modal-close, [id^="cancel"]')?.click();
+  });
+
+  document.addEventListener('keydown',event=>{
+    if(event.key!=='Escape')return;
+    const visibleModal=[...document.querySelectorAll('.modal-backdrop:not([hidden])')].pop();
+    if(visibleModal){visibleModal.querySelector('.modal-close, [id^="cancel"]')?.click();return}
+    if(!accountDropdown.hidden){$('#accountButton').click();$('#accountButton').focus();return}
+    const menu=$('#adminMenuDropdown');if(menu&&!menu.hidden){menu.hidden=true;$('#adminMenuButton')?.focus();return}
+    const detail=$('#ticketDetail');if(detail?.classList.contains('detail-expanded'))detail.querySelector('.detail-close')?.click();
+  });
+
+  const focusOpenedModal=new MutationObserver(entries=>entries.forEach(({target,attributeName})=>{if(attributeName==='hidden'&&!target.hidden){setTimeout(()=>target.querySelector('input:not([type="hidden"]), select, textarea, button')?.focus(),0)}}));
+  document.querySelectorAll('.modal-backdrop').forEach(modal=>focusOpenedModal.observe(modal,{attributes:true,attributeFilter:['hidden']}));
   catalogs();loadServiceHours();
 })();
