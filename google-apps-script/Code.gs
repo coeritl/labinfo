@@ -118,11 +118,11 @@ function registrarMetricas_(kind, sent) {
 
 function montarEmail_(eventType, data) {
   const names = {
-    recebido: ['Chamado recebido pela equipe', 'Recebemos seu chamado e ele já está na fila de atendimento.', '#07852a', '&#10003;', 'Solicitação registrada'],
-    aberto_pelo_tecnico: ['Abrimos um chamado para você', 'A equipe técnica registrou um chamado vinculado ao seu cadastro. Você receberá por e-mail as próximas atualizações do atendimento.', '#07852a', '&#10003;', 'Solicitação registrada'],
+    recebido: ['Chamado recebido pela equipe', 'Recebemos seu chamado e ele já está na fila de atendimento.', '#07852a', '&#10003;&#65038;', 'Solicitação registrada'],
+    aberto_pelo_tecnico: ['Abrimos um chamado para você', 'A equipe técnica registrou um chamado vinculado ao seu cadastro. Você receberá por e-mail as próximas atualizações do atendimento.', '#07852a', '&#10003;&#65038;', 'Solicitação registrada'],
     em_atendimento: ['Chamado em atendimento', 'A equipe técnica iniciou o atendimento do seu chamado.', '#2167a8', '&#9881;', 'Atendimento em andamento'],
     atualizacao: ['Atualização do chamado', data.message || 'Há uma nova atualização no seu chamado.', '#d66a00', '!', 'Atenção: aguardando sua verificação'],
-    concluido: ['Chamado concluído', 'O atendimento foi concluído pela equipe técnica.', '#086c3c', '&#10004;', 'Atendimento resolvido']
+    concluido: ['Chamado concluído', 'O atendimento foi concluído pela equipe técnica.', '#086c3c', '&#10003;&#65038;', 'Atendimento resolvido']
   };
   const content = names[eventType] || ['Atualização do LabInfo TL', 'Há uma novidade em seu chamado.', '#07852a', 'i', 'Nova informação'];
   return {
@@ -138,7 +138,7 @@ function layout_(title, message, data, visual) {
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:28px 12px">
   <table role="presentation" width="600" style="max-width:600px;background:#fff;border-radius:18px;overflow:hidden;border:1px solid #dce7df">
   <tr><td style="padding:25px 30px;border-top:7px solid ${visual.color}"><img src="${LABINFO.logoUrl}" alt="LabInfo TL" width="235" style="display:block;max-width:100%;height:auto"></td></tr>
-  <tr><td style="padding:2px 30px 30px"><table role="presentation" cellspacing="0" cellpadding="0"><tr><td style="width:46px;height:46px;border-radius:50%;background:${visual.color};color:#fff;text-align:center;font-size:25px;font-weight:bold">${visual.icon}</td><td style="padding-left:13px"><div style="color:${visual.color};font-size:13px;font-weight:bold;letter-spacing:.05em">${escapar_(visual.label)}</div><div style="color:#65736b;font-size:12px;margin-top:3px">${protocol}</div></td></tr></table>
+  <tr><td style="padding:2px 30px 30px"><table role="presentation" cellspacing="0" cellpadding="0"><tr><td width="46" height="46" align="center" valign="middle" style="width:46px;height:46px;line-height:46px;border-radius:50%;background:${visual.color};color:#ffffff;text-align:center;font-family:Arial,Helvetica,sans-serif;font-size:28px;font-weight:900;mso-line-height-rule:exactly">${visual.icon}</td><td style="padding-left:13px"><div style="color:${visual.color};font-size:13px;font-weight:bold;letter-spacing:.05em">${escapar_(visual.label)}</div><div style="color:#65736b;font-size:12px;margin-top:3px">${protocol}</div></td></tr></table>
   <h1 style="font-size:25px;margin:10px 0 14px">${escapar_(title)}</h1><p style="font-size:16px;line-height:1.6;margin:0 0 22px">${escapar_(message)}</p>
   <table role="presentation" width="100%" style="background:${visual.color}12;border-left:4px solid ${visual.color};border-radius:12px"><tr><td style="padding:16px;font-size:14px;line-height:1.7">
   <b>Assunto:</b> ${escapar_(data.title || 'Não informado')}<br><b>Laboratório:</b> ${escapar_(data.lab || 'Não informado')}<br><b>Categoria:</b> ${escapar_(data.category || 'Não informada')}
