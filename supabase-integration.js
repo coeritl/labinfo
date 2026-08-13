@@ -12,6 +12,7 @@
   const replace=(target,rows)=>{target.splice(0,target.length,...rows)};
   const fmt=d=>new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date(d));
   const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const sortCategories=()=>data.categories.sort((a,b)=>{const aOther=a.name.trim().toLocaleLowerCase('pt-BR')==='outro',bOther=b.name.trim().toLocaleLowerCase('pt-BR')==='outro';return aOther!==bOther?(aOther?1:-1):a.name.localeCompare(b.name,'pt-BR')});
   const fail=(e,msg='Não foi possível concluir a operação.')=>{console.error(e);toast(e?.message||msg)};
   document.body.insertAdjacentHTML('beforeend','<div id="adminProcessing" class="admin-processing" hidden role="status" aria-live="assertive"><div><i></i><strong>Processando…</strong><span>Aguarde a atualização dos dados.</span></div></div>');
   const processing=$('#adminProcessing'),setProcessing=(active,message='Processando…')=>{processing.hidden=!active;processing.querySelector('strong').textContent=message;document.body.classList.toggle('is-processing',active)};
@@ -54,7 +55,7 @@
   async function catalogs(){
     const [{data:cats,error:ce},{data:labs,error:le}]=await Promise.all([sb.from('categories').select('*').eq('active',true).order('name'),sb.from('labs').select('*').eq('active',true).order('name')]);
     if(ce||le)return fail(ce||le,'Erro ao carregar cadastros.');
-    replace(data.categories,cats.map(x=>({id:x.id,name:x.name})));replace(data.labs,labs.map(x=>({id:x.id,name:x.name,location:x.location,code:x.code})));options();
+    replace(data.categories,cats.map(x=>({id:x.id,name:x.name})));sortCategories();replace(data.labs,labs.map(x=>({id:x.id,name:x.name,location:x.location,code:x.code})));options();
   }
   identify=async function(){const siape=$('#siape').value.trim(),hint=$('#siapeHint'),email=$('#email');email.value='';email.readOnly=true;email.required=true;$('#teacherIdentity').textContent='';if(siape.length<5){hint.textContent='Digite seu SIAPE para identificação automática';hint.className='field-hint';return}const {data:rows,error}=await sb.rpc('identify_server',{p_siape:siape});const server=rows?.[0];if(error||!server){email.readOnly=false;email.placeholder='seu.email@ifms.edu.br';hint.textContent='SIAPE não localizado. Informe seu e-mail institucional para abrir o chamado.';hint.className='field-hint pending';$('#teacherIdentity').textContent='O cadastro será regularizado posteriormente pela equipe técnica.';return}replace(data.teachers,[...data.teachers.filter(x=>x.siape!==siape),{id:server.id,siape,name:server.full_name,email:server.email}]);email.value=server.email;email.placeholder='';$('#teacherIdentity').textContent=server.full_name;$('#teacherIdentity').className='field-hint found';hint.textContent='Cadastro localizado';hint.className='field-hint found'};
   $('#siape').oninput=()=>{clearTimeout(window.siapeTimer);window.siapeTimer=setTimeout(identify,350)};
@@ -71,7 +72,7 @@
     const err=[sv,pr,ca,la,ti,at,ta].find(x=>x.error)?.error;if(err)return fail(err);
     replace(data.teachers,sv.data.map(x=>({id:x.id,siape:x.siape,name:x.full_name,email:x.email,active:x.active})));
     replace(data.technicians,pr.data.map(x=>({id:x.id,siape:x.siape,name:x.full_name,email:x.email,role:x.role,active:x.active})));
-    replace(data.categories,ca.data.map(x=>({id:x.id,name:x.name,active:x.active})));replace(data.labs,la.data.map(x=>({id:x.id,name:x.name,location:x.location,code:x.code,active:x.active})));
+    replace(data.categories,ca.data.map(x=>({id:x.id,name:x.name,active:x.active})));sortCategories();replace(data.labs,la.data.map(x=>({id:x.id,name:x.name,location:x.location,code:x.code,active:x.active})));
     const paths=at.data||[],signed={};await Promise.all(paths.map(async a=>{const {data:s}=await sb.storage.from('ticket-attachments').createSignedUrl(a.storage_path,3600);signed[a.id]=s?.signedUrl}));
     replace(tickets,ti.data.map(x=>{const assigned=(ta.data||[]).filter(a=>a.ticket_id===x.id);return {dbId:x.id,id:x.protocol,title:x.title,category:x.categories?.name||'Sem categoria',categoryId:x.category_id,status:x.status,teacher:x.servers?.full_name||`SIAPE ${x.guest_siape} (cadastro pendente)`,teacherSiape:x.servers?.siape||x.guest_siape,teacherEmail:x.servers?.email||x.guest_email,serverId:x.server_id,registrationPending:!x.server_id,lab:x.labs?.name||'Não informado',labId:x.lab_id,time:fmt(x.created_at),createdAt:x.created_at,archivedAt:x.archived_at,technician:assigned.length?assigned.map(a=>a.assignee_profile?.full_name).filter(Boolean).join(', '):(x.status==='Recebido'?'Não atribuído':'Toda a equipe'),technicianIds:assigned.map(a=>a.profile_id),technicianId:x.assigned_to,description:x.description,resolution:x.resolution,closedAt:x.closed_at?fmt(x.closed_at):null,closedAtRaw:x.closed_at,attachments:paths.filter(a=>a.ticket_id===x.id).map(a=>({id:a.id,path:a.storage_path,name:a.file_name,url:signed[a.id]}))}}));
     replace(data.teachers,data.teachers.filter(x=>x.active!==false));
