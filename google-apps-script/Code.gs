@@ -1,7 +1,7 @@
 const LABINFO = {
   // O controle de duplicidade é feito pelo ID de cada mensagem no Supabase.
   // Não excluímos a conversa pelo marcador, pois novas respostas chegam na mesma thread.
-  incomingQuery: 'in:inbox newer_than:30d',
+  incomingQuery: 'in:anywhere -in:sent -in:drafts -in:spam -in:trash newer_than:30d',
   processedLabel: 'LabInfo-Processado',
   maxThreads: 30,
   logoUrl: 'https://coeritl.github.io/labinfo/assets/labinfo-logo.png',
