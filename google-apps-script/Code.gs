@@ -12,7 +12,7 @@ function configurarIntegracao() {
   ScriptApp.getProjectTriggers()
     .filter(t => ['executarIntegracao', 'processarEntradaProgramada', 'processarSaidaProgramada'].includes(t.getHandlerFunction()))
     .forEach(t => ScriptApp.deleteTrigger(t));
-  ScriptApp.newTrigger('processarEntradaProgramada').timeBased().everyHours(1).create();
+  ScriptApp.newTrigger('processarEntradaProgramada').timeBased().everyMinutes(10).create();
   ScriptApp.newTrigger('processarSaidaProgramada').timeBased().everyMinutes(1).create();
   processarEntradaProgramada();
 }
