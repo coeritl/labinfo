@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#11733c" />
     <meta name="description" content="Sistema de chamados dos Laboratórios de Informática do IFMS Campus Três Lagoas" />
     <title>LabInfo | Suporte IFMS</title>
-    <link rel="stylesheet" href="styles.css?v=20260814-19" />
+    <link rel="stylesheet" href="styles.css?v=20260814-20" />
   </head>
   <body>
     <header class="topbar">
@@ -46,6 +46,7 @@
           </form>
           <aside class="reservation-side"><section class="card reservation-rules"><h2>Horários dos laboratórios</h2><div><strong>Matutino</strong><span>7h às 12h35</span></div><div><strong>Vespertino</strong><span>13h às 18h35</span></div><div><strong>Noturno</strong><span>18h45 às 22h50</span></div><small>Segunda a sábado • blocos de 45 minutos</small></section><section class="card my-reservations"><h2>Minhas reservas</h2><p>Consulte solicitações e reservas usando seu SIAPE.</p><div class="protocol-search"><input id="reservationSearchSiape" inputmode="numeric" placeholder="Digite seu SIAPE"><button id="searchReservations" type="button">Buscar</button></div><div id="myReservationsResult"></div></section></aside>
         </div>
+        <section class="card public-schedule-card"><div class="public-schedule-head"><div><span class="eyebrow">AGENDA DOS LABORATÓRIOS</span><h2>Grade de reservas</h2><p>Consulte os horários ocupados antes de fazer sua solicitação.</p></div><label>Laboratório<select id="publicScheduleLab"></select></label></div><div class="public-week-navigation"><button id="publicSchedulePrev" class="secondary" type="button">← Semana anterior</button><strong id="publicScheduleWeek"></strong><button id="publicScheduleNext" class="secondary" type="button">Próxima semana →</button></div><div class="public-schedule-scroll"><div id="publicReservationSchedule" class="reservation-calendar public-reservation-calendar"></div></div><div class="schedule-legend"><span><i class="available"></i>Disponível</span><span><i class="occupied"></i>Reservado</span><span><i class="pending"></i>Em análise</span></div></section>
       </section>
 
       <section id="teacherView" class="teacher-view" hidden>
@@ -106,6 +107,6 @@
     <script src="supabase-config.js?v=20260812-2"></script>
     <script src="app.js?v=20260812-6"></script>
     <script src="supabase-integration.js?v=20260814-38"></script>
-    <script src="reservations.js?v=20260814-2"></script>
+    <script src="reservations.js?v=20260814-3"></script>
   </body>
 </html>

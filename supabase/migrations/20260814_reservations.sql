@@ -130,6 +130,21 @@ language sql stable security definer set search_path=public as $$
  where s.siape=btrim(p_siape) and s.active order by r.starts_at desc limit 100
 $$;
 
+create or replace function public.public_reservation_schedule(p_lab uuid,p_from date,p_to date)
+returns table(id uuid,subject text,server_name text,starts_at timestamptz,ends_at timestamptz,status text)
+language plpgsql stable security definer set search_path=public as $$
+begin
+ if p_to<p_from or p_to>p_from+42 then raise exception 'Período de consulta inválido.';end if;
+ return query select r.id,
+   case when r.status='Autorizada' then r.subject else 'Horário em análise' end,
+   case when r.status='Autorizada' then s.full_name else null end,
+   r.starts_at,r.ends_at,r.status
+ from public.reservations r join public.servers s on s.id=r.server_id
+ where r.lab_id=p_lab and r.status<>'Cancelada'
+   and (r.starts_at at time zone 'America/Cuiaba')::date between p_from and p_to
+ order by r.starts_at;
+end $$;
+
 create or replace function public.staff_create_reservation(p_server uuid,p_lab uuid,p_subject text,p_start timestamptz,p_blocks integer,p_notes text default null,p_source text default 'Equipe',p_recurrence text default 'none',p_until date default null)
 returns public.reservations language plpgsql security definer set search_path=public as $$
 declare r public.reservations; first_r public.reservations; finish timestamptz; occurrence timestamptz:=p_start; final_date date:=coalesce(p_until,(p_start at time zone 'America/Cuiaba')::date);group_id uuid:=gen_random_uuid();
@@ -176,6 +191,7 @@ end $$;
 grant execute on function public.create_public_reservation(text,uuid,text,timestamptz,integer,text,text,date) to anon,authenticated;
 grant execute on function public.confirm_reservation(uuid) to anon,authenticated;
 grant execute on function public.my_reservations(text) to anon,authenticated;
+grant execute on function public.public_reservation_schedule(uuid,date,date) to anon,authenticated;
 grant execute on function public.staff_create_reservation(uuid,uuid,text,timestamptz,integer,text,text,text,date) to authenticated;
 grant execute on function public.staff_update_reservation(uuid,timestamptz,uuid,text,text) to authenticated;
 
