@@ -261,5 +261,55 @@
 
   const focusOpenedModal=new MutationObserver(entries=>entries.forEach(({target,attributeName})=>{if(attributeName==='hidden'&&!target.hidden){setTimeout(()=>target.querySelector('input:not([type="hidden"]), select, textarea, button')?.focus(),0)}}));
   document.querySelectorAll('.modal-backdrop').forEach(modal=>focusOpenedModal.observe(modal,{attributes:true,attributeFilter:['hidden']}));
-  catalogs();loadServiceHours();confirmFeedbackFromLink();if(isAdminRoute)enterAdmin();
+
+  // Sincroniza o painel sem perder o chamado aberto, os filtros ou a rolagem.
+  let adminSyncRunning=false,adminSyncQueued=false,adminSyncTimer=null,lastAdminSignature='',knownTicketIds=new Set();
+  async function adminSignature(){
+    const [ticketResult,updateResult]=await Promise.all([
+      sb.from('tickets').select('id,updated_at').order('updated_at',{ascending:false}).limit(1).maybeSingle(),
+      sb.from('ticket_updates').select('id,created_at').order('created_at',{ascending:false}).limit(1).maybeSingle()
+    ]);
+    if(ticketResult.error||updateResult.error)throw ticketResult.error||updateResult.error;
+    return `${ticketResult.data?.id||''}:${ticketResult.data?.updated_at||''}|${updateResult.data?.id||''}:${updateResult.data?.created_at||''}`;
+  }
+  async function synchronizeAdmin(){
+    if(!state.profile||$('#adminView').hidden)return;
+    if(adminSyncRunning){adminSyncQueued=true;return}
+    adminSyncRunning=true;
+    const selectedId=selected?.dbId,expanded=$('#ticketDetail')?.classList.contains('detail-expanded'),queueScroll=$('#ticketList')?.scrollTop||0,detailScroll=$('#ticketDetail')?.scrollTop||0,search=$('#ticketSearch')?.value||'',status=$('#statusFilter')?.value||'Todos os status',before=new Set(tickets.map(ticket=>ticket.dbId));
+    try{
+      await loadAdmin();
+      selected=selectedId?tickets.find(ticket=>ticket.dbId===selectedId&&!ticket.deletedAt)||null:null;
+      $('#ticketSearch').value=search;$('#statusFilter').value=status;
+      renderTickets();renderArchivedTickets();renderDetail();refreshMetrics();
+      if(expanded&&selected){$('#ticketDetail').classList.add('detail-expanded');document.body.classList.add('detail-open')}else if(!expanded){$('#ticketDetail').classList.remove('detail-expanded');document.body.classList.remove('detail-open')}
+      $('#ticketList').scrollTop=queueScroll;$('#ticketDetail').scrollTop=detailScroll;
+      const newcomers=tickets.filter(ticket=>!before.has(ticket.dbId)&&!ticket.deletedAt);
+      if(knownTicketIds.size&&newcomers.length)toast(newcomers.length===1?`Novo chamado recebido: ${newcomers[0].id}`:`${newcomers.length} novos chamados recebidos.`);
+      knownTicketIds=new Set(tickets.map(ticket=>ticket.dbId));
+      lastAdminSignature=await adminSignature();
+    }catch(error){console.error('Falha ao atualizar o painel automaticamente',error)}
+    finally{adminSyncRunning=false;if(adminSyncQueued){adminSyncQueued=false;scheduleAdminSync(250)}}
+  }
+  function scheduleAdminSync(delay=700){clearTimeout(adminSyncTimer);adminSyncTimer=setTimeout(synchronizeAdmin,delay)}
+  async function checkAdminChanges(){
+    if(!state.profile||document.hidden)return;
+    try{const signature=await adminSignature();if(!lastAdminSignature)lastAdminSignature=signature;else if(signature!==lastAdminSignature)scheduleAdminSync(100)}catch(error){console.error('Falha na verificação periódica do painel',error)}
+  }
+  function startAdminSynchronization(){
+    if(!state.profile)return;
+    knownTicketIds=new Set(tickets.map(ticket=>ticket.dbId));
+    adminSignature().then(signature=>{lastAdminSignature=signature}).catch(error=>console.error('Falha ao iniciar sincronização',error));
+    sb.channel('labinfo-admin-live')
+      .on('postgres_changes',{event:'*',schema:'public',table:'tickets'},()=>document.hidden?adminSyncQueued=true:scheduleAdminSync())
+      .on('postgres_changes',{event:'*',schema:'public',table:'ticket_updates'},()=>document.hidden?adminSyncQueued=true:scheduleAdminSync())
+      .on('postgres_changes',{event:'*',schema:'public',table:'ticket_assignees'},()=>document.hidden?adminSyncQueued=true:scheduleAdminSync())
+      .on('postgres_changes',{event:'*',schema:'public',table:'attachments'},()=>document.hidden?adminSyncQueued=true:scheduleAdminSync())
+      .subscribe(status=>{if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('Realtime indisponível; a verificação de 60 segundos continuará ativa.')});
+    setInterval(checkAdminChanges,60000);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(adminSyncQueued){adminSyncQueued=false;scheduleAdminSync(100)}else checkAdminChanges()}});
+    window.addEventListener('focus',checkAdminChanges);
+  }
+
+  catalogs();loadServiceHours();confirmFeedbackFromLink();if(isAdminRoute)enterAdmin().then(startAdminSynchronization);
 })();
