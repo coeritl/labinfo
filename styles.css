@@ -88,3 +88,5 @@
 .reservations-public-view .public-schedule-card{order:5}.reservations-public-view .reservation-public-grid{order:6}
 .reservation-selected-lab{margin-bottom:15px;padding:13px 15px;border:1px solid #bad4c3;border-radius:11px;background:var(--green-soft)}.reservation-selected-lab strong,.reservation-selected-lab span{display:block}.reservation-selected-lab span{margin-top:3px;color:var(--muted);font-size:11px}
 @media(max-width:620px){.public-lab-picker{padding:18px 14px}.public-lab-picker-head h2{font-size:21px}.public-lab-cards{grid-template-columns:1fr}.public-lab-card{min-height:100px}.reservations-public-view .reservation-form-toggle{position:relative;z-index:1}.public-schedule-card{scroll-margin-top:12px}}
+.registry-actions{display:flex;align-items:center;gap:7px}.edit-lab-button{width:auto!important;padding:9px 14px!important}.cancel-lab-edit{margin-top:4px}
+@media(max-width:620px){.registry-actions{align-items:stretch;flex-direction:column}.registry-actions button{width:100%!important}}
