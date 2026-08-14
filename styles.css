@@ -90,3 +90,5 @@
 @media(max-width:620px){.public-lab-picker{padding:18px 14px}.public-lab-picker-head h2{font-size:21px}.public-lab-cards{grid-template-columns:1fr}.public-lab-card{min-height:100px}.reservations-public-view .reservation-form-toggle{position:relative;z-index:1}.public-schedule-card{scroll-margin-top:12px}}
 .registry-actions{display:flex;align-items:center;gap:7px}.edit-lab-button{width:auto!important;padding:9px 14px!important}.cancel-lab-edit{margin-top:4px}
 @media(max-width:620px){.registry-actions{align-items:stretch;flex-direction:column}.registry-actions button{width:100%!important}}
+.reservation-time-row{grid-template-columns:1.15fr .8fr .8fr}.reservation-time-row input[type="time"]{font-variant-numeric:tabular-nums}
+@media(max-width:620px){.reservation-time-row{grid-template-columns:1fr 1fr}.reservation-time-row label:first-child{grid-column:1/3}}
