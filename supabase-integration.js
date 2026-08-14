@@ -241,6 +241,36 @@
     $('#ticketDetail .detail-top')?.insertAdjacentHTML('afterend',`<div class="feedback-confirmed-alert"><strong>✓ Atendimento confirmado pelo servidor</strong><span>Confirmação recebida em ${fmt(selected.feedbackConfirmedAt)}.</span></div>`);
   };
 
+  // Mantém mensagens longas do histórico compactas. A medição por scrollHeight
+  // não é confiável quando o navegador aplica -webkit-line-clamp, portanto a
+  // decisão usa também o conteúdo efetivo da mensagem.
+  const detailWithReliableHistoryClamp=renderDetail;
+  renderDetail=function(){
+    detailWithReliableHistoryClamp();
+    $('#ticketDetail')?.querySelectorAll('.ticket-history article').forEach(card=>{
+      const message=card.querySelector('.history-message');
+      const toggle=card.querySelector('.history-toggle');
+      if(!message||!toggle)return;
+      const content=message.textContent||'';
+      const isLong=content.length>180||content.split(/\r?\n/).length>3;
+      if(!isLong){
+        message.classList.remove('collapsed');
+        toggle.hidden=true;
+        return;
+      }
+      message.classList.add('collapsed');
+      toggle.hidden=false;
+      toggle.textContent='Ver tudo';
+      toggle.setAttribute('aria-expanded','false');
+      toggle.onclick=()=>{
+        const expand=message.classList.contains('collapsed');
+        message.classList.toggle('collapsed',!expand);
+        toggle.textContent=expand?'Recolher':'Ver tudo';
+        toggle.setAttribute('aria-expanded',String(expand));
+      };
+    });
+  };
+
   // Interações consistentes por teclado, foco e clique externo.
   $('#protocolInput').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();$('#protocolButton').click()}});
   $('#adminTeacherSearch').addEventListener('keydown',event=>{if(event.key!=='Enter')return;event.preventDefault();const choices=[...adminTeacherSelect.options].filter(option=>option.value);if(choices.length===1){adminTeacherSelect.value=choices[0].value;adminTeacherSelect.dispatchEvent(new Event('change'));adminTeacherSelect.focus()}});
