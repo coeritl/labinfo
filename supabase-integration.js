@@ -189,15 +189,15 @@
     const rows=tickets.filter(ticket=>!ticket.archivedAt&&!ticket.deletedAt&&(status==='Todos os status'||ticket.status===status)&&(!query||normalizeSearch(Object.values(ticket).join(' ')).includes(query)));
     $('.queue-head>div:first-child span').textContent=rows.length+' chamado(s) encontrado(s)';
     $('#ticketList').innerHTML=rows.map(ticket=>{
-      const hasReply=(ticket.updates||[]).some(update=>update.kind==='resposta_servidor'),replyAttention=ticket.status!=='Concluído'&&(ticket.serverReplyPending||hasReply);
+      const replyAttention=ticket.status!=='Concluído'&&ticket.serverReplyPending;
       const stateClass=ticket.status==='Concluído'?'ticket-completed':ticket.status==='Em atendimento'?'ticket-progress':'ticket-received';
-      const replyLabel=ticket.serverReplyPending?'! Nova resposta do servidor':hasReply?'✓ Resposta recebida':'';
+      const replyLabel=ticket.serverReplyPending?'! Nova resposta do servidor':'';
       return `<article class="ticket-row ${stateClass} ${replyAttention?'ticket-waiting-reply has-server-reply':''} ${selected?.id===ticket.id?'active':''}" data-id="${safe(ticket.id)}"><input class="ticket-select" type="checkbox" aria-label="Selecionar ${safe(ticket.id)}" ${selectedForArchive.has(ticket.dbId)?'checked':''}><div>${replyLabel?`<span class="server-reply-badge">${replyLabel}</span>`:''}${ticket.feedbackConfirmedAt?'<span class="feedback-confirmed-badge">✓ Atendimento confirmado pelo servidor</span>':''}<span class="ticket-id">${safe(ticket.id)}</span><h3>${safe(ticket.title)}</h3><div class="ticket-meta"><span>● ${safe(ticket.teacher)}</span><span>▣ ${safe(ticket.lab)}</span><span>◷ ${safe(ticket.time)}</span><span>◆ ${safe(ticket.category)}</span></div></div>${badge(ticket.status)}</article>`;
     }).join('')||'<p class="empty">Nenhum chamado na fila.</p>';
     document.querySelectorAll('#ticketList .ticket-row').forEach(row=>{
       const ticket=tickets.find(item=>item.id===row.dataset.id),checkbox=row.querySelector('.ticket-select');
       checkbox.onchange=event=>{event.target.checked?selectedForArchive.add(ticket.dbId):selectedForArchive.delete(ticket.dbId);updateArchiveButton();updateDeletionButton()};
-      row.onclick=async event=>{if(event.target===checkbox)return;selected=ticket;renderTickets();renderDetail();if(innerWidth>900){$('#ticketDetail').classList.add('detail-expanded');document.body.classList.add('detail-open')}if(ticket.serverReplyPending&&state.profile?.role==='tecnico'){ticket.serverReplyPending=false;const result=await sb.rpc('mark_server_reply_read',{p_ticket:ticket.dbId});if(result.error)console.error('Falha ao marcar resposta como lida',result.error)}};
+      row.onclick=async event=>{if(event.target===checkbox)return;const unread=ticket.serverReplyPending&&state.profile?.role==='tecnico';if(unread)ticket.serverReplyPending=false;selected=ticket;renderTickets();renderDetail();if(innerWidth>900){$('#ticketDetail').classList.add('detail-expanded');document.body.classList.add('detail-open')}if(unread){const result=await sb.rpc('mark_server_reply_read',{p_ticket:ticket.dbId});if(result.error){ticket.serverReplyPending=true;renderTickets();console.error('Falha ao marcar resposta como lida',result.error)}}};
     });
     updateArchiveButton();updateDeletionButton();
   };
