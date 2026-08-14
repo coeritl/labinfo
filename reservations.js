@@ -60,10 +60,36 @@
 
   const reservationsMenuButton=$('#reservationsMenuButton');reservationsMenuButton.disabled=false;reservationsMenuButton.classList.remove('future-menu-button');reservationsMenuButton.removeAttribute('title');
 
+  const reservationNotice=document.createElement('section');
+  reservationNotice.id='reservationReviewNotice';
+  reservationNotice.className='reservation-review-notice card';
+  reservationNotice.hidden=true;
+  reservationNotice.innerHTML=`<div class="reservation-review-heading"><span class="reservation-review-icon" aria-hidden="true">▣</span><div><span class="eyebrow">RESERVAS A AVALIAR</span><h2>Solicitações de reserva pendentes</h2><p>Acompanhe a confirmação por e-mail antes de autorizar o uso do laboratório.</p></div></div><div class="reservation-review-statuses"><div class="reservation-review-status confirmed"><span>Confirmada pelo servidor</span><strong id="confirmedReservationCount">0</strong><small>Pronta para avaliação</small></div><div class="reservation-review-status unconfirmed"><span>Não confirmada pelo servidor</span><strong id="unconfirmedReservationCount">0</strong><small>Aguardando confirmação por e-mail</small></div><button id="reviewReservationsButton" class="primary" type="button">Ver reservas <span>→</span></button></div>`;
+  const ticketMetrics=$('#ticketsSection .metrics');
+  if(ticketMetrics)ticketMetrics.insertAdjacentElement('afterend',reservationNotice);
+
+  function countReservationRequests(rows){
+    const groups=new Map();
+    rows.forEach(row=>{const key=row.recurrence_group||row.id;if(!groups.has(key))groups.set(key,row.status)});
+    return {confirmed:[...groups.values()].filter(status=>status==='Aguardando autorização').length,unconfirmed:[...groups.values()].filter(status=>status==='Aguardando confirmação').length};
+  }
+  async function refreshReservationNotice(){
+    const {data:sessionData}=await sb.auth.getSession();
+    if(!sessionData?.session){reservationNotice.hidden=true;return}
+    const {data:rows,error}=await sb.from('reservations').select('id,recurrence_group,status').in('status',['Aguardando confirmação','Aguardando autorização']);
+    if(error){console.error('Não foi possível atualizar o aviso de reservas',error);return}
+    const counts=countReservationRequests(rows||[]),total=counts.confirmed+counts.unconfirmed;
+    $('#confirmedReservationCount').textContent=counts.confirmed;
+    $('#unconfirmedReservationCount').textContent=counts.unconfirmed;
+    reservationNotice.hidden=!total;
+    reservationsMenuButton.classList.toggle('has-pending-reservations',total>0);
+    reservationsMenuButton.dataset.pending=String(total);
+  }
+
   let reservations=[],adminLabs=[],adminServers=[],weekStart=getMonday(new Date()),draggedReservation=null,reservationChannel=null;
   function getMonday(value){const date=new Date(value);date.setHours(12,0,0,0);const day=date.getDay()||7;date.setDate(date.getDate()-day+1);return date}
   const isoDate=date=>date.toLocaleDateString('en-CA',{timeZone:'America/Cuiaba'}),addDays=(date,days)=>{const copy=new Date(date);copy.setDate(copy.getDate()+days);return copy};
-  async function loadReservationAdmin(){const [{data:r,error},{data:l},{data:s}]=await Promise.all([sb.from('reservations').select('*,servers(full_name,siape,email),labs(name,code)').order('starts_at'),sb.from('labs').select('id,name,code').eq('active',true).order('name'),sb.from('servers').select('id,full_name,siape,email').eq('active',true).order('full_name')]);if(error)return toast(error.message);reservations=r||[];adminLabs=l||[];adminServers=s||[];fillAdminOptions();renderReservationAdmin()}
+  async function loadReservationAdmin(){const [{data:r,error},{data:l},{data:s}]=await Promise.all([sb.from('reservations').select('*,servers(full_name,siape,email),labs(name,code)').order('starts_at'),sb.from('labs').select('id,name,code').eq('active',true).order('name'),sb.from('servers').select('id,full_name,siape,email').eq('active',true).order('full_name')]);if(error)return toast(error.message);reservations=r||[];adminLabs=l||[];adminServers=s||[];fillAdminOptions();renderReservationAdmin();await refreshReservationNotice()}
   function fillAdminOptions(){const labOptions=adminLabs.map(lab=>`<option value="${lab.id}">${safe(lab.name)}</option>`).join('');['adminReservationLab','staffReservationLab','csvReservationLab','reservationEditLab'].forEach(id=>{const element=$('#'+id),value=element.value;element.innerHTML=labOptions;if(value)element.value=value});const serverOptions=adminServers.map(server=>`<option value="${server.id}">${safe(server.full_name)} • ${safe(server.siape)}</option>`).join('');$('#staffReservationServer').innerHTML=serverOptions;$('#reservationEditServer').innerHTML=serverOptions;$('#staffReservationTime').innerHTML=times.map(time=>`<option value="${time}">${time}</option>`).join('')}
   function groupedReservations(){const groups=new Map;reservations.forEach(row=>{const key=row.recurrence_group||row.id;if(!groups.has(key))groups.set(key,{...row,occurrences:[],last_at:row.starts_at});const group=groups.get(key);group.occurrences.push(row);if(new Date(row.starts_at)>new Date(group.last_at))group.last_at=row.starts_at});return [...groups.values()]}
   function renderReservationAdmin(){renderCalendar();renderReservationList();const groups=groupedReservations(),counts={pending:groups.filter(r=>r.status.includes('Aguardando')).length,authorized:groups.filter(r=>r.status==='Autorizada').length,cancelled:groups.filter(r=>r.status==='Cancelada').length};$('#reservationStats').innerHTML=`<article><small>Aguardando</small><strong>${counts.pending}</strong></article><article><small>Autorizadas</small><strong>${counts.authorized}</strong></article><article><small>Canceladas</small><strong>${counts.cancelled}</strong></article>`}
@@ -78,6 +104,12 @@
   $('#reservationEditForm').onsubmit=async event=>{event.preventDefault();const button=event.submitter;if(button.disabled)return;button.disabled=true;button.textContent='Salvando…';try{const {error}=await sb.rpc('staff_edit_reservation',{p_id:$('#reservationEditId').value,p_server:$('#reservationEditServer').value,p_lab:$('#reservationEditLab').value,p_subject:$('#reservationEditSubject').value.trim(),p_start:localIso($('#reservationEditDate').value,$('#reservationEditTime').value),p_blocks:Number($('#reservationEditBlocks').value),p_notes:$('#reservationEditNotes').value.trim()||null,p_scope:$('#reservationEditScope').value});if(error)throw error;modal('reservationEditModal',false);toast('Reserva atualizada e servidor notificado.');await loadReservationAdmin()}catch(error){toast(error.message||'Não foi possível editar a reserva.')}finally{button.disabled=false;button.textContent='Salvar alterações'}};
   async function openReservationsAdmin(){document.querySelectorAll('.admin-section').forEach(section=>section.hidden=true);$('#reservationsSection').hidden=false;$('#adminTitle').textContent='Reservas dos laboratórios';$('#adminSubtitle').textContent='Organize a agenda, autorize solicitações e importe reservas em lote.';await loadReservationAdmin();if(!reservationChannel)reservationChannel=sb.channel('labinfo-reservations').on('postgres_changes',{event:'*',schema:'public',table:'reservations'},()=>loadReservationAdmin()).subscribe()}
   reservationsMenuButton.onclick=openReservationsAdmin;$('#adminReservationLab').onchange=renderCalendar;$('#reservationAdminSearch').oninput=renderReservationList;$('#reservationPrevWeek').onclick=()=>{weekStart=addDays(weekStart,-7);renderCalendar()};$('#reservationNextWeek').onclick=()=>{weekStart=addDays(weekStart,7);renderCalendar()};$('#reservationToday').onclick=()=>{weekStart=getMonday(new Date());renderCalendar()};
+  $('#reviewReservationsButton').onclick=openReservationsAdmin;
+  sb.auth.onAuthStateChange(event=>{if(event==='SIGNED_IN')setTimeout(refreshReservationNotice,0);if(event==='SIGNED_OUT')reservationNotice.hidden=true});
+  sb.channel('labinfo-reservation-review-notice').on('postgres_changes',{event:'*',schema:'public',table:'reservations'},refreshReservationNotice).subscribe();
+  window.addEventListener('focus',refreshReservationNotice);
+  setInterval(()=>{if(!document.hidden)refreshReservationNotice()},60000);
+  refreshReservationNotice();
   function modal(id,open){$('#'+id).hidden=!open;document.body.classList.toggle('modal-open',open)}
   $('#newReservationButton').onclick=()=>modal('reservationModal',true);$('#csvReservationButton').onclick=()=>{if(!$('#csvReservationStart').value)$('#csvReservationStart').value=isoDate(getMonday(new Date()));modal('reservationCsvModal',true)};document.querySelectorAll('#reservationModal .modal-close,#reservationCsvModal .modal-close').forEach(button=>button.onclick=()=>modal(button.closest('.modal-backdrop').id,false));
   const selectStaffBlocks=setupChoiceGroup('staffReservationBlocks'),selectStaffRecurrence=setupChoiceGroup('staffReservationRecurrence');$('#staffReservationRecurrence').onchange=()=>{const weekly=$('#staffReservationRecurrence').value==='weekly';$('#staffReservationUntilLabel').hidden=!weekly;$('#staffReservationUntil').required=weekly;$('#staffReservationUntil').min=$('#staffReservationDate').value};
