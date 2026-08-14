@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#11733c" />
     <meta name="description" content="Sistema de chamados dos Laboratórios de Informática do IFMS Campus Três Lagoas" />
     <title>LabInfo | Suporte IFMS</title>
-    <link rel="stylesheet" href="styles.css?v=20260814-23" />
+    <link rel="stylesheet" href="styles.css?v=20260814-24" />
   </head>
   <body>
     <header class="topbar">
@@ -37,8 +37,8 @@
             <div class="section-title"><span>2</span><div><h2>Data e laboratório</h2><p>Blocos de aula com 45 minutos</p></div></div>
             <label>Laboratório<select id="reservationLab" required><option value="">Selecione o laboratório</option></select></label>
             <div class="field-row"><label>Data<input id="reservationDate" type="date" required></label><label>Início<select id="reservationTime" required></select></label></div>
-            <label>Duração<select id="reservationBlocks" required><option value="1">1 bloco • 45 min</option><option value="2">2 blocos • 1h30</option><option value="3">3 blocos • 2h15</option><option value="4">4 blocos • 3h</option></select></label>
-            <div class="field-row"><label>Repetição<select id="reservationRecurrence"><option value="none">Somente nesta data</option><option value="weekly">Semanalmente, no mesmo dia</option></select></label><label id="reservationUntilLabel" hidden>Repetir até<input id="reservationUntil" type="date"></label></div>
+            <fieldset class="choice-field"><legend>Duração</legend><input id="reservationBlocks" type="hidden" value="1"><div class="choice-blocks duration-choices" data-choice-for="reservationBlocks"><button class="choice-block selected" type="button" data-value="1"><strong>1 bloco</strong><span>45 min</span></button><button class="choice-block" type="button" data-value="2"><strong>2 blocos</strong><span>1h30</span></button><button class="choice-block" type="button" data-value="3"><strong>3 blocos</strong><span>2h15</span></button><button class="choice-block" type="button" data-value="4"><strong>4 blocos</strong><span>3h</span></button></div></fieldset>
+            <div class="field-row recurrence-row"><fieldset class="choice-field"><legend>Repetição</legend><input id="reservationRecurrence" type="hidden" value="none"><div class="choice-blocks recurrence-choices" data-choice-for="reservationRecurrence"><button class="choice-block selected" type="button" data-value="none"><strong>Somente nesta data</strong></button><button class="choice-block" type="button" data-value="weekly"><strong>Semanalmente</strong><span>No mesmo dia da semana</span></button></div></fieldset><label id="reservationUntilLabel" hidden>Repetir até<input id="reservationUntil" type="date"></label></div>
             <div class="section-title"><span>3</span><div><h2>Informações da aula</h2></div></div>
             <label>Disciplina ou atividade<input id="reservationSubject" maxlength="160" placeholder="Ex.: Programação Web" required></label>
             <label>Observações <small>(opcional)</small><textarea id="reservationNotes" rows="3" maxlength="500" placeholder="Turma, software necessário ou outra informação relevante"></textarea></label>
@@ -107,6 +107,6 @@
     <script src="supabase-config.js?v=20260812-2"></script>
     <script src="app.js?v=20260812-6"></script>
     <script src="supabase-integration.js?v=20260814-40"></script>
-    <script src="reservations.js?v=20260814-6"></script>
+    <script src="reservations.js?v=20260814-7"></script>
   </body>
 </html>
