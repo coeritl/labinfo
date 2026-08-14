@@ -6,7 +6,8 @@ const LABINFO = {
   maxThreads: 30,
   accountEmail: 'labinfo.tl@ifms.edu.br',
   logoUrl: 'https://coeritl.github.io/labinfo/assets/labinfo-logo.png',
-  portalUrl: 'https://coeritl.github.io/labinfo/'
+  portalUrl: 'https://coeritl.github.io/labinfo/',
+  supportUrl: 'https://coeritl.github.io/labinfo/suporte/'
 };
 
 function configurarIntegracao() {
@@ -162,6 +163,8 @@ function montarEmailReserva_(eventType, data) {
 
 function layout_(title, message, data, visual) {
   const protocol = escapar_(data.protocol || '');
+  if (data.feedback_url) data.feedback_url = String(data.feedback_url).replace('https://coeritl.github.io/labinfo/?feedback=', LABINFO.supportUrl + '?feedback=');
+  data.portal_url = LABINFO.supportUrl;
   visual = visual || {color:'#07852a',icon:'i',label:'Informação'};
   return `<!doctype html><html><body style="margin:0;background:#f2f6f3;font-family:Arial,sans-serif;color:#10231a">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:28px 12px">
@@ -171,7 +174,7 @@ function layout_(title, message, data, visual) {
   <h1 style="font-size:25px;margin:10px 0 14px">${escapar_(title)}</h1><p style="font-size:16px;line-height:1.6;margin:0 0 22px">${escapar_(message)}</p>
   <table role="presentation" width="100%" style="background:${visual.color}12;border-left:4px solid ${visual.color};border-radius:12px"><tr><td style="padding:16px;font-size:14px;line-height:1.7">
   <b>Assunto:</b> ${escapar_(data.title || 'Não informado')}<br><b>Laboratório:</b> ${escapar_(data.lab || 'Não informado')}<br><b>Categoria:</b> ${escapar_(data.category || 'Não informada')}
-  </td></tr></table><p style="margin:24px 0 0"><a href="${LABINFO.portalUrl}" style="display:inline-block;background:${visual.color};color:#fff;text-decoration:none;font-weight:bold;padding:13px 22px;border-radius:10px">Consultar minhas solicitações</a>${data.status === 'Concluído' && data.feedback_url ? ` <a href="${escapar_(data.feedback_url)}" style="display:inline-block;margin-left:8px;background:#ffffff;color:${visual.color};border:2px solid ${visual.color};text-decoration:none;font-weight:bold;padding:11px 20px;border-radius:10px">Confirmar atendimento</a>` : ''}</p>
+  </td></tr></table><p style="margin:24px 0 0"><a href="${LABINFO.supportUrl}" style="display:inline-block;background:${visual.color};color:#fff;text-decoration:none;font-weight:bold;padding:13px 22px;border-radius:10px">Consultar minhas solicitações</a>${data.status === 'Concluído' && data.feedback_url ? ` <a href="${escapar_(data.feedback_url)}" style="display:inline-block;margin-left:8px;background:#ffffff;color:${visual.color};border:2px solid ${visual.color};text-decoration:none;font-weight:bold;padding:11px 20px;border-radius:10px">Confirmar atendimento</a>` : ''}</p>
   </td></tr><tr><td style="background:#073d25;color:#dcebe2;padding:18px 30px;font-size:12px">LabInfo TL · Suporte dos Laboratórios de Informática · IFMS Campus Três Lagoas</td></tr>
   </table></td></tr></table></body></html>`;
 }
