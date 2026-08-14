@@ -9,13 +9,13 @@
   $('#reservationDate').min=new Date().toLocaleDateString('en-CA',{timeZone:'America/Cuiaba'});
 
   function showPublic(view,push=true){
-    $('#homeView').hidden=view!=='home';$('#reservationsPublicView').hidden=view!=='reservations';$('#teacherView').hidden=view!=='support';$('#adminView').hidden=true;
+    document.body.classList.remove('admin-route');$('#homeView').hidden=view!=='home';$('#reservationsPublicView').hidden=view!=='reservations';$('#teacherView').hidden=view!=='support';$('#adminView').hidden=true;
     if(push)history.pushState({},'',view==='home'?'/labinfo/':view==='reservations'?'/labinfo/reservas/':'/labinfo/suporte/');window.scrollTo(0,0);
   }
   $('#openReservations').onclick=()=>showPublic('reservations');$('#backHome').onclick=()=>showPublic('home');
   $('.brand').addEventListener('click',event=>{if(!$('#adminView').hidden)return;event.preventDefault();showPublic('home')});
   window.addEventListener('popstate',()=>{const path=location.pathname;if(path.includes('/reservas'))showPublic('reservations',false);else if(path.includes('/suporte'))showPublic('support',false);else if(!path.includes('/admin'))showPublic('home',false)});
-  if(location.pathname.includes('/reservas')||new URLSearchParams(location.search).has('confirm_reservation'))showPublic('reservations',false);else if(location.pathname.includes('/suporte'))showPublic('support',false);
+  const initialPublicRoute=new URLSearchParams(location.search).get('route');if(location.pathname.includes('/reservas')||initialPublicRoute==='reservas'||new URLSearchParams(location.search).has('confirm_reservation'))showPublic('reservations',false);else if(location.pathname.includes('/suporte')||initialPublicRoute==='suporte')showPublic('support',false);
 
   let publicServer=null,publicLabs=[],publicScheduleRows=[],publicWeekStart=publicMonday(new Date());
   function publicMonday(value){const date=new Date(value);date.setHours(12,0,0,0);const day=date.getDay()||7;date.setDate(date.getDate()-day+1);return date}
