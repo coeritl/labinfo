@@ -204,6 +204,34 @@
   $('#ticketSearch').oninput=renderTickets;
   $('#statusFilter').onchange=renderTickets;
 
+  // A atribuição atualiza o estado local após a confirmação do banco, sem depender
+  // de uma recarga completa da página para exibir "Em atendimento".
+  const renderDetailBeforeReliableAssignment=renderDetail;
+  renderDetail=function(){
+    renderDetailBeforeReliableAssignment();
+    const assign=$('#assign');
+    if(!assign||!selected||state.profile?.role!=='tecnico')return;
+    assign.onclick=async()=>{
+      if(assign.disabled)return;
+      const choices=$('#assigneeChoices'),checked=[...(choices?.querySelectorAll('input:checked')||[])].map(input=>input.value),collective=checked.includes('__all__'),ids=checked.filter(id=>id!=='__all__');
+      if(!collective&&!ids.length)return toast('Selecione ao menos um técnico ou toda a equipe.');
+      const ticket=selected,names=collective?'Toda a equipe':data.technicians.filter(technician=>ids.includes(technician.id)).map(technician=>technician.name).join(', '),startedAt=new Date().toISOString();
+      assign.disabled=true;assign.textContent='Iniciando atendimento…';
+      try{
+        const updated=await sb.from('tickets').update({assigned_to:ids[0]||null,status:'Em atendimento',started_at:startedAt,updated_at:startedAt}).eq('id',ticket.dbId);
+        if(updated.error)throw updated.error;
+        const removed=await sb.from('ticket_assignees').delete().eq('ticket_id',ticket.dbId);
+        if(removed.error)throw removed.error;
+        if(ids.length){const inserted=await sb.from('ticket_assignees').insert(ids.map(id=>({ticket_id:ticket.dbId,profile_id:id,assigned_by:state.profile.id})));if(inserted.error)throw inserted.error}
+        const history=await sb.from('ticket_updates').insert({ticket_id:ticket.dbId,author_id:state.profile.id,message:'Atendimento atribuído a '+names,kind:'status'});
+        if(history.error)console.error('Atendimento iniciado, mas o histórico não foi registrado',history.error);
+        ticket.status='Em atendimento';ticket.technician=names;ticket.technicianIds=ids;ticket.technicianId=ids[0]||null;ticket.serverReplyPending=false;
+        ticket.updates=[...(ticket.updates||[]),{message:'Atendimento atribuído a '+names,kind:'status',author:state.profile.full_name,createdAt:startedAt}];
+        renderTickets();renderDetail();refreshMetrics();toast('Atendimento iniciado com '+names+'.');
+      }catch(error){assign.disabled=false;assign.textContent='Atribuir e iniciar';fail(error,'Não foi possível iniciar o atendimento.')}
+    };
+  };
+
   // Interações consistentes por teclado, foco e clique externo.
   $('#protocolInput').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();$('#protocolButton').click()}});
   $('#adminTeacherSearch').addEventListener('keydown',event=>{if(event.key!=='Enter')return;event.preventDefault();const choices=[...adminTeacherSelect.options].filter(option=>option.value);if(choices.length===1){adminTeacherSelect.value=choices[0].value;adminTeacherSelect.dispatchEvent(new Event('change'));adminTeacherSelect.focus()}});
