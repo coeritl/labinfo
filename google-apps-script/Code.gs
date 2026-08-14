@@ -149,8 +149,8 @@ function montarEmailReserva_(eventType, data) {
     reserva_confirmar: ['Confirme sua solicitação de reserva', 'Recebemos sua solicitação. Confirme pelo botão abaixo para encaminhá-la à equipe.', '#2167a8', '&#9993;', 'Confirmar solicitação'],
     reserva_confirmada: ['Solicitação de reserva confirmada', 'Sua confirmação foi registrada. A reserva aguarda autorização da equipe.', '#d58a00', '&#10003;', 'Aguardando autorização'],
     reserva_autorizada: ['Reserva autorizada', 'A equipe autorizou a utilização do laboratório no horário solicitado.', '#08783e', '&#10003;', 'Reserva autorizada'],
-    reserva_cancelada: ['Reserva cancelada', data.reason || 'A reserva foi cancelada pela equipe.', '#b5262c', '!', 'Reserva cancelada'],
-    reserva_alterada: ['Reserva atualizada', 'A data, o horário ou o laboratório da reserva foi alterado pela equipe.', '#d66a00', '!', 'Atenção à alteração']
+    reserva_cancelada: ['Reserva de laboratório cancelada', 'A reserva da sua aula foi cancelada no sistema. Consulte abaixo o laboratório, o horário e o motivo informado pela equipe.', '#b5262c', '&#10005;', 'Reserva cancelada'],
+    reserva_alterada: ['Horário ou dados da reserva ajustados', 'O horário ou os dados da sua aula foram ajustados no sistema. Confira abaixo as informações atualizadas.', '#d66a00', '&#8635;', 'Reserva alterada']
   };
   const content = types[eventType] || ['Atualização da reserva', 'Há uma nova informação sobre sua reserva.', '#07852a', 'i', 'Reserva'];
   const start = data.starts_at ? Utilities.formatDate(new Date(data.starts_at), 'America/Cuiaba', "dd/MM/yyyy ' às ' HH:mm") : 'Não informado';
