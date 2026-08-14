@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#11733c" />
     <meta name="description" content="Sistema de chamados dos Laboratórios de Informática do IFMS Campus Três Lagoas" />
     <title>LabInfo | Suporte IFMS</title>
-    <link rel="stylesheet" href="styles.css?v=20260813-18" />
+    <link rel="stylesheet" href="styles.css?v=20260814-19" />
   </head>
   <body>
     <header class="topbar">
@@ -18,7 +18,37 @@
     </header>
 
     <main>
-      <section id="teacherView" class="teacher-view">
+      <section id="homeView" class="home-view">
+        <div class="home-hero"><span class="eyebrow">LABORATÓRIOS DE INFORMÁTICA</span><h1>O que você precisa?</h1><p>Escolha uma opção para acessar os serviços do LabInfo TL.</p></div>
+        <div class="service-choice-grid">
+          <button id="openReservations" class="service-choice card" type="button"><span class="service-choice-icon">📅</span><small>LABORATÓRIOS</small><strong>Ver ou solicitar uma reserva</strong><p>Consulte a agenda e solicite um horário para suas aulas.</p><b>Acessar reservas →</b></button>
+          <button class="service-choice card service-choice-disabled" type="button" disabled><span class="service-choice-icon">🛠</span><small>APOIO TÉCNICO</small><strong>Pedir suporte</strong><p>Solicite atendimento para computadores, rede, projetores e periféricos.</p><b>Disponível em breve</b></button>
+        </div>
+      </section>
+
+      <section id="reservationsPublicView" class="reservations-public-view" hidden>
+        <div class="reservation-public-head"><button id="backHome" class="secondary" type="button">← Início</button><div><span class="eyebrow">RESERVAS DE LABORATÓRIO</span><h1>Reserve um laboratório</h1><p>Escolha o horário da aula e confirme a solicitação pelo e-mail institucional.</p></div></div>
+        <div id="reservationConfirmation" class="reservation-confirmation card" hidden></div>
+        <div class="reservation-public-grid">
+          <form id="publicReservationForm" class="card reservation-form">
+            <div class="section-title"><span>1</span><div><h2>Identificação</h2><p>Somente servidores cadastrados podem solicitar</p></div></div>
+            <label>SIAPE<input id="reservationSiape" inputmode="numeric" autocomplete="off" placeholder="0000000" required></label>
+            <p id="reservationIdentity" class="field-hint">Digite seu SIAPE para validação.</p>
+            <div class="section-title"><span>2</span><div><h2>Data e laboratório</h2><p>Blocos de aula com 45 minutos</p></div></div>
+            <label>Laboratório<select id="reservationLab" required><option value="">Selecione o laboratório</option></select></label>
+            <div class="field-row"><label>Data<input id="reservationDate" type="date" required></label><label>Início<select id="reservationTime" required></select></label></div>
+            <label>Duração<select id="reservationBlocks" required><option value="1">1 bloco • 45 min</option><option value="2">2 blocos • 1h30</option><option value="3">3 blocos • 2h15</option><option value="4">4 blocos • 3h</option></select></label>
+            <div class="field-row"><label>Repetição<select id="reservationRecurrence"><option value="none">Somente nesta data</option><option value="weekly">Semanalmente, no mesmo dia</option></select></label><label id="reservationUntilLabel" hidden>Repetir até<input id="reservationUntil" type="date"></label></div>
+            <div class="section-title"><span>3</span><div><h2>Informações da aula</h2></div></div>
+            <label>Disciplina ou atividade<input id="reservationSubject" maxlength="160" placeholder="Ex.: Programação Web" required></label>
+            <label>Observações <small>(opcional)</small><textarea id="reservationNotes" rows="3" maxlength="500" placeholder="Turma, software necessário ou outra informação relevante"></textarea></label>
+            <button class="primary" type="submit">Solicitar reserva <span>→</span></button>
+          </form>
+          <aside class="reservation-side"><section class="card reservation-rules"><h2>Horários dos laboratórios</h2><div><strong>Matutino</strong><span>7h às 12h35</span></div><div><strong>Vespertino</strong><span>13h às 18h35</span></div><div><strong>Noturno</strong><span>18h45 às 22h50</span></div><small>Segunda a sábado • blocos de 45 minutos</small></section><section class="card my-reservations"><h2>Minhas reservas</h2><p>Consulte solicitações e reservas usando seu SIAPE.</p><div class="protocol-search"><input id="reservationSearchSiape" inputmode="numeric" placeholder="Digite seu SIAPE"><button id="searchReservations" type="button">Buscar</button></div><div id="myReservationsResult"></div></section></aside>
+        </div>
+      </section>
+
+      <section id="teacherView" class="teacher-view" hidden>
         <div class="hero">
           <span class="eyebrow">SUPORTE DOS LABORATÓRIOS</span>
           <h1>Como podemos ajudar?</h1>
@@ -75,6 +105,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=20260812-2"></script>
     <script src="app.js?v=20260812-6"></script>
-    <script src="supabase-integration.js?v=20260814-36"></script>
+    <script src="supabase-integration.js?v=20260814-37"></script>
+    <script src="reservations.js?v=20260814-1"></script>
   </body>
 </html>
