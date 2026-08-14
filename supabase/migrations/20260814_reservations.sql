@@ -112,9 +112,10 @@ returns table(protocol text,status text,confirmed_at timestamptz) language plpgs
 declare r public.reservations; s public.servers;
 begin
  select * into r from public.reservations where confirmation_token=p_token order by starts_at limit 1;
- update public.reservations set status='Aguardando autorização',confirmed_at=coalesce(reservations.confirmed_at,now()),updated_at=now()
- where recurrence_group=r.recurrence_group and status in ('Aguardando confirmação','Aguardando autorização');
  if r.id is null then raise exception 'Link inválido ou reserva indisponível.'; end if;
+ update public.reservations set status='Aguardando autorização',confirmed_at=coalesce(reservations.confirmed_at,now()),updated_at=now()
+ where recurrence_group=r.recurrence_group and public.reservations.status in ('Aguardando confirmação','Aguardando autorização');
+ select * into r from public.reservations where id=r.id;
  select * into s from public.servers where id=r.server_id;
  if not exists(select 1 from public.email_outbox where reservation_id=r.id and event_type='reserva_confirmada') then
    insert into public.email_outbox(reservation_id,recipient,event_type,payload) values(r.id,lower(s.email),'reserva_confirmada',public.reservation_payload(r));
