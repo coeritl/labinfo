@@ -27,7 +27,7 @@ create table public.categories (
 );
 create table public.labs (
   id uuid primary key default gen_random_uuid(), name text not null unique,
-  code text unique, location text, active boolean not null default true,
+  code text unique, location text, computer_count integer not null default 0 check (computer_count >= 0), active boolean not null default true,
   created_at timestamptz not null default now()
 );
 create table public.protocol_sequences (

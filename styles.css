@@ -74,3 +74,17 @@
   max-height:4.5em;
   overflow:hidden;
 }
+
+/* Fluxo público de reservas: ação, escolha do espaço e agenda. */
+.reservations-public-view .reservation-form-toggle{order:3;margin-bottom:14px}
+.public-lab-picker{order:4;padding:24px;margin-bottom:14px}
+.public-lab-picker-head h2{margin:4px 0;font-size:24px}.public-lab-picker-head p{margin:0;color:var(--muted)}
+.public-lab-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:18px}
+.public-lab-card{display:grid;grid-template-columns:42px 1fr;gap:12px;position:relative;min-height:112px;padding:17px;border:1px solid var(--line);border-radius:13px;background:#fff;color:var(--ink);text-align:left;cursor:pointer;transition:.18s}
+.public-lab-card:hover{transform:translateY(-2px);border-color:#78a98b;box-shadow:0 10px 24px rgba(17,115,60,.1)}
+.public-lab-card.selected{border:2px solid var(--green);padding:16px;background:var(--green-soft);box-shadow:0 0 0 3px rgba(17,115,60,.08)}
+.public-lab-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:11px;background:var(--green-soft);color:var(--green);font-size:21px}.public-lab-card.selected .public-lab-icon{background:var(--green);color:#fff}
+.public-lab-card strong,.public-lab-card small,.public-lab-card b{display:block}.public-lab-card strong{font-size:15px}.public-lab-card small{margin-top:3px;color:var(--muted);font-size:11px}.public-lab-card b{margin-top:8px;color:var(--green-dark);font-size:11px}.public-lab-card>i{grid-column:2;margin-top:auto;color:var(--green);font-size:10px;font-style:normal;font-weight:900}
+.reservations-public-view .public-schedule-card{order:5}.reservations-public-view .reservation-public-grid{order:6}
+.reservation-selected-lab{margin-bottom:15px;padding:13px 15px;border:1px solid #bad4c3;border-radius:11px;background:var(--green-soft)}.reservation-selected-lab strong,.reservation-selected-lab span{display:block}.reservation-selected-lab span{margin-top:3px;color:var(--muted);font-size:11px}
+@media(max-width:620px){.public-lab-picker{padding:18px 14px}.public-lab-picker-head h2{font-size:21px}.public-lab-cards{grid-template-columns:1fr}.public-lab-card{min-height:100px}.reservations-public-view .reservation-form-toggle{position:relative;z-index:1}.public-schedule-card{scroll-margin-top:12px}}
