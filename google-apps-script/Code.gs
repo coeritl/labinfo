@@ -4,6 +4,7 @@ const LABINFO = {
   incomingQuery: 'in:anywhere -in:sent -in:drafts -in:spam -in:trash newer_than:30d',
   processedLabel: 'LabInfo-Processado',
   maxThreads: 30,
+  accountEmail: 'labinfo.tl@ifms.edu.br',
   logoUrl: 'https://coeritl.github.io/labinfo/assets/labinfo-logo.png',
   portalUrl: 'https://coeritl.github.io/labinfo/'
 };
@@ -45,7 +46,7 @@ function processarSaidaProgramada() {
 
 function processarChamadosRecebidos_() {
   const label = GmailApp.getUserLabelByName(LABINFO.processedLabel) || GmailApp.createLabel(LABINFO.processedLabel);
-  const ownAddresses = [Session.getActiveUser().getEmail()].concat(GmailApp.getAliases()).map(email => String(email).toLowerCase());
+  const ownAddresses = [LABINFO.accountEmail].concat(GmailApp.getAliases()).map(email => String(email).toLowerCase());
   GmailApp.search(LABINFO.incomingQuery, 0, LABINFO.maxThreads).forEach(thread => {
     let threadOk = true;
     thread.getMessages().forEach(message => {
@@ -119,7 +120,7 @@ function enviarNotificacoesPendentes_() {
 }
 
 function registrarMetricas_(kind, sent) {
-  try { rpc_('apps_script_report_metrics', {p_secret: segredo_(), p_kind: kind, p_sent: sent || 0, p_remaining: MailApp.getRemainingDailyQuota()}); }
+  try { rpc_('apps_script_report_metrics', {p_secret: segredo_(), p_kind: kind, p_sent: sent || 0, p_remaining: null}); }
   catch (error) { console.error('Falha ao registrar métricas: ' + error.message); }
 }
 
