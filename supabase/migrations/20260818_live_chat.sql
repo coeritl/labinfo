@@ -177,39 +177,61 @@ grant execute on function public.request_chat_session(text, text) to anon, authe
 
 -- Técnico aceita a sessão de chat
 create or replace function public.accept_chat_session(p_session_id uuid)
-returns table(session_id uuid, technician_id uuid, technician_name text, status text)
-language plpgsql security definer set search_path = public as $$
+returns jsonb
+language plpgsql security definer set search_path = public, auth as $$
 declare
   v_uid uuid;
   v_tech_name text;
+  v_session record;
 begin
   v_uid := auth.uid();
   if v_uid is null then
     raise exception 'Apenas técnicos autenticados podem aceitar chats.';
   end if;
 
-  select full_name into v_tech_name from public.profiles where id = v_uid and active = true;
+  select coalesce(full_name, 'Técnico') into v_tech_name
+  from public.profiles
+  where id = v_uid;
+
   if v_tech_name is null then
-    raise exception 'Perfil de técnico inválido ou inativo.';
+    v_tech_name := 'Técnico de Plantão';
   end if;
 
   update public.chat_sessions
-  set technician_id = v_uid,
+  set technician_id = coalesce(technician_id, v_uid),
       status = 'active',
       started_at = coalesce(started_at, now())
-  where id = p_session_id and status in ('waiting', 'active')
-  returning id into p_session_id;
+  where id = p_session_id and status in ('waiting', 'active');
 
-  if not found then
-    raise exception 'Esta sessão já foi atendida ou encerrada.';
+  select cs.*, s.full_name as server_name, s.siape as server_siape, s.email as server_email
+  into v_session
+  from public.chat_sessions cs
+  left join public.servers s on s.id = cs.server_id
+  where cs.id = p_session_id;
+
+  if v_session.id is null then
+    raise exception 'Sessão de chat não encontrada.';
   end if;
 
-  -- Insere aviso no chat informando quem atendeu
-  insert into public.chat_messages(session_id, sender_type, sender_id, sender_name, message)
-  values (p_session_id, 'system', v_uid, 'Sistema LabInfo', 'O técnico ' || v_tech_name || ' entrou na sala e iniciou o atendimento.');
+  -- Insere aviso no chat informando quem atendeu (se ainda não houver aviso)
+  if not exists (
+    select 1 from public.chat_messages
+    where session_id = p_session_id and sender_type = 'system' and message like '%entrou na sala%'
+  ) then
+    insert into public.chat_messages(session_id, sender_type, sender_id, sender_name, message)
+    values (p_session_id, 'system', v_uid, 'Sistema LabInfo', 'O técnico ' || v_tech_name || ' entrou na sala e iniciou o atendimento.');
+  end if;
 
-  return query
-  select p_session_id, v_uid, v_tech_name, 'active'::text;
+  return jsonb_build_object(
+    'session_id', v_session.id,
+    'technician_id', v_uid,
+    'technician_name', v_tech_name,
+    'status', v_session.status,
+    'server_name', v_session.server_name,
+    'server_siape', v_session.server_siape,
+    'server_email', v_session.server_email,
+    'subject', v_session.subject
+  );
 end $$;
 grant execute on function public.accept_chat_session(uuid) to authenticated;
 
@@ -221,8 +243,8 @@ create or replace function public.send_chat_message(
   p_sender_name text default null,
   p_siape text default null
 )
-returns table(id bigint, session_id uuid, sender_type text, sender_name text, message text, created_at timestamptz)
-language plpgsql security definer set search_path = public as $$
+returns jsonb
+language plpgsql security definer set search_path = public, auth as $$
 declare
   v_session record;
   v_sender_name text := trim(p_sender_name);
@@ -237,7 +259,7 @@ begin
   select cs.*, s.full_name as server_name, s.siape as server_siape
   into v_session
   from public.chat_sessions cs
-  join public.servers s on s.id = cs.server_id
+  left join public.servers s on s.id = cs.server_id
   where cs.id = p_session_id;
 
   if v_session.id is null then
@@ -253,20 +275,30 @@ begin
     if v_sender_id is null then
       raise exception 'Acesso não autorizado.';
     end if;
-    select full_name into v_sender_name from public.profiles where id = v_sender_id;
+    select coalesce(full_name, 'Técnico') into v_sender_name from public.profiles where id = v_sender_id;
+    if v_sender_name is null then v_sender_name := 'Técnico de Plantão'; end if;
   elsif p_sender_type = 'server' then
-    v_sender_name := v_session.server_name;
+    if v_sender_name is null or length(v_sender_name) < 2 then
+      v_sender_name := coalesce(v_session.server_name, 'Servidor');
+    end if;
     v_sender_id := v_session.server_id;
   else
-    v_sender_name := coalesce(v_sender_name, 'Sistema');
+    p_sender_type := 'system';
+    v_sender_name := 'Sistema LabInfo';
   end if;
 
   insert into public.chat_messages(session_id, sender_type, sender_id, sender_name, message, created_at)
   values (p_session_id, p_sender_type, v_sender_id, v_sender_name, trim(p_message), v_now)
   returning chat_messages.id into v_msg_id;
 
-  return query
-  select v_msg_id, p_session_id, p_sender_type, v_sender_name, trim(p_message), v_now;
+  return jsonb_build_object(
+    'id', v_msg_id,
+    'session_id', p_session_id,
+    'sender_type', p_sender_type,
+    'sender_name', v_sender_name,
+    'message', trim(p_message),
+    'created_at', v_now
+  );
 end $$;
 grant execute on function public.send_chat_message(uuid, text, text, text, text) to anon, authenticated;
 
@@ -277,10 +309,10 @@ create or replace function public.create_ticket_from_chat(
   p_category uuid default null,
   p_title text default null,
   p_resolution text default null,
-  p_status public.ticket_status default 'Concluído'
+  p_status text default 'Concluído'
 )
-returns table(ticket_id uuid, protocol text, status public.ticket_status)
-language plpgsql security definer set search_path = public as $$
+returns jsonb
+language plpgsql security definer set search_path = public, auth as $$
 declare
   v_session record;
   v_tech_id uuid;
@@ -289,6 +321,7 @@ declare
   v_chat_transcript text := '';
   v_msg record;
   v_title text;
+  v_status text := coalesce(nullif(trim(p_status), ''), 'Concluído');
 begin
   v_tech_id := auth.uid();
   if v_tech_id is null then
@@ -341,12 +374,12 @@ begin
     p_category,
     left(v_title, 100),
     E'Atendimento realizado via Chat ao Vivo com a equipe de TI.\n\n--- TRANSCRIÇÃO DA CONVERSA ---\n' || v_chat_transcript,
-    p_status,
+    v_status,
     'Chat',
     v_tech_id,
-    case when p_status = 'Concluído' then coalesce(nullif(trim(p_resolution), ''), 'Atendimento concluído via Chat ao Vivo.') else null end,
+    case when v_status = 'Concluído' then coalesce(nullif(trim(p_resolution), ''), 'Atendimento concluído via Chat ao Vivo.') else null end,
     coalesce(v_session.started_at, now()),
-    case when p_status = 'Concluído' then now() else null end
+    case when v_status = 'Concluído' then now() else null end
   )
   returning id into v_new_ticket_id;
 
@@ -355,11 +388,11 @@ begin
   values (
     v_new_ticket_id,
     v_tech_id,
-    case when p_status = 'Concluído'
+    case when v_status = 'Concluído'
       then 'Chamado gerado e concluído a partir do Chat ao Vivo. Solução registrada: ' || coalesce(nullif(trim(p_resolution), ''), 'Atendimento prestado em tempo real.')
       else 'Chamado gerado a partir do Chat ao Vivo e mantido em atendimento presencial pela equipe técnica.'
     end,
-    case when p_status = 'Concluído' then 'fechamento' else 'status' end
+    case when v_status = 'Concluído' then 'fechamento' else 'status' end
   );
 
   -- Atualiza e encerra a sessão de chat vinculando ao chamado
@@ -368,7 +401,7 @@ begin
       ticket_id = v_new_ticket_id,
       closed_at = now(),
       closed_by = v_tech_id,
-      notes = p_resolution
+      notes = coalesce(nullif(trim(p_resolution), ''), notes)
   where id = p_session_id;
 
   -- Notificação no chat para o docente
@@ -381,14 +414,17 @@ begin
     'Atendimento finalizado! Foi gerado o protocolo oficial de chamado: ' || v_protocol || '. Você também receberá os detalhes no seu e-mail institucional.'
   );
 
-  return query
-  select v_new_ticket_id, v_protocol, p_status;
+  return jsonb_build_object(
+    'ticket_id', v_new_ticket_id,
+    'protocol', v_protocol,
+    'status', v_status
+  );
 end $$;
-grant execute on function public.create_ticket_from_chat(uuid, uuid, uuid, text, text, public.ticket_status) to authenticated;
+grant execute on function public.create_ticket_from_chat(uuid, uuid, uuid, text, text, text) to authenticated;
 
 -- Encerrar chat simples (caso queira encerrar pelo docente ou sem formulário)
 create or replace function public.close_chat_session(p_session_id uuid, p_notes text default null)
-returns boolean language plpgsql security definer set search_path = public as $$
+returns boolean language plpgsql security definer set search_path = public, auth as $$
 begin
   update public.chat_sessions
   set status = 'closed',
@@ -403,3 +439,4 @@ begin
   return true;
 end $$;
 grant execute on function public.close_chat_session(uuid, text) to anon, authenticated;
+

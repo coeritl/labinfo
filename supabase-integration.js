@@ -689,23 +689,35 @@
 
   async function openAdminChatRoom(sessionId) {
     try {
-      const { error: acceptErr } = await sb.rpc('accept_chat_session', { p_session_id: sessionId });
-      if (acceptErr) throw acceptErr;
+      const { data: acceptRes, error: acceptErr } = await sb.rpc('accept_chat_session', { p_session_id: sessionId });
+      if (acceptErr) {
+        console.warn('Aviso no accept_chat_session:', acceptErr);
+      }
 
-      const { data: session, error: sessErr } = await sb.from('chat_sessions').select('*, servers(*)').eq('id', sessionId).single();
-      if (sessErr) throw sessErr;
+      const { data: session, error: sessErr } = await sb.from('chat_sessions').select('*, servers(*)').eq('id', sessionId).maybeSingle();
+      if (sessErr || !session) {
+        throw sessErr || new Error('Sessão de chat não encontrada.');
+      }
       activeAdminChatSession = session;
       activeAdminChatMessages = [];
 
-      $('#adminChatModalTitle').textContent = session.servers?.full_name || 'Servidor';
-      $('#adminChatServerMeta').textContent = `SIAPE: ${session.servers?.siape || '—'} • ${session.servers?.email || '—'} • ${session.subject || 'Dúvida'}`;
+      const parsedAccept = Array.isArray(acceptRes) ? acceptRes[0] : (acceptRes || {});
+      const serverName = session.servers?.full_name || parsedAccept.server_name || 'Servidor';
+      const serverSiape = session.servers?.siape || parsedAccept.server_siape || '—';
+      const serverEmail = session.servers?.email || parsedAccept.server_email || '—';
+      const subject = session.subject || parsedAccept.subject || 'Atendimento via chat';
+
+      $('#adminChatModalTitle').textContent = serverName;
+      $('#adminChatServerMeta').textContent = `SIAPE: ${serverSiape} • ${serverEmail} • ${subject}`;
 
       $('#adminChatModal').hidden = false;
       document.body.classList.add('modal-open');
 
       await loadAdminChatMessages(sessionId);
       subscribeAdminChatMessages(sessionId);
+      renderChatAdminDashboard();
     } catch (err) {
+      console.error('Falha ao abrir atendimento do chat:', err);
       fail(err, 'Não foi possível aceitar a sessão de chat.');
     }
   }
@@ -842,7 +854,7 @@
       });
       if (error) throw error;
 
-      const created = ticketRes?.[0];
+      const created = Array.isArray(ticketRes) ? ticketRes[0] : (ticketRes || {});
       $('#chatToTicketModal').hidden = true;
       $('#adminChatModal').hidden = true;
       document.body.classList.remove('modal-open');
@@ -854,6 +866,7 @@
       activeAdminChatSession = null;
 
       await loadAdmin();
+      renderChatAdminDashboard();
       toast(`Chamado ${created?.protocol || ''} criado com sucesso a partir do chat!`);
     } catch (err) {
       fail(err, 'Não foi possível gerar o chamado do atendimento.');
