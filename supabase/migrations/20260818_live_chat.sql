@@ -456,3 +456,50 @@ begin
   return true;
 end $$;
 grant execute on function public.close_chat_session(uuid, text) to anon, authenticated;
+
+-- Obter dados consolidados da sessao de chat (publico ou autenticado)
+drop function if exists public.get_public_chat_session(uuid);
+create or replace function public.get_public_chat_session(p_session_id uuid)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  v_session record;
+  v_tech_name text := null;
+  v_protocol text := null;
+begin
+  select cs.*, s.full_name as server_name, s.siape as server_siape
+  into v_session
+  from public.chat_sessions cs
+  left join public.servers s on s.id = cs.server_id
+  where cs.id = p_session_id;
+
+  if v_session.id is null then
+    return null;
+  end if;
+
+  if v_session.technician_id is not null then
+    select p.full_name into v_tech_name
+    from public.profiles p
+    where p.id = v_session.technician_id;
+  end if;
+
+  if v_session.ticket_id is not null then
+    select t.protocol into v_protocol
+    from public.tickets t
+    where t.id = v_session.ticket_id;
+  end if;
+
+  return jsonb_build_object(
+    'id', v_session.id,
+    'status', v_session.status,
+    'subject', v_session.subject,
+    'server_name', v_session.server_name,
+    'server_siape', v_session.server_siape,
+    'technician_name', coalesce(v_tech_name, 'Técnico de Plantão'),
+    'protocol', v_protocol,
+    'started_at', v_session.started_at,
+    'closed_at', v_session.closed_at
+  );
+end $$;
+grant execute on function public.get_public_chat_session(uuid) to anon, authenticated;
+

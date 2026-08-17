@@ -1001,25 +1001,36 @@
         return;
       }
       try {
-        const { data: sess } = await sb
-          .from('chat_sessions')
-          .select('*, tickets(protocol), profiles(full_name)')
-          .eq('id', sessionId)
-          .maybeSingle();
-
-        if (sess) {
-          if (sess.status === 'active' && !$('#chatWaitingCard').hidden) {
-            $('#chatRoomTechName').textContent = sess.profiles?.full_name || 'Técnico de Plantão';
-            $('#chatWaitingCard').hidden = true;
-            $('#chatActiveCard').hidden = false;
-            playChatNotificationSound();
+        const { data: sess, error: rpcErr } = await sb.rpc('get_public_chat_session', { p_session_id: sessionId });
+        if (!rpcErr && sess) {
+          if (sess.status === 'active') {
+            $('#chatRoomTechName').textContent = sess.technician_name || 'Técnico de Plantão';
+            if (!$('#chatWaitingCard').hidden) {
+              $('#chatWaitingCard').hidden = true;
+              $('#chatActiveCard').hidden = false;
+              playChatNotificationSound();
+            }
           } else if (sess.status === 'closed') {
-            const protocol = sess.tickets?.protocol || 'Registrado';
+            const protocol = sess.protocol || 'Registrado';
             $('#chatGeneratedProtocol').textContent = protocol;
             $('#chatActiveCard').hidden = true;
             $('#chatWaitingCard').hidden = true;
             $('#chatEndedCard').hidden = false;
             stopPublicChatPolling();
+          }
+        } else {
+          const { data: rawSess } = await sb.from('chat_sessions').select('id, status, technician_id').eq('id', sessionId).maybeSingle();
+          if (rawSess) {
+            if (rawSess.status === 'active' && !$('#chatWaitingCard').hidden) {
+              $('#chatWaitingCard').hidden = true;
+              $('#chatActiveCard').hidden = false;
+              playChatNotificationSound();
+            } else if (rawSess.status === 'closed') {
+              $('#chatActiveCard').hidden = true;
+              $('#chatWaitingCard').hidden = true;
+              $('#chatEndedCard').hidden = false;
+              stopPublicChatPolling();
+            }
           }
         }
 
@@ -1027,7 +1038,7 @@
       } catch (e) {
         console.warn('Polling de chat público:', e);
       }
-    }, 2000);
+    }, 1500);
   }
 
   function subscribePublicChatSession(sessionId) {
@@ -1039,16 +1050,11 @@
     publicChatChannel = sb.channel('public-chat-room-' + sessionId)
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_sessions', filter: `id=eq.${sessionId}` }, async (payload) => {
         if (payload.new.status === 'active') {
-          const { data: tech } = await sb.from('profiles').select('full_name').eq('id', payload.new.technician_id).maybeSingle();
-          $('#chatRoomTechName').textContent = tech ? tech.full_name : 'Técnico de Plantão';
           $('#chatWaitingCard').hidden = true;
           $('#chatActiveCard').hidden = false;
           loadPublicChatMessages(sessionId);
           playChatNotificationSound();
         } else if (payload.new.status === 'closed') {
-          const { data: sess } = await sb.from('chat_sessions').select('*, tickets(*)').eq('id', sessionId).maybeSingle();
-          const protocol = sess?.tickets?.protocol || 'Registrado';
-          $('#chatGeneratedProtocol').textContent = protocol;
           $('#chatActiveCard').hidden = true;
           $('#chatWaitingCard').hidden = true;
           $('#chatEndedCard').hidden = false;
@@ -1080,6 +1086,10 @@
         publicChatMessages = msgs;
         if (hasNew) {
           renderPublicChatMessages();
+          const techMsg = msgs.find(m => m.sender_type === 'technician');
+          if (techMsg) {
+            $('#chatRoomTechName').textContent = techMsg.sender_name || 'Técnico de Plantão';
+          }
           if (msgs.some(m => m.sender_type === 'technician' || (m.sender_type === 'system' && m.message.includes('entrou na sala')))) {
             if (!$('#chatWaitingCard').hidden) {
               $('#chatWaitingCard').hidden = true;
