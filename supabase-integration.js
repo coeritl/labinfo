@@ -497,17 +497,29 @@
     }
 
     try {
-      const { data: sessions, error } = await sb
-        .from('chat_sessions')
-        .select('*, servers(*), profiles(*), tickets(protocol)')
-        .order('created_at', { ascending: false })
-        .limit(40);
+      let sessions = [];
+      const { data: rpcSessions, error: rpcErr } = await sb.rpc('get_admin_chat_dashboard');
+      if (!rpcErr && rpcSessions) {
+        sessions = rpcSessions;
+      } else {
+        const { data: rawSessions } = await sb
+          .from('chat_sessions')
+          .select('*, servers(full_name, siape, email)')
+          .order('created_at', { ascending: false })
+          .limit(60);
 
-      if (error) throw error;
+        sessions = (rawSessions || []).map(s => ({
+          ...s,
+          server_name: s.servers?.full_name || 'Servidor',
+          server_siape: s.servers?.siape || '—',
+          technician_name: 'Equipe de TI',
+          ticket_protocol: null
+        }));
+      }
 
-      const waiting = (sessions || []).filter(s => s.status === 'waiting');
-      const active = (sessions || []).filter(s => s.status === 'active');
-      const closed = (sessions || []).filter(s => s.status === 'closed');
+      const waiting = sessions.filter(s => s.status === 'waiting');
+      const active = sessions.filter(s => s.status === 'active');
+      const closed = sessions.filter(s => s.status === 'closed');
 
       const menuBadge = $('#chatMenuBadge');
       if (menuBadge) {
@@ -524,8 +536,8 @@
         waitingList.innerHTML = waiting.length ? waiting.map(s => `
           <div class="chat-session-item waiting-item">
             <div class="chat-session-info">
-              <strong>${safe(s.servers?.full_name || 'Servidor')}</strong>
-              <small>SIAPE: ${safe(s.servers?.siape || '—')} • Aberto ${fmt(s.created_at)}</small>
+              <strong>${safe(s.server_name || 'Servidor')}</strong>
+              <small>SIAPE: ${safe(s.server_siape || '—')} • Aberto ${fmt(s.created_at)}</small>
               <p>${safe(s.subject || 'Dúvida geral')}</p>
             </div>
             <button class="primary chat-attend-btn" type="button" data-attend-session="${s.id}">Atender agora ➔</button>
@@ -542,8 +554,8 @@
         activeList.innerHTML = active.length ? active.map(s => `
           <div class="chat-session-item active-item">
             <div class="chat-session-info">
-              <strong>${safe(s.servers?.full_name || 'Servidor')}</strong>
-              <small>Técnico: ${safe(s.profiles?.full_name || 'Em atendimento')} • Iniciado ${fmt(s.started_at || s.created_at)}</small>
+              <strong>${safe(s.server_name || 'Servidor')}</strong>
+              <small>Técnico: ${safe(s.technician_name || 'Em atendimento')} • Iniciado ${fmt(s.started_at || s.created_at)}</small>
               <p>${safe(s.subject || 'Dúvida geral')}</p>
             </div>
             <div class="chat-active-item-actions">
@@ -569,10 +581,10 @@
           </div>
           ${closed.map(s => `
             <div class="chat-history-row">
-              <strong>${safe(s.servers?.full_name || '—')}</strong>
+              <strong>${safe(s.server_name || '—')}</strong>
               <span>${safe(s.subject || '—')}</span>
-              <span>${safe(s.profiles?.full_name || '—')}</span>
-              <strong>${s.tickets?.protocol ? `<span class="badge done">${s.tickets.protocol}</span>` : '<span class="badge">Sem chamado</span>'}</strong>
+              <span>${safe(s.technician_name || '—')}</span>
+              <strong>${s.ticket_protocol ? `<span class="badge done">${s.ticket_protocol}</span>` : '<span class="badge">Sem chamado</span>'}</strong>
               <small>${fmt(s.closed_at || s.created_at)}</small>
             </div>
           `).join('')}
@@ -580,6 +592,10 @@
       }
     } catch (e) {
       console.warn('Erro ao carregar painel de chat', e);
+      const historyList = $('#chatHistoryList');
+      if (historyList) {
+        historyList.innerHTML = '<p class="empty">Não foi possível carregar o histórico de atendimentos.</p>';
+      }
     }
   }
 

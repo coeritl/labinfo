@@ -515,3 +515,42 @@ begin
 end $$;
 grant execute on function public.get_public_chat_session(uuid) to anon, authenticated;
 
+-- Obter lista consolidada de sessoes para o painel administrativo do tecnico
+drop function if exists public.get_admin_chat_dashboard();
+create or replace function public.get_admin_chat_dashboard()
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  v_sessions jsonb;
+begin
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'id', cs.id,
+    'status', cs.status,
+    'subject', cs.subject,
+    'created_at', cs.created_at,
+    'started_at', cs.started_at,
+    'closed_at', cs.closed_at,
+    'notes', cs.notes,
+    'server_id', cs.server_id,
+    'server_name', coalesce(s.full_name, 'Servidor'),
+    'server_siape', s.siape,
+    'server_email', s.email,
+    'technician_id', cs.technician_id,
+    'technician_name', p.full_name,
+    'ticket_id', cs.ticket_id,
+    'ticket_protocol', t.protocol
+  ) order by cs.created_at desc), '[]'::jsonb)
+  into v_sessions
+  from (
+    select * from public.chat_sessions
+    order by created_at desc
+    limit 60
+  ) cs
+  left join public.servers s on s.id = cs.server_id
+  left join public.profiles p on p.id = cs.technician_id
+  left join public.tickets t on t.id = cs.ticket_id;
+
+  return v_sessions;
+end $$;
+grant execute on function public.get_admin_chat_dashboard() to authenticated;
+
