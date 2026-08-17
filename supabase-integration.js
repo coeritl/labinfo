@@ -499,22 +499,34 @@
     try {
       let sessions = [];
       const { data: rpcSessions, error: rpcErr } = await sb.rpc('get_admin_chat_dashboard');
-      if (!rpcErr && rpcSessions) {
+      if (!rpcErr && Array.isArray(rpcSessions)) {
         sessions = rpcSessions;
       } else {
-        const { data: rawSessions } = await sb
-          .from('chat_sessions')
-          .select('*, servers(full_name, siape, email)')
-          .order('created_at', { ascending: false })
-          .limit(60);
+        const [sessRes, servRes, profRes, tickRes] = await Promise.all([
+          sb.from('chat_sessions').select('*').order('created_at', { ascending: false }).limit(60),
+          sb.from('servers').select('id, full_name, siape, email'),
+          sb.from('profiles').select('id, full_name'),
+          sb.from('tickets').select('id, protocol')
+        ]);
 
-        sessions = (rawSessions || []).map(s => ({
-          ...s,
-          server_name: s.servers?.full_name || 'Servidor',
-          server_siape: s.servers?.siape || '—',
-          technician_name: 'Equipe de TI',
-          ticket_protocol: null
-        }));
+        const rawSessions = sessRes.data || [];
+        const serverMap = new Map((servRes.data || []).map(s => [s.id, s]));
+        const profileMap = new Map((profRes.data || []).map(p => [p.id, p]));
+        const ticketMap = new Map((tickRes.data || []).map(t => [t.id, t]));
+
+        sessions = rawSessions.map(s => {
+          const sv = serverMap.get(s.server_id);
+          const pf = profileMap.get(s.technician_id);
+          const tk = ticketMap.get(s.ticket_id);
+          return {
+            ...s,
+            server_name: sv?.full_name || 'Servidor',
+            server_siape: sv?.siape || '—',
+            server_email: sv?.email || '—',
+            technician_name: pf?.full_name || '—',
+            ticket_protocol: tk?.protocol || null
+          };
+        });
       }
 
       const waiting = sessions.filter(s => s.status === 'waiting');
@@ -664,8 +676,19 @@
     }
   }
 
+  let staffIncomingPollTimer = null;
+
   function listenIncomingChats() {
-    if (!state.profile || state.profile.role !== 'tecnico') return;
+    if (!state.profile || (state.profile.role !== 'tecnico' && state.profile.role !== 'supervisor')) return;
+
+    if (staffIncomingPollTimer) clearInterval(staffIncomingPollTimer);
+    staffIncomingPollTimer = setInterval(() => {
+      if (!state.profile || document.hidden) return;
+      const chatSec = $('#chatAdminSection');
+      if (chatSec && !chatSec.hidden) {
+        renderChatAdminDashboard();
+      }
+    }, 3000);
 
     sb.channel('labinfo-staff-chat-incoming')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_sessions' }, async (payload) => {
