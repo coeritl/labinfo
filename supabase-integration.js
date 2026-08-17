@@ -752,9 +752,38 @@
     list.scrollTop = list.scrollHeight;
   }
 
+  let adminChatPollTimer = null;
+
+  function stopAdminChatPolling() {
+    if (adminChatPollTimer) {
+      clearInterval(adminChatPollTimer);
+      adminChatPollTimer = null;
+    }
+  }
+
+  function startAdminChatPolling(sessionId) {
+    stopAdminChatPolling();
+    adminChatPollTimer = setInterval(async () => {
+      if (!activeAdminChatSession) {
+        stopAdminChatPolling();
+        return;
+      }
+      try {
+        const { data: msgs } = await sb.from('chat_messages').select('*').eq('session_id', sessionId).order('created_at', { ascending: true });
+        if (msgs && (msgs.length !== activeAdminChatMessages.length || (msgs.length > 0 && msgs[msgs.length - 1].id !== activeAdminChatMessages[activeAdminChatMessages.length - 1]?.id))) {
+          activeAdminChatMessages = msgs;
+          renderAdminChatMessages();
+        }
+      } catch (e) {
+        console.warn('Polling de chat admin:', e);
+      }
+    }, 2000);
+  }
+
   function subscribeAdminChatMessages(sessionId) {
     if (adminChatChannel) {
       sb.removeChannel(adminChatChannel);
+      adminChatChannel = null;
     }
     adminChatChannel = sb.channel('admin-chat-room-' + sessionId)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `session_id=eq.${sessionId}` }, (payload) => {
@@ -769,9 +798,12 @@
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_sessions', filter: `id=eq.${sessionId}` }, (payload) => {
         if (payload.new.status === 'closed') {
           toast('Este chat foi finalizado.');
+          stopAdminChatPolling();
         }
       })
       .subscribe();
+
+    startAdminChatPolling(sessionId);
   }
 
   $('#adminChatMessageForm')?.addEventListener('submit', async (e) => {
@@ -790,10 +822,13 @@
     if (error) {
       input.value = msg;
       fail(error, 'Erro ao enviar mensagem.');
+    } else {
+      loadAdminChatMessages(activeAdminChatSession.id);
     }
   });
 
   $('#closeAdminChatModal')?.addEventListener('click', () => {
+    stopAdminChatPolling();
     $('#adminChatModal').hidden = true;
     document.body.classList.remove('modal-open');
   });
@@ -949,10 +984,56 @@
   });
 
   let publicChatMessages = [];
+  let publicChatPollTimer = null;
+
+  function stopPublicChatPolling() {
+    if (publicChatPollTimer) {
+      clearInterval(publicChatPollTimer);
+      publicChatPollTimer = null;
+    }
+  }
+
+  function startPublicChatPolling(sessionId) {
+    stopPublicChatPolling();
+    publicChatPollTimer = setInterval(async () => {
+      if (!currentPublicChatSession) {
+        stopPublicChatPolling();
+        return;
+      }
+      try {
+        const { data: sess } = await sb
+          .from('chat_sessions')
+          .select('*, tickets(protocol), profiles(full_name)')
+          .eq('id', sessionId)
+          .maybeSingle();
+
+        if (sess) {
+          if (sess.status === 'active' && !$('#chatWaitingCard').hidden) {
+            $('#chatRoomTechName').textContent = sess.profiles?.full_name || 'Técnico de Plantão';
+            $('#chatWaitingCard').hidden = true;
+            $('#chatActiveCard').hidden = false;
+            playChatNotificationSound();
+          } else if (sess.status === 'closed') {
+            const protocol = sess.tickets?.protocol || 'Registrado';
+            $('#chatGeneratedProtocol').textContent = protocol;
+            $('#chatActiveCard').hidden = true;
+            $('#chatWaitingCard').hidden = true;
+            $('#chatEndedCard').hidden = false;
+            stopPublicChatPolling();
+          }
+        }
+
+        await loadPublicChatMessages(sessionId);
+      } catch (e) {
+        console.warn('Polling de chat público:', e);
+      }
+    }, 2000);
+  }
 
   function subscribePublicChatSession(sessionId) {
     if (publicChatChannel) {
       sb.removeChannel(publicChatChannel);
+      publicChatChannel = null;
     }
 
     publicChatChannel = sb.channel('public-chat-room-' + sessionId)
@@ -971,13 +1052,16 @@
           $('#chatActiveCard').hidden = true;
           $('#chatWaitingCard').hidden = true;
           $('#chatEndedCard').hidden = false;
+          stopPublicChatPolling();
         }
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `session_id=eq.${sessionId}` }, (payload) => {
         if (!publicChatMessages.some(m => m.id === payload.new.id)) {
           publicChatMessages.push(payload.new);
           renderPublicChatMessages();
-          if (payload.new.sender_type === 'technician') {
+          if (payload.new.sender_type === 'technician' || (payload.new.sender_type === 'system' && payload.new.message.includes('entrou na sala'))) {
+            $('#chatWaitingCard').hidden = true;
+            $('#chatActiveCard').hidden = false;
             playChatNotificationSound();
           }
         }
@@ -985,12 +1069,28 @@
       .subscribe();
 
     loadPublicChatMessages(sessionId);
+    startPublicChatPolling(sessionId);
   }
 
   async function loadPublicChatMessages(sessionId) {
-    const { data: msgs } = await sb.from('chat_messages').select('*').eq('session_id', sessionId).order('created_at', { ascending: true });
-    publicChatMessages = msgs || [];
-    renderPublicChatMessages();
+    try {
+      const { data: msgs } = await sb.from('chat_messages').select('*').eq('session_id', sessionId).order('created_at', { ascending: true });
+      if (msgs) {
+        const hasNew = msgs.length !== publicChatMessages.length || (msgs.length > 0 && msgs[msgs.length - 1].id !== publicChatMessages[publicChatMessages.length - 1]?.id);
+        publicChatMessages = msgs;
+        if (hasNew) {
+          renderPublicChatMessages();
+          if (msgs.some(m => m.sender_type === 'technician' || (m.sender_type === 'system' && m.message.includes('entrou na sala')))) {
+            if (!$('#chatWaitingCard').hidden) {
+              $('#chatWaitingCard').hidden = true;
+              $('#chatActiveCard').hidden = false;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar mensagens públicas:', e);
+    }
   }
 
   function renderPublicChatMessages() {
@@ -1031,6 +1131,8 @@
     if (error) {
       input.value = msg;
       fail(error, 'Erro ao enviar mensagem.');
+    } else {
+      loadPublicChatMessages(currentPublicChatSession.session_id);
     }
   });
 
@@ -1038,6 +1140,7 @@
     if (!currentPublicChatSession) return;
     if (!confirm('Deseja realmente encerrar este atendimento?')) return;
     await sb.rpc('close_chat_session', { p_session_id: currentPublicChatSession.session_id });
+    stopPublicChatPolling();
     $('#chatActiveCard').hidden = true;
     $('#chatEndedCard').hidden = false;
   });
@@ -1061,6 +1164,7 @@
   });
 
   function cleanupPublicChat() {
+    stopPublicChatPolling();
     if (publicChatChannel) {
       sb.removeChannel(publicChatChannel);
       publicChatChannel = null;
