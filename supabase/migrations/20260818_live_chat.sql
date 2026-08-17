@@ -187,6 +187,7 @@ language plpgsql security definer set search_path = public, auth as $$
 declare
   v_uid uuid;
   v_tech_name text;
+  v_first_name text;
   v_session record;
 begin
   v_uid := auth.uid();
@@ -201,6 +202,8 @@ begin
   if v_tech_name is null or length(trim(v_tech_name)) = 0 then
     v_tech_name := 'Técnico de Plantão';
   end if;
+
+  v_first_name := coalesce(nullif(split_part(trim(v_tech_name), ' ', 1), ''), 'Técnico(a)');
 
   update public.chat_sessions cs
   set technician_id = coalesce(cs.technician_id, v_uid),
@@ -224,7 +227,16 @@ begin
     where cm.session_id = p_session_id and cm.sender_type = 'system' and cm.message like '%entrou na sala%'
   ) then
     insert into public.chat_messages(session_id, sender_type, sender_id, sender_name, message)
-    values (p_session_id, 'system', v_uid, 'Sistema LabInfo', 'O técnico ' || v_tech_name || ' entrou na sala e iniciou o atendimento.');
+    values (p_session_id, 'system', v_uid, 'Sistema LabInfo', 'O(A) técnico(a) ' || v_tech_name || ' entrou na sala e iniciou o atendimento.');
+  end if;
+
+  -- Mensagem automática de boas-vindas personalizada em nome do próprio perfil que atendeu
+  if not exists (
+    select 1 from public.chat_messages cm
+    where cm.session_id = p_session_id and cm.sender_type = 'technician'
+  ) then
+    insert into public.chat_messages(session_id, sender_type, sender_id, sender_name, message)
+    values (p_session_id, 'technician', v_uid, v_tech_name, 'Olá, sou ' || v_first_name || '. Em que posso ajudar?');
   end if;
 
   return jsonb_build_object(
