@@ -12,6 +12,8 @@ Em **Configurações do projeto > Propriedades do script**, cadastre:
 
 Depois execute manualmente `configurarIntegracao` uma única vez e autorize Gmail, conexões externas e gatilhos. A função cria o marcador `LabInfo-Processado`, instala um gatilho de 10 minutos para entradas, outro de um minuto para saídas e faz a primeira execução.
 
+Sempre que `Code.gs` for alterado, salve a nova versão no projeto do Apps Script. O e-mail de conclusão atual exige que `20260817_completion_confirmation_email.sql` também esteja aplicado no Supabase para receber a solução registrada no atendimento.
+
 ## Abertura por e-mail
 
 - O remetente deve ser um e-mail `@ifms.edu.br` vinculado a um servidor ativo.

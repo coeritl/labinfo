@@ -133,13 +133,15 @@ function montarEmail_(eventType, data) {
     aberto_pelo_tecnico: ['Abrimos um chamado para você', 'A equipe técnica registrou um chamado vinculado ao seu cadastro. Você receberá por e-mail as próximas atualizações do atendimento.', '#07852a', '&#10003;&#65038;', 'Solicitação registrada'],
     em_atendimento: ['Chamado em atendimento', 'A equipe técnica iniciou o atendimento do seu chamado.', '#2167a8', '&#9881;', 'Atendimento em andamento'],
     atualizacao: ['Atualização do chamado', data.message || 'Há uma nova atualização no seu chamado.', '#d66a00', '!', 'Atenção: aguardando sua verificação'],
-    concluido: ['Chamado concluído', 'O atendimento foi concluído pela equipe técnica.', '#086c3c', '&#10003;&#65038;', 'Atendimento resolvido']
+    concluido: ['CONFIRME SE O ATENDIMENTO FOI REALIZADO COMO SOLICITADO', 'A equipe técnica concluiu o chamado. Confira a solução registrada e confirme se o atendimento foi realizado de acordo com o que você solicitou.', '#086c3c', '!', 'Sua confirmação é importante']
     ,novo_chamado_tecnico: ['Novo chamado na fila', 'Um novo chamado foi registrado e está disponível para atribuição.', '#2167a8', '&#128276;', 'Atenção da equipe']
     ,resposta_servidor_tecnico: ['Servidor respondeu ao chamado', data.message || 'Há uma nova resposta aguardando análise da equipe.', '#d66a00', '!', 'Resposta pendente']
   };
   const content = names[eventType] || ['Atualização do LabInfo TL', 'Há uma novidade em seu chamado.', '#07852a', 'i', 'Nova informação'];
   return {
-    subject: `${data.protocol || 'LabInfo TL'} — ${content[0]}`,
+    subject: eventType === 'concluido'
+      ? `[AÇÃO NECESSÁRIA] Confirme o atendimento — ${data.protocol || 'LabInfo TL'}`
+      : `${data.protocol || 'LabInfo TL'} — ${content[0]}`,
     html: layout_(content[0], content[1], data, {color:content[2],icon:content[3],label:content[4]})
   };
 }
@@ -166,6 +168,13 @@ function layout_(title, message, data, visual) {
   if (data.feedback_url) data.feedback_url = String(data.feedback_url).replace('https://coeritl.github.io/labinfo/?feedback=', LABINFO.supportUrl + '?feedback=');
   data.portal_url = LABINFO.supportUrl;
   visual = visual || {color:'#07852a',icon:'i',label:'Informação'};
+  const isCompleted = data.status === 'Concluído';
+  const resolution = isCompleted && data.resolution
+    ? `<table role="presentation" width="100%" style="margin-top:16px;background:#f5f8f6;border-radius:12px"><tr><td style="padding:16px;font-size:14px;line-height:1.7"><b style="display:block;color:#086c3c;margin-bottom:5px">SOLUÇÃO REGISTRADA PELA EQUIPE</b>${escapar_(data.resolution)}</td></tr></table>`
+    : '';
+  const action = isCompleted && data.feedback_url
+    ? `<table role="presentation" width="100%" style="margin-top:22px;background:#fff7df;border:2px solid #d58a00;border-radius:12px"><tr><td align="center" style="padding:20px"><b style="display:block;color:#6b4800;font-size:17px;margin-bottom:8px">O atendimento foi realizado conforme solicitado?</b><span style="display:block;color:#6b5a31;font-size:14px;line-height:1.5;margin-bottom:16px">Sua confirmação encerra o processo e informa à equipe que a solução foi validada.</span><a href="${escapar_(data.feedback_url)}" style="display:inline-block;background:#086c3c;color:#fff;text-decoration:none;font-weight:bold;font-size:16px;padding:14px 24px;border-radius:10px">SIM, CONFIRMAR ATENDIMENTO</a><span style="display:block;margin-top:12px;color:#6b5a31;font-size:12px">Se ainda houver algum problema, responda a este e-mail descrevendo o que precisa ser revisto.</span></td></tr></table>`
+    : `<p style="margin:24px 0 0"><a href="${LABINFO.supportUrl}" style="display:inline-block;background:${visual.color};color:#fff;text-decoration:none;font-weight:bold;padding:13px 22px;border-radius:10px">Consultar minhas solicitações</a></p>`;
   return `<!doctype html><html><body style="margin:0;background:#f2f6f3;font-family:Arial,sans-serif;color:#10231a">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:28px 12px">
   <table role="presentation" width="600" style="max-width:600px;background:#fff;border-radius:18px;overflow:hidden;border:1px solid #dce7df">
@@ -174,7 +183,7 @@ function layout_(title, message, data, visual) {
   <h1 style="font-size:25px;margin:10px 0 14px">${escapar_(title)}</h1><p style="font-size:16px;line-height:1.6;margin:0 0 22px">${escapar_(message)}</p>
   <table role="presentation" width="100%" style="background:${visual.color}12;border-left:4px solid ${visual.color};border-radius:12px"><tr><td style="padding:16px;font-size:14px;line-height:1.7">
   <b>Assunto:</b> ${escapar_(data.title || 'Não informado')}<br><b>Laboratório:</b> ${escapar_(data.lab || 'Não informado')}<br><b>Categoria:</b> ${escapar_(data.category || 'Não informada')}
-  </td></tr></table><p style="margin:24px 0 0"><a href="${LABINFO.supportUrl}" style="display:inline-block;background:${visual.color};color:#fff;text-decoration:none;font-weight:bold;padding:13px 22px;border-radius:10px">Consultar minhas solicitações</a>${data.status === 'Concluído' && data.feedback_url ? ` <a href="${escapar_(data.feedback_url)}" style="display:inline-block;margin-left:8px;background:#ffffff;color:${visual.color};border:2px solid ${visual.color};text-decoration:none;font-weight:bold;padding:11px 20px;border-radius:10px">Confirmar atendimento</a>` : ''}</p>
+  </td></tr></table>${resolution}${action}
   </td></tr><tr><td style="background:#073d25;color:#dcebe2;padding:18px 30px;font-size:12px">LabInfo TL · Suporte dos Laboratórios de Informática · IFMS Campus Três Lagoas</td></tr>
   </table></td></tr></table></body></html>`;
 }
