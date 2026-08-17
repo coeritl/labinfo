@@ -33,7 +33,25 @@
   $('#closeLogin').onclick=()=>closeLogin();
   $('#loginForm').onsubmit=async e=>{e.preventDefault();$('#loginError').textContent='';const button=e.submitter||e.target.querySelector('[type="submit"]');button.disabled=true;button.textContent='Entrando…';const {data:auth,error}=await sb.auth.signInWithPassword({email:$('#loginEmail').value.trim(),password:$('#loginPassword').value});if(error){button.disabled=false;button.textContent='Entrar';$('#loginError').textContent='Usuário ou senha inválidos.';return}state.session=auth.session;closeLogin(true);await enterAdmin();button.disabled=false;button.textContent='Entrar'};
 
-  const accountActions=document.createElement('div');accountActions.className='admin-heading-actions topbar-admin-actions';accountActions.hidden=true;const adminMenu=$('.admin-menu');adminMenu.before(accountActions);accountActions.append(adminMenu);accountActions.insertAdjacentHTML('beforeend','<div class="account-menu"><button id="accountButton" class="account-button" type="button" aria-expanded="false"><span id="accountAvatar">U</span><span><strong id="accountName">Usuário</strong><small id="accountRole">Perfil</small></span><b>▾</b></button><div id="accountDropdown" class="account-dropdown" hidden><div><strong id="accountMenuName"></strong><small id="accountEmail"></small></div><button id="changePasswordButton" type="button">Alterar senha</button><button id="accountLogout" type="button">Sair do sistema</button></div></div>');$('.topbar').insertBefore(accountActions,$('#adminToggle'));
+  const accountActions=document.createElement('div');accountActions.className='admin-heading-actions topbar-admin-actions';accountActions.hidden=true;const adminMenu=$('.admin-menu');adminMenu.before(accountActions);accountActions.append(adminMenu);
+  accountActions.insertAdjacentHTML('beforeend',`
+    <div class="staff-chat-toggle-wrap" id="staffChatToggleWrap" title="Disponibilidade para atendimento via chat">
+      <label class="switch-toggle" title="Alternar disponibilidade do chat ao vivo">
+        <input type="checkbox" id="staffChatToggle" />
+        <span class="toggle-slider"></span>
+      </label>
+      <span id="staffChatToggleLabel" class="chat-toggle-label">Chat: <strong>Offline</strong></span>
+    </div>
+    <div class="account-menu">
+      <button id="accountButton" class="account-button" type="button" aria-expanded="false"><span id="accountAvatar">U</span><span><strong id="accountName">Usuário</strong><small id="accountRole">Perfil</small></span><b>▾</b></button>
+      <div id="accountDropdown" class="account-dropdown" hidden>
+        <div><strong id="accountMenuName"></strong><small id="accountEmail"></small></div>
+        <button id="changePasswordButton" type="button">Alterar senha</button>
+        <button id="accountLogout" type="button">Sair do sistema</button>
+      </div>
+    </div>
+  `);
+  $('.topbar').insertBefore(accountActions,$('#adminToggle'));
   document.body.insertAdjacentHTML('beforeend','<div id="passwordModal" class="modal-backdrop" hidden><div class="card login-card"><div class="modal-heading"><div><span class="eyebrow">SEGURANÇA DA CONTA</span><h2>Alterar senha</h2><p>Confirme sua senha atual antes de definir uma nova.</p></div><button id="closePasswordModal" class="modal-close" type="button" aria-label="Fechar">×</button></div><form id="passwordForm"><label>Senha atual<input id="currentPassword" type="password" autocomplete="current-password" required></label><label>Nova senha<input id="newPassword" type="password" autocomplete="new-password" minlength="8" required></label><label>Confirmar nova senha<input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required></label><p id="passwordError" class="login-error"></p><button class="primary" type="submit">Atualizar senha</button></form></div></div>');
   new MutationObserver(()=>{accountActions.hidden=$('#adminView').hidden}).observe($('#adminView'),{attributes:true,attributeFilter:['hidden']});
   const accountDropdown=$('#accountDropdown'),passwordModal=$('#passwordModal');
@@ -44,15 +62,64 @@
   $('#accountLogout').onclick=()=>$('#adminToggle').click();
   $('#passwordForm').onsubmit=async e=>{e.preventDefault();const current=$('#currentPassword').value,next=$('#newPassword').value,confirm=$('#confirmPassword').value,errorBox=$('#passwordError');errorBox.textContent='';if(next!==confirm){errorBox.textContent='A confirmação não corresponde à nova senha.';return}if(next===current){errorBox.textContent='A nova senha deve ser diferente da senha atual.';return}const email=state.session?.user?.email;const {error:authError}=await sb.auth.signInWithPassword({email,password:current});if(authError){errorBox.textContent='A senha atual está incorreta.';return}const {error:updateError}=await sb.auth.updateUser({password:next});if(updateError){errorBox.textContent=updateError.message;return}closePasswordModal();toast('Senha atualizada com sucesso.')};
 
-  $('#adminMenuDropdown').querySelector('[data-section="tickets"]')?.remove();$('#adminMenuDropdown').querySelector('[data-section="analytics"]').textContent='Relatórios';$('#adminMenuDropdown').querySelector('[data-section="supervisor"]').textContent='Supervisor';$('#adminMenuDropdown').insertAdjacentHTML('beforeend','<button id="hoursMenuButton">Horários</button><button id="maintenanceMenuButton">Manutenção</button><button id="reservationsMenuButton" type="button">Reservas</button>');
+  $('#adminMenuDropdown').querySelector('[data-section="tickets"]')?.remove();$('#adminMenuDropdown').querySelector('[data-section="analytics"]').textContent='Relatórios';$('#adminMenuDropdown').querySelector('[data-section="supervisor"]').textContent='Supervisor';$('#adminMenuDropdown').insertAdjacentHTML('beforeend','<button id="chatMenuButton" type="button">💬 Chat ao vivo <span id="chatMenuBadge" class="chat-menu-badge" hidden>0</span></button><button id="hoursMenuButton">Horários</button><button id="maintenanceMenuButton">Manutenção</button><button id="reservationsMenuButton" type="button">Reservas</button>');
   $('.brand').addEventListener('click',e=>{if(!$('#adminView').hidden){e.preventDefault();history.pushState({},'', '/labinfo/admin/chamados/');showSection('tickets');window.scrollTo(0,0)}});
   $('#supervisorSection').insertAdjacentHTML('afterend','<section id="hoursSection" class="admin-section" hidden><form id="hoursForm" class="card hours-card"><span class="eyebrow">CONFIGURAÇÃO PÚBLICA</span><h2>Horários de atendimento</h2><p>Defina os dias e horários exibidos na página de abertura de chamados.</p><div id="hoursGrid" class="hours-grid"></div><label>Observação pública (opcional)<input id="hoursNote" maxlength="140" placeholder="Ex.: Atendimento reduzido durante o recesso"></label><button class="primary" type="submit">Salvar horários</button></form></section>');
   $('#hoursSection').insertAdjacentHTML('afterend','<section id="maintenanceSection" class="admin-section" hidden><div class="card maintenance-card"><div class="maintenance-head"><div><span class="eyebrow">SAÚDE DAS INTEGRAÇÕES</span><h2>Uso dos serviços gratuitos</h2><p>Métricas reais do banco, armazenamento e processamento de e-mails.</p></div><button id="refreshMaintenance" class="secondary" type="button">Atualizar métricas</button></div><div id="maintenanceMetrics" class="maintenance-grid"><p>Carregando métricas…</p></div><div class="maintenance-note"><strong>Tráfego mensal do Supabase</strong><p>O tráfego consolidado não é exposto com segurança pela API SQL. Consulte o painel Usage do Supabase para esse indicador.</p></div></div></section>');
+  $('#maintenanceSection').insertAdjacentHTML('afterend',`
+    <section id="chatAdminSection" class="admin-section" hidden>
+      <div class="card chat-admin-card">
+        <div class="chat-admin-head">
+          <div>
+            <span class="eyebrow">CENTRAL DE ATENDIMENTO REALTIME</span>
+            <h2>Atendimento ao Vivo via Chat</h2>
+            <p>Acompanhe chamados solicitados em tempo real e converse diretamente com os docentes e servidores.</p>
+          </div>
+          <div class="chat-admin-head-status">
+            <span id="chatAdminStatusIndicator" class="chat-status-badge offline">⚪ Offline</span>
+            <button id="chatAdminToggleStatusBtn" class="secondary" type="button">Ficar Online</button>
+          </div>
+        </div>
+        <div class="chat-admin-grid">
+          <div class="chat-admin-queue-card">
+            <div class="chat-queue-heading">
+              <h3>Fila de Espera <span id="chatWaitingCount" class="count-pill">0</span></h3>
+              <p>Servidores aguardando conexão com um técnico de plantão</p>
+            </div>
+            <div id="chatWaitingList" class="chat-sessions-list">
+              <p class="empty">Nenhum servidor aguardando no momento.</p>
+            </div>
+          </div>
+          <div class="chat-admin-active-card">
+            <div class="chat-queue-heading">
+              <h3>Em Atendimento Agora <span id="chatActiveCount" class="count-pill active">0</span></h3>
+              <p>Sessões ativas com técnicos</p>
+            </div>
+            <div id="chatActiveList" class="chat-sessions-list">
+              <p class="empty">Nenhum chat ativo no momento.</p>
+            </div>
+          </div>
+        </div>
+        <div class="chat-admin-history">
+          <div class="chat-history-heading">
+            <h3>Histórico Recente de Atendimentos por Chat</h3>
+            <button id="refreshChatDashboard" class="secondary" type="button">Atualizar lista</button>
+          </div>
+          <div id="chatHistoryList" class="chat-history-table">
+            <p class="empty">Carregando histórico...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  `);
   function renderHoursForm(){const grid=$('#hoursGrid');grid.innerHTML=dayMeta.map(([key,name])=>{const d=serviceHours.days?.[key]||{enabled:false,start:'07:00',end:'18:00'};return `<div class="hours-row"><label class="hours-day"><input type="checkbox" name="${key}-enabled" ${d.enabled?'checked':''}>${name}</label><label>Início<input type="time" name="${key}-start" value="${d.start||'07:00'}" ${d.enabled?'':'disabled'}></label><label>Fim<input type="time" name="${key}-end" value="${d.end||'18:00'}" ${d.enabled?'':'disabled'}></label></div>`}).join('');$('#hoursNote').value=serviceHours.note||'';grid.querySelectorAll('input[type=checkbox]').forEach(c=>c.onchange=()=>c.closest('.hours-row').querySelectorAll('input[type=time]').forEach(i=>i.disabled=!c.checked))}
   $('#hoursMenuButton').onclick=()=>{document.querySelectorAll('.admin-section').forEach(x=>x.hidden=true);$('#hoursSection').hidden=false;$('#adminTitle').textContent='Horários de atendimento';$('#adminSubtitle').textContent='Configure a disponibilidade exibida aos servidores.';$('#adminMenuDropdown').hidden=true;renderHoursForm()};
   const bytes=(n)=>n<1048576?(n/1024).toFixed(1)+' KB':(n/1048576).toFixed(1)+' MB';const usageCard=(label,value,detail,pct)=>`<article class="usage-card ${pct>=90?'danger':pct>=70?'warning':''}"><span>${label}</span><strong>${value}</strong><small>${detail}</small>${pct==null?'':`<div class="usage-bar"><i style="width:${Math.min(100,pct)}%"></i></div><em>${pct.toFixed(1)}% utilizado</em>`}</article>`;
   async function renderMaintenance(){const box=$('#maintenanceMetrics');box.innerHTML='<p>Atualizando métricas…</p>';const {data:m,error}=await sb.rpc('maintenance_metrics');if(error){box.innerHTML='<p class="error-text">Não foi possível carregar as métricas.</p>';return fail(error)}const dbPct=m.database_bytes/524288000*100,storagePct=m.attachment_bytes/1073741824*100,emailUsed=m.sent_today||0,emailRemaining=m.email_quota_remaining,emailPct=emailRemaining==null?null:(1500-emailRemaining)/1500*100;box.innerHTML=usageCard('Banco de dados',bytes(m.database_bytes),'Limite gratuito: 500 MB',dbPct)+usageCard('Imagens armazenadas',bytes(m.attachment_bytes),`${m.attachment_count} arquivo(s) · limite: 1 GB`,storagePct)+usageCard('E-mails do LabInfo hoje',m.sent_today,emailRemaining==null?'Cota real ainda não informada pelo Apps Script':`${emailRemaining} destinatário(s) restantes hoje`,emailPct)+usageCard('E-mails no mês',m.sent_month,'Contagem registrada pelo LabInfo',null)+usageCard('Fila pendente',m.outbox_pending,m.outbox_failed+' falha(s) definitiva(s)',null)+usageCard('Chamados no banco',m.ticket_count,'Todos os períodos',null)+usageCard('Consulta da caixa hoje',m.inbox_runs_today,m.last_inbox_run?'Última: '+fmt(m.last_inbox_run):'Ainda não executada',null)+usageCard('Fila de saída hoje',m.outbox_runs_today,m.last_outbox_run?'Última: '+fmt(m.last_outbox_run):'Ainda não executada',null)}
   $('#maintenanceMenuButton').onclick=()=>{document.querySelectorAll('.admin-section').forEach(x=>x.hidden=true);$('#maintenanceSection').hidden=false;$('#adminTitle').textContent='Manutenção';$('#adminSubtitle').textContent='Acompanhe limites, integrações e filas do sistema.';renderMaintenance()};$('#refreshMaintenance').onclick=renderMaintenance;
+  $('#chatMenuButton').onclick=()=>{document.querySelectorAll('.admin-section').forEach(x=>x.hidden=true);$('#chatAdminSection').hidden=false;$('#adminTitle').textContent='Chat ao vivo';$('#adminSubtitle').textContent='Gerencie atendimentos em tempo real e conversas com os servidores.';$('#adminMenuDropdown').hidden=true;renderChatAdminDashboard()};
+  $('#refreshChatDashboard')?.addEventListener('click', renderChatAdminDashboard);
+  $('#chatAdminToggleStatusBtn')?.addEventListener('click', ()=>{const toggle=$('#staffChatToggle');if(toggle){toggle.checked=!toggle.checked;toggle.dispatchEvent(new Event('change'))}});
   $('#hoursForm').onsubmit=async e=>{e.preventDefault();const form=new FormData(e.target),days={};for(const [key] of dayMeta){const enabled=form.has(`${key}-enabled`),start=form.get(`${key}-start`)||'07:00',end=form.get(`${key}-end`)||'18:00';if(enabled&&start>=end)return toast('O horário final deve ser posterior ao inicial.');days[key]={enabled,start,end}}const value={days,note:$('#hoursNote').value.trim()};const {error}=await sb.from('system_settings').upsert({key:'service_hours',value,updated_by:state.profile.id,updated_at:new Date().toISOString()});if(error)return fail(error);serviceHours=value;$('#serviceHoursText').textContent=value.note||serviceHoursSummary(value);toast('Horários atualizados com sucesso.')};
 
   async function catalogs(){
@@ -415,10 +482,111 @@
     }
   }
 
+  async function renderChatAdminDashboard() {
+    const toggle = $('#staffChatToggle');
+    const isOnline = toggle ? toggle.checked : false;
+    const badge = $('#chatAdminStatusIndicator');
+    const btn = $('#chatAdminToggleStatusBtn');
+    if (badge) {
+      badge.className = 'chat-status-badge ' + (isOnline ? 'online' : 'offline');
+      badge.textContent = isOnline ? '🟢 Online (Você está disponível)' : '⚪ Offline';
+    }
+    if (btn) {
+      btn.textContent = isOnline ? 'Ficar Offline' : 'Ficar Online';
+      btn.className = isOnline ? 'secondary' : 'primary';
+    }
+
+    try {
+      const { data: sessions, error } = await sb
+        .from('chat_sessions')
+        .select('*, servers(*), profiles(*), tickets(protocol)')
+        .order('created_at', { ascending: false })
+        .limit(40);
+
+      if (error) throw error;
+
+      const waiting = (sessions || []).filter(s => s.status === 'waiting');
+      const active = (sessions || []).filter(s => s.status === 'active');
+      const closed = (sessions || []).filter(s => s.status === 'closed');
+
+      const menuBadge = $('#chatMenuBadge');
+      if (menuBadge) {
+        menuBadge.textContent = waiting.length;
+        menuBadge.hidden = waiting.length === 0;
+      }
+      const waitingCountEl = $('#chatWaitingCount');
+      if (waitingCountEl) waitingCountEl.textContent = waiting.length;
+      const activeCountEl = $('#chatActiveCount');
+      if (activeCountEl) activeCountEl.textContent = active.length;
+
+      const waitingList = $('#chatWaitingList');
+      if (waitingList) {
+        waitingList.innerHTML = waiting.length ? waiting.map(s => `
+          <div class="chat-session-item waiting-item">
+            <div class="chat-session-info">
+              <strong>${safe(s.servers?.full_name || 'Servidor')}</strong>
+              <small>SIAPE: ${safe(s.servers?.siape || '—')} • Aberto ${fmt(s.created_at)}</small>
+              <p>${safe(s.subject || 'Dúvida geral')}</p>
+            </div>
+            <button class="primary chat-attend-btn" type="button" data-attend-session="${s.id}">Atender agora ➔</button>
+          </div>
+        `).join('') : '<p class="empty">Nenhum servidor aguardando no momento.</p>';
+
+        waitingList.querySelectorAll('[data-attend-session]').forEach(b => {
+          b.onclick = () => openAdminChatRoom(b.dataset.attendSession);
+        });
+      }
+
+      const activeList = $('#chatActiveList');
+      if (activeList) {
+        activeList.innerHTML = active.length ? active.map(s => `
+          <div class="chat-session-item active-item">
+            <div class="chat-session-info">
+              <strong>${safe(s.servers?.full_name || 'Servidor')}</strong>
+              <small>Técnico: ${safe(s.profiles?.full_name || 'Em atendimento')} • Iniciado ${fmt(s.started_at || s.created_at)}</small>
+              <p>${safe(s.subject || 'Dúvida geral')}</p>
+            </div>
+            <div class="chat-active-item-actions">
+              <button class="secondary chat-open-btn" type="button" data-open-session="${s.id}">Abrir conversa 💬</button>
+            </div>
+          </div>
+        `).join('') : '<p class="empty">Nenhum chat ativo no momento.</p>';
+
+        activeList.querySelectorAll('[data-open-session]').forEach(b => {
+          b.onclick = () => openAdminChatRoom(b.dataset.openSession);
+        });
+      }
+
+      const historyList = $('#chatHistoryList');
+      if (historyList) {
+        historyList.innerHTML = closed.length ? `
+          <div class="chat-history-row chat-history-head">
+            <span>Servidor</span>
+            <span>Assunto</span>
+            <span>Técnico</span>
+            <span>Protocolo</span>
+            <span>Data/Hora</span>
+          </div>
+          ${closed.map(s => `
+            <div class="chat-history-row">
+              <strong>${safe(s.servers?.full_name || '—')}</strong>
+              <span>${safe(s.subject || '—')}</span>
+              <span>${safe(s.profiles?.full_name || '—')}</span>
+              <strong>${s.tickets?.protocol ? `<span class="badge done">${s.tickets.protocol}</span>` : '<span class="badge">Sem chamado</span>'}</strong>
+              <small>${fmt(s.closed_at || s.created_at)}</small>
+            </div>
+          `).join('')}
+        ` : '<p class="empty">Nenhum atendimento finalizado registrado ainda.</p>';
+      }
+    } catch (e) {
+      console.warn('Erro ao carregar painel de chat', e);
+    }
+  }
+
   async function initStaffChatStatus() {
     if (!state.profile || state.profile.role !== 'tecnico') {
-      const wrap = document.querySelector('.staff-chat-toggle-wrap');
-      if (wrap) wrap.hidden = true;
+      const wrap = document.querySelectorAll('.staff-chat-toggle-wrap');
+      wrap.forEach(w => w.hidden = true);
       return;
     }
     const toggle = $('#staffChatToggle');
@@ -429,7 +597,7 @@
       const { data: row } = await sb.from('staff_chat_status').select('is_online, last_heartbeat').eq('profile_id', state.profile.id).maybeSingle();
       const isOnline = row ? row.is_online : false;
       toggle.checked = isOnline;
-      label.innerHTML = `Chat: <strong>${isOnline ? 'Disponível' : 'Offline'}</strong>`;
+      label.innerHTML = `Chat: <strong>${isOnline ? 'Online' : 'Offline'}</strong>`;
 
       if (isOnline) {
         startStaffHeartbeat();
@@ -440,7 +608,7 @@
 
     toggle.onchange = async () => {
       const nextOnline = toggle.checked;
-      label.innerHTML = `Chat: <strong>${nextOnline ? 'Disponível' : 'Offline'}</strong>`;
+      label.innerHTML = `Chat: <strong>${nextOnline ? 'Online' : 'Offline'}</strong>`;
       try {
         const { error } = await sb.rpc('set_staff_chat_status', { p_online: nextOnline });
         if (error) throw error;
@@ -452,9 +620,10 @@
           toast('Você está OFFLINE para atendimento via chat.');
         }
         await loadChatAvailability();
+        renderChatAdminDashboard();
       } catch (err) {
         toggle.checked = !nextOnline;
-        label.innerHTML = `Chat: <strong>${!nextOnline ? 'Disponível' : 'Offline'}</strong>`;
+        label.innerHTML = `Chat: <strong>${!nextOnline ? 'Online' : 'Offline'}</strong>`;
         fail(err, 'Não foi possível alterar seu status.');
       }
     };
@@ -483,8 +652,9 @@
     if (!state.profile || state.profile.role !== 'tecnico') return;
 
     sb.channel('labinfo-staff-chat-incoming')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_sessions' }, async (payload) => {
-        if (payload.new.status === 'waiting') {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_sessions' }, async (payload) => {
+        renderChatAdminDashboard();
+        if (payload.eventType === 'INSERT' && payload.new.status === 'waiting') {
           const toggle = $('#staffChatToggle');
           if (toggle && toggle.checked) {
             const { data: server } = await sb.from('servers').select('full_name, siape').eq('id', payload.new.server_id).maybeSingle();
@@ -500,6 +670,8 @@
         }
       })
       .subscribe();
+
+    renderChatAdminDashboard();
   }
 
   $('#dismissIncomingChatBtn')?.addEventListener('click', () => {
