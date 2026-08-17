@@ -11,13 +11,26 @@
   $('#reservationDate').min=new Date().toLocaleDateString('en-CA',{timeZone:'America/Cuiaba'});
 
   function showPublic(view,push=true){
-    document.body.classList.remove('admin-route');$('#homeView').hidden=view!=='home';$('#reservationsPublicView').hidden=view!=='reservations';$('#teacherView').hidden=view!=='support';$('#adminView').hidden=true;
-    if(push)history.pushState({},'',view==='home'?'/labinfo/':view==='reservations'?'/labinfo/reservas/':'/labinfo/suporte/');window.scrollTo(0,0);
+    document.body.classList.remove('admin-route');
+    $('#homeView').hidden=view!=='home';
+    $('#reservationsPublicView').hidden=view!=='reservations';
+    $('#teacherView').hidden=view!=='support';
+    const chatView=$('#chatPublicView');if(chatView)chatView.hidden=view!=='chat';
+    $('#adminView').hidden=true;
+    if(push)history.pushState({},'',view==='home'?'/labinfo/':view==='reservations'?'/labinfo/reservas/':view==='chat'?'/labinfo/chat/':'/labinfo/suporte/');
+    window.scrollTo(0,0);
   }
-  $('#openReservations').onclick=()=>showPublic('reservations');$('#backHome').onclick=()=>showPublic('home');
+  window.labinfoShowPublic=showPublic;
+  $('#openReservations').onclick=()=>showPublic('reservations');
+  $('#openSupport')?.addEventListener('click',()=>showPublic('support'));
+  $('#openLiveChat')?.addEventListener('click',()=>showPublic('chat'));
+  $('#backHome').onclick=()=>showPublic('home');
+  $('#backHomeFromChat')?.addEventListener('click',()=>showPublic('home'));
+  $('#backHomeFromSupport')?.addEventListener('click',()=>showPublic('home'));
+  $('#chatGoToSupport')?.addEventListener('click',e=>{e.preventDefault();showPublic('support')});
   $('.brand').addEventListener('click',event=>{if(!$('#adminView').hidden)return;event.preventDefault();showPublic('home')});
-  window.addEventListener('popstate',()=>{const path=location.pathname;if(path.includes('/reservas'))showPublic('reservations',false);else if(path.includes('/suporte'))showPublic('support',false);else if(!path.includes('/admin'))showPublic('home',false)});
-  const initialParams=new URLSearchParams(location.search),initialPublicRoute=initialParams.get('route');if(location.pathname.includes('/reservas')||initialPublicRoute==='reservas'||initialParams.has('confirm_reservation'))showPublic('reservations',false);else if(location.pathname.includes('/suporte')||initialPublicRoute==='suporte'||initialParams.has('feedback'))showPublic('support',false);
+  window.addEventListener('popstate',()=>{const path=location.pathname;if(path.includes('/reservas'))showPublic('reservations',false);else if(path.includes('/chat'))showPublic('chat',false);else if(path.includes('/suporte'))showPublic('support',false);else if(!path.includes('/admin'))showPublic('home',false)});
+  const initialParams=new URLSearchParams(location.search),initialPublicRoute=initialParams.get('route');if(location.pathname.includes('/reservas')||initialPublicRoute==='reservas'||initialParams.has('confirm_reservation'))showPublic('reservations',false);else if(location.pathname.includes('/chat')||initialPublicRoute==='chat')showPublic('chat',false);else if(location.pathname.includes('/suporte')||initialPublicRoute==='suporte'||initialParams.has('feedback'))showPublic('support',false);
 
   let publicServer=null,publicLabs=[],publicScheduleRows=[],publicWeekStart=publicMonday(new Date());
   function publicMonday(value){const date=new Date(value);date.setHours(12,0,0,0);const day=date.getDay()||7;date.setDate(date.getDate()-day+1);return date}

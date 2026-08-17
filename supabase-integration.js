@@ -8,7 +8,7 @@
   const routeParam=new URLSearchParams(location.search).get('route'),requestedRoute=routeParam||location.pathname.replace(/^\/labinfo\/?/,'').replace(/\/$/,'');
   const isAdminRoute=requestedRoute==='admin'||requestedRoute==='admin/chamados';
   if(routeParam)window.addEventListener('load',()=>history.replaceState({},'',`/labinfo/${requestedRoute}/`),{once:true});
-  if(isAdminRoute){document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true}
+  if(isAdminRoute){document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true}
   window.labinfoDb=sb;
   const replace=(target,rows)=>{target.splice(0,target.length,...rows)};
   const fmt=d=>new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date(d));
@@ -94,8 +94,8 @@
   analytics=function(){const rows=filteredTickets(),hours=Array.from({length:16},(_,i)=>[`${i+7}h`,rows.filter(t=>t.createdAt&&new Date(t.createdAt).getHours()===i+7).length]),max=Math.max(1,...hours.map(x=>x[1])),categories=grouped(rows,'category'),labs=grouped(rows,'lab'),done=rows.filter(x=>x.status==='Concluído').length,peak=hours.reduce((a,b)=>b[1]>a[1]?b:a,['—',0]),serverRows=grouped(rows,'teacher').map(([name,count])=>{const mine=rows.filter(x=>x.teacher===name),top=grouped(mine,'category')[0]?.[0]||'—';return [name,top,count]}),cards=document.querySelectorAll('#analyticsSection .analytics-metrics article');const vals=[[rows.length,'Registros reais'],[rows.length?Math.round(done/rows.length*100)+'%':'0%','Chamados concluídos'],[peak[1]?peak[0]:'—',peak[1]+' abertura(s)'],[labs[0]?.[0]||'—',(labs[0]?.[1]||0)+' ocorrência(s)']];cards.forEach((c,i)=>{c.querySelector('strong').textContent=vals[i][0];c.querySelector('em').textContent=vals[i][1]});$('#hourChart').innerHTML=hours.map(([l,v])=>`<div class="bar-column"><small>${v}</small><i style="height:${v/max*85}%"></i><strong>${l}</strong></div>`).join('');renderRank('#categoryChart',categories);renderRank('#labChart',labs);$('#teacherChart').innerHTML='<div><span>Servidor</span><span>Principal categoria</span><span>Chamados</span></div>'+serverRows.map(x=>`<div><strong>${x[0]}</strong><span>${x[1]}</span><strong>${x[2]}</strong></div>`).join('')+(serverRows.length?'':'<p class="empty">Sem dados no período.</p>')};
   supervisor=function(){const waiting=tickets.filter(t=>t.status==='Recebido').length,active=tickets.filter(t=>t.status==='Em atendimento').length,done=tickets.filter(t=>t.status==='Concluído').length;$('#supTotal').textContent=tickets.length;$('#supWaiting').textContent=waiting;$('#supActive').textContent=active;$('#supDone').textContent=done;$('#supervisorTable').innerHTML='<div class="supervisor-row supervisor-head"><span>Protocolo</span><span>Solicitante</span><span>Laboratório</span><span>Categoria</span><span>Status</span><span>Técnico</span></div>'+tickets.map(t=>`<div class="supervisor-row"><strong>${t.id}</strong><span>${t.teacher}</span><span>${t.lab}</span><span>${t.category}</span>${badge(t.status)}<span>${t.technician}</span></div>`).join('')+(tickets.length?'':'<p class="empty">Nenhum chamado registrado.</p>');const hours=Array.from({length:16},(_,i)=>[`${i+7}h`,tickets.filter(t=>t.createdAt&&new Date(t.createdAt).getHours()===i+7).length]),max=Math.max(1,...hours.map(x=>x[1]));$('#supHourChart').innerHTML=hours.map(([l,v])=>`<div class="bar-column"><small>${v}</small><i style="height:${v/max*85}%"></i><strong>${l}</strong></div>`).join('');renderRank('#supCategoryChart',grouped(tickets,'category'));renderRank('#supLabChart',grouped(tickets,'lab'));const people=grouped(tickets,'teacher').map(([name,count])=>[name,grouped(tickets.filter(x=>x.teacher===name),'category')[0]?.[0]||'—',count]);$('#supTeacherChart').innerHTML='<div><span>Servidor</span><span>Principal categoria</span><span>Chamados</span></div>'+people.map(x=>`<div><strong>${x[0]}</strong><span>${x[1]}</span><strong>${x[2]}</strong></div>`).join('')+(people.length?'':'<p class="empty">Sem dados registrados.</p>')};
   $('#applyAnalytics').onclick=analytics;
-  async function enterAdmin(){const p=await getProfile();if(!p){openLogin();return}await loadAdmin();$('#adminView').hidden=false;$('#teacherView').hidden=true;$('#homeView').hidden=true;$('#reservationsPublicView').hidden=true;$('#adminToggle').textContent='Sair';$('#accountName').textContent=p.full_name;$('#accountMenuName').textContent=p.full_name;$('#accountEmail').textContent=p.email;$('#accountRole').textContent=p.role==='supervisor'?'Supervisor':'Técnico';$('#accountAvatar').textContent=p.full_name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();const menuButtons=document.querySelectorAll('#adminMenuDropdown button');menuButtons.forEach(b=>b.hidden=false);if(p.role==='supervisor'){menuButtons.forEach(b=>b.hidden=b.dataset.section!=='supervisor'&&b.id!=='reservationsMenuButton');showSection('supervisor')}else showSection('tickets');window.scrollTo(0,0)}
-  $('#adminToggle').onclick=async()=>{if(state.profile&&!$('#adminView').hidden){await sb.auth.signOut();state.profile=null;state.session=null;accountDropdown.hidden=true;$('#adminView').hidden=true;document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;$('#adminToggle').textContent='Área técnica';history.pushState({},'', '/labinfo/admin/');openLogin();return}document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;history.pushState({},'', '/labinfo/admin/');await enterAdmin()};
+  async function enterAdmin(){const p=await getProfile();if(!p){openLogin();return}await loadAdmin();$('#adminView').hidden=false;$('#teacherView').hidden=true;$('#homeView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;$('#adminToggle').textContent='Sair';$('#accountName').textContent=p.full_name;$('#accountMenuName').textContent=p.full_name;$('#accountEmail').textContent=p.email;$('#accountRole').textContent=p.role==='supervisor'?'Supervisor':'Técnico';$('#accountAvatar').textContent=p.full_name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();const menuButtons=document.querySelectorAll('#adminMenuDropdown button');menuButtons.forEach(b=>b.hidden=false);if(p.role==='supervisor'){menuButtons.forEach(b=>b.hidden=b.dataset.section!=='supervisor'&&b.id!=='reservationsMenuButton');showSection('supervisor')}else showSection('tickets');await initStaffChatStatus();listenIncomingChats();window.scrollTo(0,0)}
+  $('#adminToggle').onclick=async()=>{if(state.profile&&!$('#adminView').hidden){stopStaffHeartbeat();await sb.auth.signOut();state.profile=null;state.session=null;accountDropdown.hidden=true;$('#adminView').hidden=true;document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;$('#adminToggle').textContent='Área técnica';history.pushState({},'', '/labinfo/admin/');openLogin();return}document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;history.pushState({},'', '/labinfo/admin/');await enterAdmin()};
 
   const originalDetail=renderDetail;
   renderDetail=function(){if(!selected){$('#ticketDetail').innerHTML='<div class="empty-state-detail"><strong>Nenhum chamado selecionado</strong><p>Os chamados reais aparecerão aqui assim que forem registrados.</p></div>';return}originalDetail();if(!state.profile||state.profile.role==='supervisor')return;const technicianSelect=$('#technician');if(technicianSelect){const label=technicianSelect.closest('label');label.childNodes[0].textContent='Técnicos responsáveis';technicianSelect.hidden=true;technicianSelect.required=false;technicianSelect.insertAdjacentHTML('afterend',`<div id="assigneeChoices" class="multi-assignee"><label class="team-option"><input type="checkbox" value="__all__" ${selected.technician==='Toda a equipe'?'checked':''}>Toda a equipe</label>${data.technicians.filter(x=>x.role==='tecnico'&&x.active!==false).map(x=>`<label><input type="checkbox" value="${x.id}" ${(selected.technicianIds||[]).includes(x.id)?'checked':''}>${x.name}</label>`).join('')}</div>`);const choices=$('#assigneeChoices');choices.onchange=e=>{const all=choices.querySelector('[value="__all__"]'),individuals=[...choices.querySelectorAll('input:not([value="__all__"])')];if(e.target===all&&all.checked)individuals.forEach(x=>x.checked=false);else if(e.target!==all&&e.target.checked)all.checked=false}}const assign=$('#assign'),send=$('#sendReply'),close=$('#closeTicket');if(assign)assign.onclick=async()=>{const checked=[...$('#assigneeChoices').querySelectorAll('input:checked')].map(x=>x.value),collective=checked.includes('__all__'),ids=checked.filter(x=>x!=='__all__');if(!collective&&!ids.length)return toast('Selecione ao menos um técnico ou toda a equipe.');const primary=ids[0]||null,{error}=await sb.from('tickets').update({assigned_to:primary,status:'Em atendimento',started_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',selected.dbId);if(error)return fail(error);const removed=await sb.from('ticket_assignees').delete().eq('ticket_id',selected.dbId);if(removed.error)return fail(removed.error);if(ids.length){const inserted=await sb.from('ticket_assignees').insert(ids.map(id=>({ticket_id:selected.dbId,profile_id:id,assigned_by:state.profile.id})));if(inserted.error)return fail(inserted.error)}const names=collective?'Toda a equipe':data.technicians.filter(x=>ids.includes(x.id)).map(x=>x.name).join(', ');await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:'Atendimento atribuído a '+names,kind:'status'});await loadAdmin();toast('Responsáveis atualizados: '+names)};if(send)send.onclick=async()=>{const msg=$('#reply').value.trim();if(!msg)return toast('Digite uma atualização.');const {error}=await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:msg});if(error)return fail(error);toast('Atualização registrada.')};if(close)close.onclick=async()=>{const msg=$('#reply').value.trim();if(!msg)return toast('Descreva a solução.');if(selected.attachments?.length){const {error:se}=await sb.storage.from('ticket-attachments').remove(selected.attachments.map(x=>x.path));if(se)return fail(se);await sb.from('attachments').delete().eq('ticket_id',selected.dbId)}const {error}=await sb.from('tickets').update({status:'Concluído',resolution:msg,closed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',selected.dbId);if(error)return fail(error);await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:msg,kind:'fechamento'});await loadAdmin();toast('Chamado concluído e anexos removidos.')}};
@@ -345,5 +345,561 @@
     window.addEventListener('focus',checkAdminChanges);
   }
 
-  catalogs();loadServiceHours();confirmFeedbackFromLink();if(isAdminRoute)enterAdmin().then(startAdminSynchronization);
+  // ==========================================================================
+  // MÓDULO DE CHAT AO VIVO — ATENDIMENTO EM TEMPO REAL E GERAÇÃO DE CHAMADOS
+  // ==========================================================================
+
+  let chatAvailability = { available: false, online_count: 0 };
+  let staffHeartbeatTimer = null;
+  let currentPublicChatSession = null;
+  let currentPublicServer = null;
+  let publicChatChannel = null;
+  let adminChatChannel = null;
+  let activeAdminChatSession = null;
+  let activeAdminChatMessages = [];
+  let incomingAlertSessionId = null;
+
+  function playChatNotificationSound() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.45);
+    } catch (e) {
+      console.warn('Alerta sonoro indisponível:', e);
+    }
+  }
+
+  async function loadChatAvailability() {
+    try {
+      const { data: res, error } = await sb.rpc('get_chat_availability');
+      if (error) throw error;
+      chatAvailability = res || { available: false, online_count: 0 };
+
+      const badge = $('#chatAvailabilityBadge');
+      const desc = $('#chatAvailabilityDescription');
+      const action = $('#chatAvailabilityAction');
+      const warning = $('#chatAvailabilityWarning');
+
+      if (badge) {
+        badge.className = 'chat-status-badge ' + (chatAvailability.available ? 'online' : 'offline');
+        badge.textContent = chatAvailability.available
+          ? `🟢 Online (${chatAvailability.online_count} de plantão)`
+          : '⚪ Offline';
+      }
+      if (desc) {
+        desc.textContent = chatAvailability.available
+          ? 'Técnicos disponíveis para tirar dúvidas e prestar auxílio imediato.'
+          : 'Converse em tempo real com os técnicos de plantão dos laboratórios.';
+      }
+      if (action) {
+        action.textContent = chatAvailability.available
+          ? 'Falar com técnico agora →'
+          : 'Acessar atendimento →';
+      }
+      if (warning) {
+        warning.hidden = chatAvailability.available;
+      }
+    } catch (err) {
+      console.warn('Não foi possível verificar disponibilidade do chat', err);
+    }
+  }
+
+  async function initStaffChatStatus() {
+    if (!state.profile || state.profile.role !== 'tecnico') {
+      const wrap = document.querySelector('.staff-chat-toggle-wrap');
+      if (wrap) wrap.hidden = true;
+      return;
+    }
+    const toggle = $('#staffChatToggle');
+    const label = $('#staffChatToggleLabel');
+    if (!toggle || !label) return;
+
+    try {
+      const { data: row } = await sb.from('staff_chat_status').select('is_online, last_heartbeat').eq('profile_id', state.profile.id).maybeSingle();
+      const isOnline = row ? row.is_online : false;
+      toggle.checked = isOnline;
+      label.innerHTML = `Chat: <strong>${isOnline ? 'Disponível' : 'Offline'}</strong>`;
+
+      if (isOnline) {
+        startStaffHeartbeat();
+      }
+    } catch (e) {
+      console.warn('Falha ao carregar status do técnico', e);
+    }
+
+    toggle.onchange = async () => {
+      const nextOnline = toggle.checked;
+      label.innerHTML = `Chat: <strong>${nextOnline ? 'Disponível' : 'Offline'}</strong>`;
+      try {
+        const { error } = await sb.rpc('set_staff_chat_status', { p_online: nextOnline });
+        if (error) throw error;
+        if (nextOnline) {
+          startStaffHeartbeat();
+          toast('Você está ONLINE para atendimento via chat.');
+        } else {
+          stopStaffHeartbeat();
+          toast('Você está OFFLINE para atendimento via chat.');
+        }
+        await loadChatAvailability();
+      } catch (err) {
+        toggle.checked = !nextOnline;
+        label.innerHTML = `Chat: <strong>${!nextOnline ? 'Disponível' : 'Offline'}</strong>`;
+        fail(err, 'Não foi possível alterar seu status.');
+      }
+    };
+  }
+
+  function startStaffHeartbeat() {
+    stopStaffHeartbeat();
+    staffHeartbeatTimer = setInterval(async () => {
+      if (!state.profile || document.hidden) return;
+      try {
+        await sb.rpc('staff_chat_heartbeat');
+      } catch (e) {
+        console.warn('Falha no heartbeat do técnico', e);
+      }
+    }, 60000);
+  }
+
+  function stopStaffHeartbeat() {
+    if (staffHeartbeatTimer) {
+      clearInterval(staffHeartbeatTimer);
+      staffHeartbeatTimer = null;
+    }
+  }
+
+  function listenIncomingChats() {
+    if (!state.profile || state.profile.role !== 'tecnico') return;
+
+    sb.channel('labinfo-staff-chat-incoming')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_sessions' }, async (payload) => {
+        if (payload.new.status === 'waiting') {
+          const toggle = $('#staffChatToggle');
+          if (toggle && toggle.checked) {
+            const { data: server } = await sb.from('servers').select('full_name, siape').eq('id', payload.new.server_id).maybeSingle();
+            incomingAlertSessionId = payload.new.id;
+            const alert = $('#incomingChatAlert');
+            const nameEl = $('#incomingChatServerName');
+            const subEl = $('#incomingChatSubjectText');
+            if (nameEl) nameEl.textContent = server ? `${server.full_name} (SIAPE ${server.siape})` : 'Novo Servidor';
+            if (subEl) subEl.textContent = payload.new.subject || 'Atendimento via chat';
+            if (alert) alert.hidden = false;
+            playChatNotificationSound();
+          }
+        }
+      })
+      .subscribe();
+  }
+
+  $('#dismissIncomingChatBtn')?.addEventListener('click', () => {
+    $('#incomingChatAlert').hidden = true;
+    incomingAlertSessionId = null;
+  });
+
+  $('#acceptIncomingChatBtn')?.addEventListener('click', async () => {
+    if (!incomingAlertSessionId) return;
+    const sessionId = incomingAlertSessionId;
+    $('#incomingChatAlert').hidden = true;
+    incomingAlertSessionId = null;
+    await openAdminChatRoom(sessionId);
+  });
+
+  async function openAdminChatRoom(sessionId) {
+    try {
+      const { error: acceptErr } = await sb.rpc('accept_chat_session', { p_session_id: sessionId });
+      if (acceptErr) throw acceptErr;
+
+      const { data: session, error: sessErr } = await sb.from('chat_sessions').select('*, servers(*)').eq('id', sessionId).single();
+      if (sessErr) throw sessErr;
+      activeAdminChatSession = session;
+      activeAdminChatMessages = [];
+
+      $('#adminChatModalTitle').textContent = session.servers?.full_name || 'Servidor';
+      $('#adminChatServerMeta').textContent = `SIAPE: ${session.servers?.siape || '—'} • ${session.servers?.email || '—'} • ${session.subject || 'Dúvida'}`;
+
+      $('#adminChatModal').hidden = false;
+      document.body.classList.add('modal-open');
+
+      await loadAdminChatMessages(sessionId);
+      subscribeAdminChatMessages(sessionId);
+    } catch (err) {
+      fail(err, 'Não foi possível aceitar a sessão de chat.');
+    }
+  }
+
+  async function loadAdminChatMessages(sessionId) {
+    const list = $('#adminChatMessagesList');
+    list.innerHTML = '<p class="empty">Carregando mensagens...</p>';
+    const { data: msgs, error } = await sb.from('chat_messages').select('*').eq('session_id', sessionId).order('created_at', { ascending: true });
+    if (error) return fail(error);
+    activeAdminChatMessages = msgs || [];
+    renderAdminChatMessages();
+  }
+
+  function renderAdminChatMessages() {
+    const list = $('#adminChatMessagesList');
+    if (!list) return;
+    list.innerHTML = activeAdminChatMessages.map(m => {
+      const isSystem = m.sender_type === 'system';
+      const isMine = m.sender_type === 'technician';
+      const time = fmt(m.created_at);
+      if (isSystem) {
+        return `<div class="chat-bubble system"><span>${safe(m.message)}</span></div>`;
+      }
+      return `
+        <div class="chat-bubble ${isMine ? 'mine' : 'other'}">
+          <span class="chat-bubble-author">${safe(m.sender_name)}</span>
+          <div class="chat-bubble-text">${safe(m.message)}</div>
+          <time class="chat-bubble-meta">${time}</time>
+        </div>
+      `;
+    }).join('');
+    list.scrollTop = list.scrollHeight;
+  }
+
+  function subscribeAdminChatMessages(sessionId) {
+    if (adminChatChannel) {
+      sb.removeChannel(adminChatChannel);
+    }
+    adminChatChannel = sb.channel('admin-chat-room-' + sessionId)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `session_id=eq.${sessionId}` }, (payload) => {
+        if (!activeAdminChatMessages.some(m => m.id === payload.new.id)) {
+          activeAdminChatMessages.push(payload.new);
+          renderAdminChatMessages();
+          if (payload.new.sender_type === 'server') {
+            playChatNotificationSound();
+          }
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_sessions', filter: `id=eq.${sessionId}` }, (payload) => {
+        if (payload.new.status === 'closed') {
+          toast('Este chat foi finalizado.');
+        }
+      })
+      .subscribe();
+  }
+
+  $('#adminChatMessageForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!activeAdminChatSession) return;
+    const input = $('#adminChatMessageInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+
+    const { error } = await sb.rpc('send_chat_message', {
+      p_session_id: activeAdminChatSession.id,
+      p_sender_type: 'technician',
+      p_message: msg
+    });
+    if (error) {
+      input.value = msg;
+      fail(error, 'Erro ao enviar mensagem.');
+    }
+  });
+
+  $('#closeAdminChatModal')?.addEventListener('click', () => {
+    $('#adminChatModal').hidden = true;
+    document.body.classList.remove('modal-open');
+  });
+
+  // Modal: Gerar Chamado Oficial do Chat
+  $('#adminFinishChatBtn')?.addEventListener('click', () => {
+    if (!activeAdminChatSession) return;
+
+    const transcript = activeAdminChatMessages.map(m => {
+      const time = fmt(m.created_at);
+      return `[${time}] ${m.sender_name}: ${m.message}`;
+    }).join('\n');
+
+    $('#chatTicketTranscript').value = transcript || 'Nenhuma mensagem registrada.';
+    $('#chatTicketTitle').value = `Atendimento via Chat: ${activeAdminChatSession.subject || 'Dúvida/Suporte'}`;
+    $('#chatTicketResolution').value = '';
+
+    $('#chatTicketLab').innerHTML = '<option value="">Selecione o local</option>' + data.labs.map(l => `<option value="${l.id}">${safe(l.name)}</option>`).join('');
+    $('#chatTicketCategory').innerHTML = '<option value="">Selecione a categoria</option>' + data.categories.map(c => `<option value="${c.id}">${safe(c.name)}</option>`).join('');
+
+    $('#chatToTicketModal').hidden = false;
+  });
+
+  $('#closeChatToTicketModal')?.addEventListener('click', () => {
+    $('#chatToTicketModal').hidden = true;
+  });
+  $('#cancelChatToTicket')?.addEventListener('click', () => {
+    $('#chatToTicketModal').hidden = true;
+  });
+
+  $('#chatTicketStatus')?.addEventListener('change', (e) => {
+    const isDone = e.target.value === 'Concluído';
+    $('#chatTicketResolutionLabel').hidden = !isDone;
+    $('#chatTicketResolution').required = isDone;
+  });
+
+  $('#chatToTicketForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!activeAdminChatSession) return;
+    const button = e.target.querySelector('[type="submit"]');
+    button.disabled = true;
+    button.textContent = 'Gerando chamado…';
+
+    const labId = $('#chatTicketLab').value || null;
+    const catId = $('#chatTicketCategory').value || null;
+    const title = $('#chatTicketTitle').value.trim();
+    const status = $('#chatTicketStatus').value;
+    const resolution = $('#chatTicketResolution').value.trim();
+
+    try {
+      const { data: ticketRes, error } = await sb.rpc('create_ticket_from_chat', {
+        p_session_id: activeAdminChatSession.id,
+        p_lab: labId,
+        p_category: catId,
+        p_title: title,
+        p_resolution: resolution,
+        p_status: status
+      });
+      if (error) throw error;
+
+      const created = ticketRes?.[0];
+      $('#chatToTicketModal').hidden = true;
+      $('#adminChatModal').hidden = true;
+      document.body.classList.remove('modal-open');
+
+      if (adminChatChannel) {
+        sb.removeChannel(adminChatChannel);
+        adminChatChannel = null;
+      }
+      activeAdminChatSession = null;
+
+      await loadAdmin();
+      toast(`Chamado ${created?.protocol || ''} criado com sucesso a partir do chat!`);
+    } catch (err) {
+      fail(err, 'Não foi possível gerar o chamado do atendimento.');
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Confirmar e gerar protocolo ➔';
+    }
+  });
+
+  // 4. Lado do Servidor / Docente (Público)
+  let chatIdentifyTimer;
+  $('#chatSiape')?.addEventListener('input', () => {
+    clearTimeout(chatIdentifyTimer);
+    currentPublicServer = null;
+    const hint = $('#chatIdentity');
+    hint.textContent = 'Validando SIAPE…';
+    hint.className = 'field-hint';
+
+    chatIdentifyTimer = setTimeout(async () => {
+      const siape = $('#chatSiape').value.trim();
+      if (siape.length < 5) {
+        hint.textContent = 'Digite seu SIAPE para validação automática.';
+        return;
+      }
+      const { data: rows, error } = await sb.rpc('identify_server', { p_siape: siape });
+      const server = rows?.[0];
+      if (error || !server) {
+        hint.textContent = 'SIAPE não localizado ou inativo. Apenas servidores cadastrados podem iniciar chat.';
+        hint.className = 'field-hint error';
+        return;
+      }
+      currentPublicServer = server;
+      hint.textContent = `${server.full_name} • ${server.email}`;
+      hint.className = 'field-hint found';
+    }, 350);
+  });
+
+  $('#chatPublicForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentPublicServer) {
+      return toast('Informe um SIAPE válido e cadastrado para continuar.');
+    }
+    const siape = $('#chatSiape').value.trim();
+    const subject = $('#chatSubject').value.trim();
+    const button = $('#startChatButton');
+    button.disabled = true;
+    button.textContent = 'Iniciando atendimento…';
+
+    try {
+      const { data: res, error } = await sb.rpc('request_chat_session', {
+        p_siape: siape,
+        p_subject: subject
+      });
+      if (error) throw error;
+
+      const session = res?.[0];
+      currentPublicChatSession = session;
+
+      $('#chatIdentifyCard').hidden = true;
+      $('#chatWaitingCard').hidden = false;
+      $('#chatWaitingServerName').textContent = currentPublicServer.full_name;
+      $('#chatWaitingSubject').textContent = subject;
+
+      subscribePublicChatSession(session.session_id);
+    } catch (err) {
+      fail(err, 'Não foi possível solicitar o chat.');
+    } finally {
+      button.disabled = false;
+      button.innerHTML = 'Iniciar atendimento ao vivo <span>→</span>';
+    }
+  });
+
+  $('#cancelChatRequest')?.addEventListener('click', async () => {
+    if (!currentPublicChatSession) return;
+    await sb.rpc('close_chat_session', { p_session_id: currentPublicChatSession.session_id, p_notes: 'Cancelado pelo servidor antes do atendimento.' });
+    cleanupPublicChat();
+    $('#chatWaitingCard').hidden = true;
+    $('#chatIdentifyCard').hidden = false;
+    toast('Solicitação de chat cancelada.');
+  });
+
+  let publicChatMessages = [];
+
+  function subscribePublicChatSession(sessionId) {
+    if (publicChatChannel) {
+      sb.removeChannel(publicChatChannel);
+    }
+
+    publicChatChannel = sb.channel('public-chat-room-' + sessionId)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_sessions', filter: `id=eq.${sessionId}` }, async (payload) => {
+        if (payload.new.status === 'active') {
+          const { data: tech } = await sb.from('profiles').select('full_name').eq('id', payload.new.technician_id).maybeSingle();
+          $('#chatRoomTechName').textContent = tech ? tech.full_name : 'Técnico de Plantão';
+          $('#chatWaitingCard').hidden = true;
+          $('#chatActiveCard').hidden = false;
+          loadPublicChatMessages(sessionId);
+          playChatNotificationSound();
+        } else if (payload.new.status === 'closed') {
+          const { data: sess } = await sb.from('chat_sessions').select('*, tickets(*)').eq('id', sessionId).maybeSingle();
+          const protocol = sess?.tickets?.protocol || 'Registrado';
+          $('#chatGeneratedProtocol').textContent = protocol;
+          $('#chatActiveCard').hidden = true;
+          $('#chatWaitingCard').hidden = true;
+          $('#chatEndedCard').hidden = false;
+        }
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `session_id=eq.${sessionId}` }, (payload) => {
+        if (!publicChatMessages.some(m => m.id === payload.new.id)) {
+          publicChatMessages.push(payload.new);
+          renderPublicChatMessages();
+          if (payload.new.sender_type === 'technician') {
+            playChatNotificationSound();
+          }
+        }
+      })
+      .subscribe();
+
+    loadPublicChatMessages(sessionId);
+  }
+
+  async function loadPublicChatMessages(sessionId) {
+    const { data: msgs } = await sb.from('chat_messages').select('*').eq('session_id', sessionId).order('created_at', { ascending: true });
+    publicChatMessages = msgs || [];
+    renderPublicChatMessages();
+  }
+
+  function renderPublicChatMessages() {
+    const list = $('#chatMessagesList');
+    if (!list) return;
+    list.innerHTML = publicChatMessages.map(m => {
+      const isSystem = m.sender_type === 'system';
+      const isMine = m.sender_type === 'server';
+      const time = fmt(m.created_at);
+      if (isSystem) {
+        return `<div class="chat-bubble system"><span>${safe(m.message)}</span></div>`;
+      }
+      return `
+        <div class="chat-bubble ${isMine ? 'mine' : 'other'}">
+          <span class="chat-bubble-author">${safe(m.sender_name)}</span>
+          <div class="chat-bubble-text">${safe(m.message)}</div>
+          <time class="chat-bubble-meta">${time}</time>
+        </div>
+      `;
+    }).join('');
+    list.scrollTop = list.scrollHeight;
+  }
+
+  $('#chatMessageForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentPublicChatSession) return;
+    const input = $('#chatMessageInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+
+    const { error } = await sb.rpc('send_chat_message', {
+      p_session_id: currentPublicChatSession.session_id,
+      p_sender_type: 'server',
+      p_message: msg,
+      p_sender_name: currentPublicServer?.full_name || 'Servidor'
+    });
+    if (error) {
+      input.value = msg;
+      fail(error, 'Erro ao enviar mensagem.');
+    }
+  });
+
+  $('#endChatPublicBtn')?.addEventListener('click', async () => {
+    if (!currentPublicChatSession) return;
+    if (!confirm('Deseja realmente encerrar este atendimento?')) return;
+    await sb.rpc('close_chat_session', { p_session_id: currentPublicChatSession.session_id });
+    $('#chatActiveCard').hidden = true;
+    $('#chatEndedCard').hidden = false;
+  });
+
+  $('#chatBackToHomeBtn')?.addEventListener('click', () => {
+    cleanupPublicChat();
+    window.labinfoShowPublic('home');
+  });
+
+  $('#chatViewMyTicketsBtn')?.addEventListener('click', () => {
+    const siape = currentPublicServer?.siape || $('#chatSiape')?.value.trim();
+    cleanupPublicChat();
+    window.labinfoShowPublic('support');
+    if (siape) {
+      const input = $('#protocolInput');
+      if (input) {
+        input.value = siape;
+        setTimeout(() => $('#protocolButton')?.click(), 150);
+      }
+    }
+  });
+
+  function cleanupPublicChat() {
+    if (publicChatChannel) {
+      sb.removeChannel(publicChatChannel);
+      publicChatChannel = null;
+    }
+    currentPublicChatSession = null;
+    publicChatMessages = [];
+    $('#chatIdentifyCard').hidden = false;
+    $('#chatWaitingCard').hidden = true;
+    $('#chatActiveCard').hidden = true;
+    $('#chatEndedCard').hidden = true;
+    $('#chatPublicForm')?.reset();
+    $('#chatIdentity').textContent = 'Digite seu SIAPE para validação automática.';
+    $('#chatIdentity').className = 'field-hint';
+  }
+
+  sb.channel('labinfo-chat-status-watch')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'staff_chat_status' }, () => {
+      loadChatAvailability();
+    })
+    .subscribe();
+
+  catalogs();
+  loadServiceHours();
+  loadChatAvailability();
+  confirmFeedbackFromLink();
+  if (isAdminRoute) enterAdmin().then(startAdminSynchronization);
 })();

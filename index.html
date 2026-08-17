@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#11733c" />
     <meta name="description" content="Sistema de chamados dos Laboratórios de Informática do IFMS Campus Três Lagoas" />
     <title>LabInfo | Suporte IFMS</title>
-  <link rel="stylesheet" href="styles.css?v=20260814-35" />
+    <link rel="stylesheet" href="styles.css?v=20260818-1" />
   </head>
   <body>
     <header class="topbar">
@@ -19,10 +19,117 @@
 
     <main>
       <section id="homeView" class="home-view">
-        <div class="home-hero"><span class="eyebrow">LABORATÓRIOS DE INFORMÁTICA</span><h1>O que você precisa?</h1><p>Escolha uma opção para acessar os serviços do LabInfo TL.</p></div>
+        <div class="home-hero">
+          <span class="eyebrow">LABORATÓRIOS DE INFORMÁTICA</span>
+          <h1>O que você precisa?</h1>
+          <p>Escolha uma opção para acessar os serviços do LabInfo TL.</p>
+        </div>
         <div class="service-choice-grid">
-          <button id="openReservations" class="service-choice card" type="button"><span class="service-choice-icon">📅</span><small>LABORATÓRIOS</small><strong>Ver ou solicitar uma reserva</strong><p>Consulte a agenda e solicite um horário para suas aulas.</p><b>Acessar reservas →</b></button>
-          <button class="service-choice card service-choice-disabled" type="button" disabled><span class="service-choice-icon">🛠</span><small>APOIO TÉCNICO</small><strong>Pedir suporte</strong><p>Solicite atendimento para computadores, rede, projetores e periféricos.</p><b>Disponível em breve</b></button>
+          <button id="openReservations" class="service-choice card" type="button">
+            <span class="service-choice-icon">📅</span>
+            <small>LABORATÓRIOS</small>
+            <strong>Ver ou solicitar uma reserva</strong>
+            <p>Consulte a agenda dos laboratórios e solicite horários para suas aulas.</p>
+            <b>Acessar reservas →</b>
+          </button>
+          <button id="openSupport" class="service-choice card" type="button">
+            <span class="service-choice-icon">🛠</span>
+            <small>APOIO TÉCNICO</small>
+            <strong>Abrir chamado de suporte</strong>
+            <p>Solicite atendimento para computadores, rede, projetores e periféricos.</p>
+            <b>Abrir chamado →</b>
+          </button>
+          <button id="openLiveChat" class="service-choice card live-chat-choice" type="button">
+            <span class="service-choice-icon">💬</span>
+            <div class="service-choice-head">
+              <small>ATENDIMENTO IMEDIATO</small>
+              <span id="chatAvailabilityBadge" class="chat-status-badge offline">⚪ Offline</span>
+            </div>
+            <strong>Chat ao vivo com técnico</strong>
+            <p id="chatAvailabilityDescription">Converse em tempo real com os técnicos de plantão dos laboratórios.</p>
+            <b id="chatAvailabilityAction">Acessar chat ao vivo →</b>
+          </button>
+        </div>
+      </section>
+
+      <section id="chatPublicView" class="chat-public-view" hidden>
+        <div class="chat-public-head">
+          <button id="backHomeFromChat" class="secondary" type="button">← Início</button>
+          <div>
+            <span class="eyebrow">SUPORTE EM TEMPO REAL</span>
+            <h1>Chat ao vivo com a equipe de TI</h1>
+            <p>Tire dúvidas e receba orientação rápida diretamente dos técnicos dos laboratórios.</p>
+          </div>
+        </div>
+
+        <div id="chatIdentifyCard" class="card chat-identify-card">
+          <div class="section-title">
+            <span>1</span>
+            <div>
+              <h2>Identificação do servidor</h2>
+              <p>O atendimento ao vivo é exclusivo para servidores cadastrados</p>
+            </div>
+          </div>
+          <form id="chatPublicForm">
+            <label>SIAPE
+              <input id="chatSiape" inputmode="numeric" autocomplete="off" placeholder="0000000" required />
+            </label>
+            <p id="chatIdentity" class="field-hint">Digite seu SIAPE para validação automática.</p>
+            <label>Qual é a sua dúvida ou solicitação inicial?
+              <input id="chatSubject" maxlength="140" placeholder="Ex.: Problema com o projetor do Lab 02 ou dúvida de software..." required />
+            </label>
+            <div id="chatAvailabilityWarning" class="chat-warning-banner" hidden>
+              <span>⚠️</span>
+              <p>Nenhum técnico está online no momento. Você pode aguardar na fila ou <a href="#" id="chatGoToSupport">abrir um chamado convencional</a>.</p>
+            </div>
+            <button id="startChatButton" class="primary" type="submit">Iniciar atendimento ao vivo <span>→</span></button>
+          </form>
+        </div>
+
+        <div id="chatWaitingCard" class="card chat-waiting-card" hidden>
+          <div class="chat-waiting-animation">
+            <div class="waiting-ripple"></div>
+            <span class="waiting-icon">⏳</span>
+          </div>
+          <h2>Conectando ao plantão técnico...</h2>
+          <p id="chatWaitingStatus">Sua solicitação foi enviada aos técnicos. Aguarde enquanto um técnico aceita seu chamado.</p>
+          <div class="chat-waiting-meta">
+            <span>Servidor: <strong id="chatWaitingServerName">—</strong></span>
+            <span>Assunto: <em id="chatWaitingSubject">—</em></span>
+          </div>
+          <button id="cancelChatRequest" class="secondary" type="button">Cancelar solicitação</button>
+        </div>
+
+        <div id="chatActiveCard" class="card chat-active-card" hidden>
+          <header class="chat-room-header">
+            <div class="chat-room-profile">
+              <div class="chat-tech-avatar">👨‍💻</div>
+              <div>
+                <strong id="chatRoomTechName">Técnico de Plantão</strong>
+                <span class="chat-room-status"><i class="live-dot"></i> Em atendimento</span>
+              </div>
+            </div>
+            <button id="endChatPublicBtn" class="secondary end-chat-btn" type="button">Finalizar chat</button>
+          </header>
+          <div id="chatMessagesList" class="chat-messages-container" aria-live="polite"></div>
+          <form id="chatMessageForm" class="chat-input-bar">
+            <input id="chatMessageInput" type="text" placeholder="Digite sua mensagem e pressione Enter..." autocomplete="off" required />
+            <button id="chatSendMessageBtn" class="primary chat-send-btn" type="submit" aria-label="Enviar mensagem">Enviar ➔</button>
+          </form>
+        </div>
+
+        <div id="chatEndedCard" class="card chat-ended-card" hidden>
+          <div class="chat-ended-icon">✓</div>
+          <h2>Atendimento Finalizado</h2>
+          <p>O atendimento foi concluído pela equipe de TI. Foi gerado um chamado oficial com todo o histórico da conversa.</p>
+          <div id="chatProtocolDisplay" class="chat-protocol-box">
+            <small>PROTOCOLO GERADO</small>
+            <strong id="chatGeneratedProtocol">—</strong>
+          </div>
+          <div class="chat-ended-actions">
+            <button id="chatBackToHomeBtn" class="secondary" type="button">Voltar ao início</button>
+            <button id="chatViewMyTicketsBtn" class="primary" type="button">Ver minhas solicitações</button>
+          </div>
         </div>
       </section>
 
@@ -52,9 +159,12 @@
 
       <section id="teacherView" class="teacher-view" hidden>
         <div class="hero">
-          <span class="eyebrow">SUPORTE DOS LABORATÓRIOS</span>
-          <h1>Como podemos ajudar?</h1>
-          <p>Solicite apoio técnico em menos de um minuto. Você receberá as atualizações no e-mail institucional.</p>
+          <button id="backHomeFromSupport" class="secondary" type="button" style="margin-bottom:18px">← Início</button>
+          <div>
+            <span class="eyebrow">SUPORTE DOS LABORATÓRIOS</span>
+            <h1>Como podemos ajudar?</h1>
+            <p>Solicite apoio técnico em menos de um minuto. Você receberá as atualizações no e-mail institucional.</p>
+          </div>
         </div>
 
         <div class="service-note public-service-hours"><strong>Horário de atendimento</strong><span id="serviceHoursText">Segunda a sexta, das 7h às 22h</span></div>
@@ -85,7 +195,23 @@
       </section>
 
       <section id="adminView" class="admin-view" hidden>
-        <div class="admin-heading"><div><span class="eyebrow">PAINEL TÉCNICO</span><h1>Central de chamados</h1><p>Acompanhe, atribua e resolva as solicitações dos laboratórios.</p></div><button id="newCategory" class="secondary" type="button">+ Nova categoria</button></div>
+        <div class="admin-heading">
+          <div>
+            <span class="eyebrow">PAINEL TÉCNICO</span>
+            <h1>Central de chamados</h1>
+            <p>Acompanhe, atribua e resolva as solicitações dos laboratórios.</p>
+          </div>
+          <div class="admin-top-controls">
+            <div class="staff-chat-toggle-wrap">
+              <label class="switch-toggle" title="Alternar status do chat ao vivo">
+                <input type="checkbox" id="staffChatToggle" />
+                <span class="toggle-slider"></span>
+              </label>
+              <span id="staffChatToggleLabel" class="chat-toggle-label">Chat: <strong>Offline</strong></span>
+            </div>
+            <button id="newCategory" class="secondary" type="button">+ Nova categoria</button>
+          </div>
+        </div>
         <div class="metrics">
           <article><span class="metric-icon red">!</span><div><small>Recebido</small><strong>0</strong><em>Aguardando dados</em></div></article>
           <article><span class="metric-icon amber">↻</span><div><small>Em atendimento</small><strong>0</strong><em>Aguardando dados</em></div></article>
@@ -102,12 +228,96 @@
       </section>
     </main>
 
+    <!-- Notificação Flutuante de Atendimento ao Vivo para o Técnico -->
+    <div id="incomingChatAlert" class="incoming-chat-alert card" hidden>
+      <div class="incoming-chat-top">
+        <span class="pulse-bell">🔔</span>
+        <div class="incoming-chat-text">
+          <small>NOVO CHAT AO VIVO</small>
+          <strong id="incomingChatServerName">Prof. Nome do Servidor</strong>
+          <p id="incomingChatSubjectText">Assunto da dúvida...</p>
+        </div>
+      </div>
+      <div class="incoming-chat-actions">
+        <button id="acceptIncomingChatBtn" class="primary" type="button">Atender agora ➔</button>
+        <button id="dismissIncomingChatBtn" class="secondary" type="button">Fechar</button>
+      </div>
+    </div>
+
+    <!-- Modal / Drawer do Chat no Painel Técnico -->
+    <div id="adminChatModal" class="modal-backdrop" hidden>
+      <div class="card admin-chat-modal" role="dialog" aria-modal="true" aria-labelledby="adminChatModalTitle">
+        <header class="modal-heading admin-chat-modal-head">
+          <div class="admin-chat-user-info">
+            <div class="admin-chat-avatar">🎓</div>
+            <div>
+              <span class="eyebrow">ATENDIMENTO AO VIVO</span>
+              <h2 id="adminChatModalTitle">Atendimento com Servidor</h2>
+              <p id="adminChatServerMeta">SIAPE: 0000000 • email@ifms.edu.br</p>
+            </div>
+          </div>
+          <div class="admin-chat-head-actions">
+            <button id="adminFinishChatBtn" class="primary finish-ticket-btn" type="button">Finalizar e Gerar Chamado</button>
+            <button id="closeAdminChatModal" class="modal-close" type="button" aria-label="Minimizar">×</button>
+          </div>
+        </header>
+        <div id="adminChatMessagesList" class="chat-messages-container admin-chat-messages-container"></div>
+        <form id="adminChatMessageForm" class="chat-input-bar admin-chat-input-bar">
+          <input id="adminChatMessageInput" type="text" placeholder="Digite sua resposta para o servidor..." autocomplete="off" required />
+          <button class="primary chat-send-btn" type="submit">Enviar ➔</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Gerar Chamado Oficial a partir do Chat -->
+    <div id="chatToTicketModal" class="modal-backdrop" hidden>
+      <div class="card admin-ticket-modal chat-to-ticket-card" role="dialog" aria-modal="true" aria-labelledby="chatTicketModalTitle">
+        <div class="modal-heading">
+          <div>
+            <span class="eyebrow">REGISTRO DE CHAMADO</span>
+            <h2 id="chatTicketModalTitle">Gerar Chamado do Atendimento</h2>
+            <p>Confirme os dados para formalizar o protocolo e notificar o servidor.</p>
+          </div>
+          <button id="closeChatToTicketModal" class="modal-close" type="button" aria-label="Fechar">×</button>
+        </div>
+        <form id="chatToTicketForm">
+          <div class="field-row">
+            <label>Laboratório relacionado
+              <select id="chatTicketLab" required></select>
+            </label>
+            <label>Categoria do problema
+              <select id="chatTicketCategory" required></select>
+            </label>
+          </div>
+          <label>Título do chamado
+            <input id="chatTicketTitle" maxlength="100" placeholder="Ex.: Atendimento via Chat: Dúvida sobre software" required />
+          </label>
+          <label>Situação do chamado
+            <select id="chatTicketStatus" required>
+              <option value="Concluído">Concluir imediatamente (Dúvida sanada / Atendimento resolvido)</option>
+              <option value="Em atendimento">Manter em atendimento (Exige visita técnica presencial)</option>
+            </select>
+          </label>
+          <label id="chatTicketResolutionLabel">Solução realizada ou orientações passadas
+            <textarea id="chatTicketResolution" rows="3" placeholder="Descreva a solução prestada no chat para registro oficial no chamado..." required></textarea>
+          </label>
+          <label>Transcrição do diálogo (gerada automaticamente)
+            <textarea id="chatTicketTranscript" rows="6" readonly class="chat-transcript-preview"></textarea>
+          </label>
+          <div class="modal-actions">
+            <button id="cancelChatToTicket" class="secondary" type="button">Voltar ao chat</button>
+            <button class="primary" type="submit">Confirmar e gerar protocolo ➔</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <footer><span>LabInfo • IFMS Campus Três Lagoas</span><span>Suporte de Tecnologia da Informação</span></footer>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=20260812-2"></script>
-    <script src="app.js?v=20260814-7"></script>
-    <script src="supabase-integration.js?v=20260817-1"></script>
-    <script src="reservations.js?v=20260814-20"></script>
+    <script src="app.js?v=20260818-1"></script>
+    <script src="supabase-integration.js?v=20260818-1"></script>
+    <script src="reservations.js?v=20260818-1"></script>
   </body>
 </html>
