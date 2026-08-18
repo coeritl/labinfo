@@ -902,14 +902,19 @@
         if (payload.eventType === 'INSERT' && payload.new.status === 'waiting') {
           const toggle = $('#staffChatToggle');
           if (toggle && toggle.checked) {
-            const { data: server } = await sb.from('servers').select('full_name, siape').eq('id', payload.new.server_id).maybeSingle();
+            const { data: server } = await sb.from('servers').select('full_name, siape, email').eq('id', payload.new.server_id).maybeSingle();
             incomingAlertSessionId = payload.new.id;
             const alert = $('#incomingChatAlert');
             const nameEl = $('#incomingChatServerName');
+            const siapeEl = $('#incomingChatServerSiape');
             const subEl = $('#incomingChatSubjectText');
-            if (nameEl) nameEl.textContent = server ? `${server.full_name} (SIAPE ${server.siape})` : 'Novo Servidor';
+            if (nameEl) nameEl.textContent = server ? server.full_name : 'Novo Servidor';
+            if (siapeEl) siapeEl.textContent = server ? `SIAPE: ${server.siape} • ${server.email}` : 'Servidor cadastrado';
             if (subEl) subEl.textContent = payload.new.subject || 'Atendimento via chat';
-            if (alert) alert.hidden = false;
+            if (alert) {
+              alert.hidden = false;
+              document.body.classList.add('modal-open');
+            }
             playChatNotificationSound();
           }
         }
@@ -921,13 +926,23 @@
 
   $('#dismissIncomingChatBtn')?.addEventListener('click', () => {
     $('#incomingChatAlert').hidden = true;
+    document.body.classList.remove('modal-open');
     incomingAlertSessionId = null;
+  });
+
+  $('#incomingChatAlert')?.addEventListener('click', (e) => {
+    if (e.target === $('#incomingChatAlert')) {
+      $('#incomingChatAlert').hidden = true;
+      document.body.classList.remove('modal-open');
+      incomingAlertSessionId = null;
+    }
   });
 
   $('#acceptIncomingChatBtn')?.addEventListener('click', async () => {
     if (!incomingAlertSessionId) return;
     const sessionId = incomingAlertSessionId;
     $('#incomingChatAlert').hidden = true;
+    document.body.classList.remove('modal-open');
     incomingAlertSessionId = null;
     await openAdminChatRoom(sessionId);
   });
