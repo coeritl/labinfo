@@ -196,9 +196,10 @@
 .chat-ended-icon{width:64px;height:64px;border-radius:50%;background:var(--green-soft);color:var(--green);font-size:32px;font-weight:900;display:grid;place-items:center;margin:0 auto 16px}
 .chat-ended-card h2{font-size:25px;margin:6px 0}
 .chat-ended-card p{color:var(--muted);font-size:13px;max-width:440px;margin:0 auto}
-.chat-protocol-box{margin:22px auto;padding:16px 24px;background:var(--green-soft);border:2px dashed var(--green);border-radius:12px;max-width:320px}
-.chat-protocol-box small{display:block;color:var(--green-dark);font-size:10px;font-weight:800;letter-spacing:1px}
-.chat-protocol-box strong{display:block;font-size:24px;color:var(--green);margin-top:3px}
+.chat-feedback-notice{display:flex;align-items:center;gap:14px;margin:22px auto;padding:16px 20px;background:#f3faf6;border:1px solid #cce8d7;border-left:4px solid var(--green);border-radius:12px;max-width:460px;text-align:left}
+.chat-feedback-notice svg{flex-shrink:0;color:var(--green)}
+.chat-feedback-notice strong{display:block;font-size:13px;color:var(--green-dark);margin-bottom:2px}
+.chat-feedback-notice span{display:block;font-size:12px;color:var(--muted);line-height:1.4}
 .chat-ended-actions{display:flex;gap:10px;justify-content:center;margin-top:24px}
 .chat-ended-actions button{width:auto;margin:0}
 

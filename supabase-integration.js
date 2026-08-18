@@ -1257,7 +1257,8 @@
             }
           } else if (sess.status === 'closed') {
             const protocol = sess.protocol || 'Registrado';
-            $('#chatGeneratedProtocol').textContent = protocol;
+            const protocolEl = $('#chatGeneratedProtocol');
+            if (protocolEl) protocolEl.textContent = protocol;
             $('#chatActiveCard').hidden = true;
             $('#chatWaitingCard').hidden = true;
             $('#chatEndedCard').hidden = false;
