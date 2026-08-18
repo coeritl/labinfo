@@ -202,7 +202,41 @@
   async function uploadFiles(ticketId,siape,prefix){
     for(const item of attachmentState[prefix]){const safe=item.name.replace(/[^a-zA-Z0-9._-]/g,'_'),path=`tickets/${ticketId}/${crypto.randomUUID()}-${safe}`;const {error}=await sb.storage.from('ticket-attachments').upload(path,item.file,{contentType:item.file.type,upsert:false});if(error)throw error;const {error:reg}=await sb.rpc('register_public_attachment',{p_ticket:ticketId,p_siape:siape,p_path:path,p_name:item.name,p_type:item.file.type,p_size:item.size});if(reg){await sb.storage.from('ticket-attachments').remove([path]);throw reg}}clearPendingAttachments(prefix)
   }
-  $('#ticketForm').onsubmit=async e=>{e.preventDefault();const siape=$('#siape').value.trim(),email=$('#email').value.trim().toLowerCase(),lab=data.labs.find(x=>x.name===$('#lab').value),cat=data.categories.find(x=>x.name===$('#category').value);if(!$('#email').readOnly&&!/^[^\s@]+@ifms\.edu\.br$/i.test(email))return toast('Informe um e-mail institucional @ifms.edu.br.');const {data:created,error}=await sb.rpc('create_public_ticket',{p_siape:siape,p_email:email,p_lab:lab?.id||null,p_category:cat?.id||null,p_title:cat?.name||'Chamado',p_description:$('#description').value.trim()});if(error)return fail(error);const row=created?.[0];try{await uploadFiles(row.id,siape,'public')}catch(err){fail(err,'Chamado criado, mas houve erro nos anexos.')}toast('Chamado '+row.protocol+' aberto com sucesso!');e.target.reset();identify()};
+  $('#ticketForm').onsubmit=async e=>{
+    e.preventDefault();
+    const siape=$('#siape').value.trim(),email=$('#email').value.trim().toLowerCase(),lab=data.labs.find(x=>x.name===$('#lab').value),cat=data.categories.find(x=>x.name===$('#category').value);
+    if(!$('#email').readOnly&&!/^[^\s@]+@ifms\.edu\.br$/i.test(email))return toast('Informe um e-mail institucional @ifms.edu.br.');
+    const {data:created,error}=await sb.rpc('create_public_ticket',{p_siape:siape,p_email:email,p_lab:lab?.id||null,p_category:cat?.id||null,p_title:cat?.name||'Chamado',p_description:$('#description').value.trim()});
+    if(error)return fail(error);
+    const row=created?.[0];
+    try{await uploadFiles(row.id,siape,'public')}catch(err){fail(err,'Chamado criado, mas houve erro nos anexos.')}
+    
+    // Disparo imediato via broadcast para todos os técnicos online
+    try {
+      const alertChannel = sb.channel('labinfo-global-ticket-alerts');
+      await alertChannel.send({
+        type: 'broadcast',
+        event: 'new_ticket',
+        payload: {
+          id: row.protocol,
+          dbId: row.id,
+          title: cat?.name || 'Chamado',
+          category: cat?.name || 'Geral',
+          teacher: $('#teacherIdentity').textContent || `SIAPE ${siape}`,
+          teacherSiape: siape,
+          lab: lab?.name || 'Não informado',
+          description: $('#description').value.trim(),
+          time: 'Agora'
+        }
+      });
+    } catch(err) {
+      console.warn('Broadcast de alerta de chamado:', err);
+    }
+
+    toast('Chamado '+row.protocol+' aberto com sucesso!');
+    e.target.reset();
+    identify();
+  };
   $('#protocolButton').onclick=async()=>{const siape=$('#protocolInput').value.trim(),result=$('#protocolResult');result.innerHTML='<p class="my-tickets-empty">Buscando chamados…</p>';const [{data:who},{data:rows,error}]=await Promise.all([sb.rpc('identify_server',{p_siape:siape}),sb.rpc('my_tickets',{p_siape:siape})]);if(error||(!who?.length&&!rows?.length)){result.innerHTML='<p class="my-tickets-empty error-text">Nenhum chamado encontrado para este SIAPE.</p>';return}const owner=who?.[0]?.full_name||`SIAPE ${siape} — cadastro pendente`;result.innerHTML=`<div class="my-tickets-owner"><div class="owner-avatar">${owner.charAt(0)}</div><div><span>CHAMADOS DE</span><strong>${owner}</strong></div><em>${rows.length} chamado(s)</em></div>`+(rows.length?`<div class="my-tickets-list">${rows.map(t=>{const events=t.timeline||[],last=events[events.length-1];return `<article class="my-ticket-card"><header><strong>${t.protocol}</strong>${badge(t.status)}</header><h3>${t.title}</h3><div class="my-ticket-meta"><span><i>Local</i>${t.lab||'Não informado'}</span><span><i>Categoria</i>${t.category||'Sem categoria'}</span><span><i>Abertura</i>${fmt(t.created_at)}</span></div><div class="ticket-latest-event"><span>Último andamento</span><strong>${last?.label||'Chamado aberto'}</strong><time>${fmt(last?.at||t.updated_at)}</time></div><button class="ticket-details-toggle" type="button" aria-expanded="false">Ver detalhes</button><div class="public-ticket-timeline" hidden>${events.map(e=>`<div><i></i><span><strong>${safe(e.label)}</strong><time>${fmt(e.at)}</time></span></div>`).join('')}</div></article>`}).join('')}</div>`:'<div class="my-tickets-empty"><strong>Nenhum chamado encontrado</strong></div>');result.querySelectorAll('.ticket-details-toggle').forEach(button=>button.onclick=()=>{const timeline=button.nextElementSibling,open=timeline.hidden;timeline.hidden=!open;button.textContent=open?'Ocultar detalhes':'Ver detalhes';button.setAttribute('aria-expanded',open)})};
 
   async function getProfile(){const {data:{session}}=await sb.auth.getSession();if(!session)return null;state.session=session;const {data:p,error}=await sb.from('profiles').select('*').eq('id',session.user.id).single();if(error||!p?.active)return null;state.profile=p;return p}
@@ -231,7 +265,7 @@
   analytics=function(){const rows=filteredTickets(),hours=Array.from({length:16},(_,i)=>[`${i+7}h`,rows.filter(t=>t.createdAt&&new Date(t.createdAt).getHours()===i+7).length]),max=Math.max(1,...hours.map(x=>x[1])),categories=grouped(rows,'category'),labs=grouped(rows,'lab'),done=rows.filter(x=>x.status==='Concluído').length,peak=hours.reduce((a,b)=>b[1]>a[1]?b:a,['—',0]),serverRows=grouped(rows,'teacher').map(([name,count])=>{const mine=rows.filter(x=>x.teacher===name),top=grouped(mine,'category')[0]?.[0]||'—';return [name,top,count]}),cards=document.querySelectorAll('#analyticsSection .analytics-metrics article');const vals=[[rows.length,'Registros reais'],[rows.length?Math.round(done/rows.length*100)+'%':'0%','Chamados concluídos'],[peak[1]?peak[0]:'—',peak[1]+' abertura(s)'],[labs[0]?.[0]||'—',(labs[0]?.[1]||0)+' ocorrência(s)']];cards.forEach((c,i)=>{c.querySelector('strong').textContent=vals[i][0];c.querySelector('em').textContent=vals[i][1]});$('#hourChart').innerHTML=hours.map(([l,v])=>`<div class="bar-column"><small>${v}</small><i style="height:${v/max*85}%"></i><strong>${l}</strong></div>`).join('');renderRank('#categoryChart',categories);renderRank('#labChart',labs);$('#teacherChart').innerHTML='<div><span>Servidor</span><span>Principal categoria</span><span>Chamados</span></div>'+serverRows.map(x=>`<div><strong>${x[0]}</strong><span>${x[1]}</span><strong>${x[2]}</strong></div>`).join('')+(serverRows.length?'':'<p class="empty">Sem dados no período.</p>')};
   supervisor=function(){const waiting=tickets.filter(t=>t.status==='Recebido').length,active=tickets.filter(t=>t.status==='Em atendimento').length,done=tickets.filter(t=>t.status==='Concluído').length;$('#supTotal').textContent=tickets.length;$('#supWaiting').textContent=waiting;$('#supActive').textContent=active;$('#supDone').textContent=done;$('#supervisorTable').innerHTML='<div class="supervisor-row supervisor-head"><span>Protocolo</span><span>Solicitante</span><span>Laboratório</span><span>Categoria</span><span>Status</span><span>Técnico</span></div>'+tickets.map(t=>`<div class="supervisor-row"><strong>${t.id}</strong><span>${t.teacher}</span><span>${t.lab}</span><span>${t.category}</span>${badge(t.status)}<span>${t.technician}</span></div>`).join('')+(tickets.length?'':'<p class="empty">Nenhum chamado registrado.</p>');const hours=Array.from({length:16},(_,i)=>[`${i+7}h`,tickets.filter(t=>t.createdAt&&new Date(t.createdAt).getHours()===i+7).length]),max=Math.max(1,...hours.map(x=>x[1]));$('#supHourChart').innerHTML=hours.map(([l,v])=>`<div class="bar-column"><small>${v}</small><i style="height:${v/max*85}%"></i><strong>${label}</strong></div>`).join('');renderRank('#supCategoryChart',grouped(tickets,'category'));renderRank('#supLabChart',grouped(tickets,'lab'));const people=grouped(tickets,'teacher').map(([name,count])=>[name,grouped(tickets.filter(x=>x.teacher===name),'category')[0]?.[0]||'—',count]);$('#supTeacherChart').innerHTML='<div><span>Servidor</span><span>Principal categoria</span><span>Chamados</span></div>'+people.map(x=>`<div><strong>${x[0]}</strong><span>${x[1]}</span><strong>${x[2]}</strong></div>`).join('')+(people.length?'':'<p class="empty">Sem dados registrados.</p>')};
   $('#applyAnalytics').onclick=analytics;
-  async function enterAdmin(){const p=await getProfile();if(!p){openLogin();return}await loadAdmin();$('#adminView').hidden=false;$('#teacherView').hidden=true;$('#homeView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;$('#adminToggle').textContent='Sair';$('#accountName').textContent=p.full_name;$('#accountMenuName').textContent=p.full_name;$('#accountEmail').textContent=p.email;$('#accountRole').textContent=p.role==='supervisor'?'Supervisor':'Técnico';$('#accountAvatar').textContent=p.full_name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();const menuButtons=document.querySelectorAll('#adminMenuDropdown button');menuButtons.forEach(b=>b.hidden=false);if(p.role==='supervisor'){menuButtons.forEach(b=>b.hidden=b.dataset.section!=='supervisor'&&b.id!=='reservationsMenuButton');showSection('supervisor')}else showSection('tickets');await initStaffChatStatus();listenIncomingChats();window.scrollTo(0,0)}
+  async function enterAdmin(){const p=await getProfile();if(!p){openLogin();return}await loadAdmin();$('#adminView').hidden=false;$('#teacherView').hidden=true;$('#homeView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;$('#adminToggle').textContent='Sair';$('#accountName').textContent=p.full_name;$('#accountMenuName').textContent=p.full_name;$('#accountEmail').textContent=p.email;$('#accountRole').textContent=p.role==='supervisor'?'Supervisor':'Técnico';$('#accountAvatar').textContent=p.full_name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();const menuButtons=document.querySelectorAll('#adminMenuDropdown button');menuButtons.forEach(b=>b.hidden=false);if(p.role==='supervisor'){menuButtons.forEach(b=>b.hidden=b.dataset.section!=='supervisor'&&b.id!=='reservationsMenuButton');showSection('supervisor')}else showSection('tickets');await initStaffChatStatus();listenIncomingChats();startAdminSynchronization();window.scrollTo(0,0)}
   $('#adminToggle').onclick=async()=>{if(state.profile&&!$('#adminView').hidden){stopStaffHeartbeat();await sb.auth.signOut();state.profile=null;state.session=null;accountDropdown.hidden=true;$('#adminView').hidden=true;document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;$('#adminToggle').textContent='Área técnica';history.pushState({},'', '/labinfo/admin/');openLogin();return}document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;history.pushState({},'', '/labinfo/admin/');await enterAdmin()};
 
   const originalDetail=renderDetail;
@@ -546,21 +580,42 @@
     if(!state.profile||document.hidden)return;
     try{const signature=await adminSignature();if(!lastAdminSignature)lastAdminSignature=signature;else if(signature!==lastAdminSignature)scheduleAdminSync(100)}catch(error){console.error('Falha na verificação periódica do painel',error)}
   }
+  let adminLiveChannel=null,globalTicketAlertChannel=null,adminPollInterval=null;
   function startAdminSynchronization(){
     if(!state.profile)return;
     knownTicketIds=new Set(tickets.map(ticket=>ticket.dbId));
     adminSignature().then(signature=>{lastAdminSignature=signature}).catch(error=>console.error('Falha ao iniciar sincronização',error));
-    sb.channel('labinfo-admin-live')
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'tickets'},()=>{
-        if(state.profile&&!$('#adminView').hidden)scheduleAdminSync(100);
-        else if(document.hidden)adminSyncQueued=true;
+
+    if(adminLiveChannel){sb.removeChannel(adminLiveChannel);adminLiveChannel=null}
+    if(globalTicketAlertChannel){sb.removeChannel(globalTicketAlertChannel);globalTicketAlertChannel=null}
+
+    globalTicketAlertChannel=sb.channel('labinfo-global-ticket-alerts')
+      .on('broadcast',{event:'new_ticket'},payload=>{
+        if(state.profile&&!$('#adminView').hidden&&payload.payload){
+          showIncomingTicketAlert(payload.payload);
+          scheduleAdminSync(50);
+        }
+      })
+      .subscribe();
+
+    adminLiveChannel=sb.channel('labinfo-admin-live')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'tickets'},payload=>{
+        if(state.profile&&!$('#adminView').hidden){
+          if(payload.new)showIncomingTicketAlert(payload.new);
+          scheduleAdminSync(80);
+        }else if(document.hidden){
+          adminSyncQueued=true;
+        }
       })
       .on('postgres_changes',{event:'*',schema:'public',table:'tickets'},()=>document.hidden?adminSyncQueued=true:scheduleAdminSync())
       .on('postgres_changes',{event:'*',schema:'public',table:'ticket_updates'},()=>document.hidden?adminSyncQueued=true:scheduleAdminSync())
       .on('postgres_changes',{event:'*',schema:'public',table:'ticket_assignees'},()=>document.hidden?adminSyncQueued=true:scheduleAdminSync())
       .on('postgres_changes',{event:'*',schema:'public',table:'attachments'},()=>document.hidden?adminSyncQueued=true:scheduleAdminSync())
-      .subscribe(status=>{if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('Realtime indisponível; a verificação de 60 segundos continuará ativa.')});
-    setInterval(checkAdminChanges,60000);
+      .subscribe();
+
+    if(adminPollInterval)clearInterval(adminPollInterval);
+    adminPollInterval=setInterval(checkAdminChanges,3500);
+
     document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(adminSyncQueued){adminSyncQueued=false;scheduleAdminSync(100)}else checkAdminChanges()}});
     window.addEventListener('focus',checkAdminChanges);
   }
@@ -568,11 +623,18 @@
   let activeIncomingTicketAlert=null;
   function showIncomingTicketAlert(ticket){
     if(!ticket||!state.profile||$('#adminView').hidden)return;
-    if(activeIncomingTicketAlert===ticket.dbId||activeIncomingTicketAlert===ticket.id)return;
-    activeIncomingTicketAlert=ticket.dbId||ticket.id;
+    const alertId=ticket.dbId||ticket.id||ticket.protocol;
+    if(!alertId||activeIncomingTicketAlert===alertId)return;
+    activeIncomingTicketAlert=alertId;
 
     const modal=$('#incomingTicketAlert');
     if(!modal)return;
+
+    const proto=ticket.id||ticket.protocol||'NOVO CHAMADO';
+    const cat=ticket.category||ticket.category_name||(data.categories.find(c=>c.id===ticket.category_id)?.name)||'Geral';
+    const serverName=ticket.teacher||ticket.server_name||ticket.server_full_name||(data.teachers.find(t=>t.id===ticket.server_id||t.siape===ticket.guest_siape)?.name)||'Servidor Solicitante';
+    const labName=ticket.lab||ticket.lab_name||(data.labs.find(l=>l.id===ticket.lab_id)?.name)||'Local não informado';
+    const timeStr=ticket.time||(ticket.created_at?fmt(ticket.created_at):'Agora');
 
     const protoBadge=$('#incomingTicketProtocolBadge');
     const catBadge=$('#incomingTicketCategoryBadge');
@@ -581,10 +643,10 @@
     const titleEl=$('#incomingTicketTitle');
     const descEl=$('#incomingTicketDescription');
 
-    if(protoBadge)protoBadge.textContent=ticket.id||'NOVO CHAMADO';
-    if(catBadge)catBadge.textContent=ticket.category||'Geral';
-    if(nameEl)nameEl.textContent=ticket.teacher||'Servidor Solicitante';
-    if(detailsEl)detailsEl.textContent=`${ticket.lab||'Local não informado'} • ${ticket.time||'Agora'}`;
+    if(protoBadge)protoBadge.textContent=proto;
+    if(catBadge)catBadge.textContent=cat;
+    if(nameEl)nameEl.textContent=serverName;
+    if(detailsEl)detailsEl.textContent=`${labName} • ${timeStr}`;
     if(titleEl)titleEl.textContent=ticket.title||'Solicitação de Suporte';
     if(descEl)descEl.textContent=ticket.description||'Sem descrição detalhada informada.';
 
