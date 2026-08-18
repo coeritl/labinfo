@@ -5,10 +5,14 @@
     return;
   }
   const sb=window.supabase.createClient(cfg.url,cfg.anonKey), state={profile:null,session:null};tickets.splice(0,tickets.length);selected=null;
-  const routeParam=new URLSearchParams(location.search).get('route'),requestedRoute=routeParam||location.pathname.replace(/^\/labinfo\/?/,'').replace(/\/$/,'');
+  const routeParam=new URLSearchParams(location.search).get('route'),
+        feedbackParam=new URLSearchParams(location.search).get('feedback'),
+        requestedRoute=routeParam||location.pathname.replace(/^\/labinfo\/?/,'').replace(/\/$/,'');
   const isAdminRoute=requestedRoute==='admin'||requestedRoute==='admin/chamados';
-  if(routeParam)window.addEventListener('load',()=>history.replaceState({},'',`/labinfo/${requestedRoute}/`),{once:true});
+  const isSupportRoute=requestedRoute==='suporte'||Boolean(feedbackParam);
+  if(routeParam&&!feedbackParam)window.addEventListener('load',()=>history.replaceState({},'',`/labinfo/${requestedRoute}/`),{once:true});
   if(isAdminRoute){document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true}
+  if(isSupportRoute){$('#homeView').hidden=true;$('#teacherView').hidden=false;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true}
   window.labinfoDb=sb;
   const replace=(target,rows)=>{target.splice(0,target.length,...rows)};
   const fmt=d=>new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date(d));
@@ -23,7 +27,40 @@
   const hourLabel=v=>(v||'').replace(/^0/,'').replace(':00','h').replace(':','h');
   function serviceHoursSummary(value=serviceHours){const d=value.days||{},week=dayMeta.slice(0,5).every(([k])=>d[k]?.enabled&&d[k].start===d.mon?.start&&d[k].end===d.mon?.end),weekend=!d.sat?.enabled&&!d.sun?.enabled;if(week&&weekend)return `Segunda a sexta, das ${hourLabel(d.mon.start)} às ${hourLabel(d.mon.end)}`;const enabled=dayMeta.filter(([k])=>d[k]?.enabled);return enabled.length?enabled.map(([k,n])=>`${n.replace('-feira','')}: ${hourLabel(d[k].start)}–${hourLabel(d[k].end)}`).join(' • '):'Atendimento temporariamente indisponível'}
   async function loadServiceHours(){const {data:row,error}=await sb.from('system_settings').select('value').eq('key','service_hours').maybeSingle();if(error){console.warn(error);return}if(row?.value)serviceHours=row.value;const text=$('#serviceHoursText');if(text)text.textContent=serviceHours.note||serviceHoursSummary()}
-  async function confirmFeedbackFromLink(){const token=new URLSearchParams(location.search).get('feedback');if(!token)return;const result=await sb.rpc('confirm_ticket_feedback',{p_token:token}),ok=!result.error,message=ok?`Atendimento ${result.data?.[0]?.protocol||''} confirmado. Obrigado pelo retorno!`:'Não foi possível confirmar este atendimento. O link pode ser inválido ou o chamado ainda não foi concluído.',anchor=document.querySelector('#teacherView .hero')||document.querySelector('.hero');anchor?.insertAdjacentHTML('afterend',`<section class="card feedback-confirmation ${ok?'success':'error-text'}" role="status"><span>${ok?'✓':'!'}</span><div><strong>${safe(message)}</strong><p>${ok?'A equipe técnica já recebeu sua confirmação. Você pode consultar o histórico abaixo.':'Verifique o chamado ou solicite apoio à equipe técnica.'}</p></div></section>`);history.replaceState({},'', '/labinfo/suporte/');setTimeout(()=>document.querySelector('.feedback-confirmation')?.scrollIntoView({behavior:'smooth',block:'center'}),100)}
+  async function confirmFeedbackFromLink(){
+    const token=new URLSearchParams(location.search).get('feedback');
+    if(!token)return;
+    $('#homeView').hidden=true;
+    $('#teacherView').hidden=false;
+    $('#reservationsPublicView').hidden=true;
+    const cp=$('#chatPublicView');if(cp)cp.hidden=true;
+
+    try {
+      const {data,error}=await sb.rpc('confirm_ticket_feedback',{p_token:token.trim()});
+      const ok=!error;
+      const protocol=data?.[0]?.protocol||'';
+      const message=ok?`Atendimento ${protocol?protocol+' ':''}confirmado com sucesso. Obrigado pelo retorno!`:(error?.message||'Não foi possível confirmar este atendimento. O link pode ser inválido ou o chamado ainda não foi concluído.');
+      const anchor=document.querySelector('#teacherView .hero')||document.querySelector('.hero');
+      document.querySelectorAll('.feedback-confirmation').forEach(el=>el.remove());
+      anchor?.insertAdjacentHTML('afterend',`
+        <section class="card feedback-confirmation ${ok?'success':'error-text'}" role="status" style="margin:20px auto;max-width:760px;">
+          <span style="font-size:24px;font-weight:900;">${ok?'✓':'!'}</span>
+          <div>
+            <strong>${safe(message)}</strong>
+            <p>${ok?'A equipe técnica já recebeu sua confirmação de atendimento. Obrigado pelo retorno!':'Verifique o chamado ou solicite apoio à equipe técnica.'}</p>
+          </div>
+        </section>
+      `);
+      if(protocol){
+        const protoInput=$('#protocolInput');
+        if(protoInput)protoInput.value=protocol;
+      }
+      history.replaceState({},'', '/labinfo/suporte/');
+      setTimeout(()=>document.querySelector('.feedback-confirmation')?.scrollIntoView({behavior:'smooth',block:'center'}),150);
+    } catch(err){
+      console.error('Erro na confirmação de feedback:',err);
+    }
+  }
 
   document.body.insertAdjacentHTML('beforeend',`<div id="loginModal" class="modal-backdrop" hidden><div class="card login-card"><div class="modal-heading"><div><span class="eyebrow">ACESSO RESTRITO</span><h2>Entrar no painel</h2><p>Use as credenciais cadastradas no Supabase.</p></div><button id="closeLogin" class="modal-close">×</button></div><form id="loginForm"><label>E-mail do usuário<input id="loginEmail" type="email" autocomplete="username" required></label><label>Senha<input id="loginPassword" type="password" autocomplete="current-password" required></label><p id="loginError" class="login-error"></p><button class="primary" type="submit">Entrar</button></form></div></div>`);
   const loginModal=$('#loginModal');

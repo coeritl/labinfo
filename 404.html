@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>LabInfo TL</title>
+    <script>
+      (function() {
+        var path = location.pathname.replace(/^\/labinfo\/?/, '').replace(/\/$/, '');
+        var search = location.search ? '&' + location.search.slice(1) : '';
+        var target = '/labinfo/' + (path ? '?route=' + encodeURIComponent(path) + search : (location.search || ''));
+        location.replace(target);
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Redirecionando para o LabInfo…</p>
+  </body>
+</html>
