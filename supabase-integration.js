@@ -41,6 +41,7 @@
         <span class="toggle-slider"></span>
       </label>
       <span id="staffChatToggleLabel" class="chat-toggle-label">Chat: <strong>Offline</strong></span>
+      <span id="topbarOnlineStaffPill" class="chat-status-badge offline" style="font-size:10px;padding:2px 7px;cursor:pointer;" title="Técnicos online agora">⚪ 0 online</span>
     </div>
     <div class="account-menu">
       <button id="accountButton" class="account-button" type="button" aria-expanded="false"><span id="accountAvatar">U</span><span><strong id="accountName">Usuário</strong><small id="accountRole">Perfil</small></span><b>▾</b></button>
@@ -78,6 +79,18 @@
           <div class="chat-admin-head-status">
             <span id="chatAdminStatusIndicator" class="chat-status-badge offline">⚪ Offline</span>
             <button id="chatAdminToggleStatusBtn" class="secondary" type="button">Ficar Online</button>
+          </div>
+        </div>
+        <div class="chat-online-staff-card" id="chatOnlineStaffCard" style="background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;box-shadow:0 2px 6px rgba(0,0,0,0.02);">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="display:inline-grid;place-items:center;width:34px;height:34px;border-radius:8px;background:var(--green-soft);color:var(--green);font-size:16px;font-weight:900;">👥</span>
+            <div>
+              <strong style="font-size:13px;display:block;">Técnicos Online Agora (<span id="onlineStaffCount">0</span>)</strong>
+              <small style="color:var(--muted);font-size:11px;">Membros da equipe disponíveis para atendimento via chat</small>
+            </div>
+          </div>
+          <div id="onlineStaffBadges" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span class="chat-status-badge offline">Nenhum técnico online</span>
           </div>
         </div>
         <div class="chat-admin-grid">
@@ -467,7 +480,7 @@
     try {
       const { data: res, error } = await sb.rpc('get_chat_availability');
       if (error) throw error;
-      chatAvailability = res || { available: false, online_count: 0 };
+      chatAvailability = res || { available: false, online_count: 0, technicians: [] };
 
       const badge = $('#chatAvailabilityBadge');
       const desc = $('#chatAvailabilityDescription');
@@ -493,12 +506,41 @@
       if (warning) {
         warning.hidden = chatAvailability.available;
       }
+
+      // Atualiza presença no topo e no painel do técnico
+      const techs = chatAvailability.technicians || [];
+      const topbarPill = $('#topbarOnlineStaffPill');
+      if (topbarPill) {
+        topbarPill.className = 'chat-status-badge ' + (techs.length > 0 ? 'online' : 'offline');
+        topbarPill.textContent = techs.length > 0 ? `🟢 ${techs.length} online` : '⚪ 0 online';
+        topbarPill.title = techs.length > 0
+          ? `Técnicos online: ${techs.map(t => t.name).join(', ')}`
+          : 'Nenhum outro técnico online';
+      }
+
+      const countEl = $('#onlineStaffCount');
+      if (countEl) countEl.textContent = techs.length;
+
+      const badgesContainer = $('#onlineStaffBadges');
+      if (badgesContainer) {
+        if (techs.length === 0) {
+          badgesContainer.innerHTML = '<span class="chat-status-badge offline">Nenhum técnico online no momento</span>';
+        } else {
+          badgesContainer.innerHTML = techs.map(t => {
+            const isMe = state.profile && t.id === state.profile.id;
+            return `<span class="chat-status-badge online" style="font-size:12px;padding:5px 10px;${isMe ? 'background:#dff3e7;color:#08733b;' : 'background:#e8f4fc;color:#185b8c;'}">
+              🟢 <strong>${safe(t.name)}</strong>${isMe ? ' <small style="font-weight:400;">(Você)</small>' : ''}
+            </span>`;
+          }).join('');
+        }
+      }
     } catch (err) {
       console.warn('Não foi possível verificar disponibilidade do chat', err);
     }
   }
 
   async function renderChatAdminDashboard() {
+    loadChatAvailability();
     const toggle = $('#staffChatToggle');
     const isOnline = toggle ? toggle.checked : false;
     const badge = $('#chatAdminStatusIndicator');

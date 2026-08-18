@@ -95,11 +95,11 @@ begin
   set is_online = false
   where is_online = true and last_heartbeat < (now() - interval '3 minutes');
 
-  select count(*), jsonb_agg(jsonb_build_object('id', p.id, 'name', p.full_name))
+  select count(*), jsonb_agg(jsonb_build_object('id', p.id, 'name', p.full_name, 'role', p.role, 'email', p.email))
   into v_online_count, v_technicians
   from public.staff_chat_status s
   join public.profiles p on p.id = s.profile_id
-  where s.is_online = true and p.active = true and p.role = 'tecnico' and s.last_heartbeat >= (now() - interval '3 minutes');
+  where s.is_online = true and p.active = true and p.role in ('tecnico', 'supervisor') and s.last_heartbeat >= (now() - interval '3 minutes');
 
   return jsonb_build_object(
     'available', (coalesce(v_online_count, 0) > 0),
