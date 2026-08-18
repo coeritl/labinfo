@@ -420,6 +420,239 @@
   }
 }
 
+/* Notificação em Destaque Total de Novo Chamado na Fila para o Técnico */
+.incoming-ticket-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(7, 35, 20, 0.78);
+  backdrop-filter: blur(8px);
+  animation: fadeInBackdrop .2s ease-out;
+}
+
+.incoming-ticket-modal {
+  width: min(580px, 96vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 34px 28px;
+  border-radius: 20px;
+  background: #fff;
+  border: 2px solid #2563eb;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(37, 99, 235, 0.25);
+  text-align: center;
+  position: relative;
+  animation: zoomInModal .25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.incoming-ticket-top-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #1d4ed8;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .6px;
+  margin-bottom: 18px;
+}
+
+.live-dot-pulse-blue {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+  box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+  animation: liveDotPulseBlue 1.2s infinite;
+}
+@keyframes liveDotPulseBlue {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+
+.incoming-ticket-radar {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 18px;
+  display: grid;
+  place-items: center;
+}
+
+.incoming-ticket-icon-box {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #e8f1fa;
+  color: #1e5ba3;
+  display: grid;
+  place-items: center;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 6px 18px rgba(30, 91, 163, 0.22);
+  animation: bellRing 1.2s infinite;
+}
+
+.radar-pulse-blue {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid #2563eb;
+  animation: radarWave 1.6s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
+.incoming-ticket-modal h2 {
+  font-size: 23px;
+  line-height: 1.2;
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+
+.incoming-ticket-subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 0 0 20px;
+}
+
+.incoming-ticket-details-card {
+  padding: 18px 20px;
+  background: #f8fafb;
+  border: 1px solid #dbe5ee;
+  border-radius: 14px;
+  text-align: left;
+  margin-bottom: 22px;
+}
+
+.incoming-ticket-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.ticket-protocol-badge {
+  font-size: 13px;
+  font-weight: 900;
+  color: #1e5ba3;
+  background: #e8f1fa;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.ticket-cat-badge {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--muted);
+  background: #fff;
+  border: 1px solid var(--line);
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.incoming-ticket-server-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.incoming-ticket-server-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #e8f1fa;
+  color: #1e5ba3;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.incoming-ticket-server-meta strong {
+  display: block;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.incoming-ticket-server-meta span {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.incoming-ticket-problem-box {
+  padding-top: 12px;
+}
+
+.incoming-ticket-problem-box strong {
+  display: block;
+  font-size: 14px;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.incoming-ticket-problem-box p {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+  margin: 0;
+  background: #fff;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  max-height: 110px;
+  overflow-y: auto;
+}
+
+.incoming-ticket-actions {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 12px;
+}
+
+.view-ticket-hero-btn {
+  margin: 0;
+  padding: 14px 22px;
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #1e5ba3;
+  box-shadow: 0 8px 22px rgba(30, 91, 163, 0.3);
+  transition: .2s;
+}
+
+.view-ticket-hero-btn:hover {
+  background: #15467e;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(30, 91, 163, 0.38);
+}
+
+.dismiss-ticket-btn {
+  margin: 0;
+  padding: 14px 18px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+@media(max-width: 600px) {
+  .incoming-ticket-actions {
+    grid-template-columns: 1fr;
+  }
+  .incoming-ticket-modal {
+    padding: 24px 18px;
+  }
+}
+
 /* Modal de Chat Técnico */
 .admin-chat-modal{width:min(820px,95vw);max-height:90vh;display:flex;flex-direction:column;padding:0;overflow:hidden}
 .admin-chat-modal-head{padding:18px 24px;border-bottom:1px solid var(--line);margin-bottom:0;background:#fafdfb;display:flex;justify-content:space-between;align-items:center}

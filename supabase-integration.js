@@ -532,7 +532,10 @@
       if(expanded&&selected){$('#ticketDetail').classList.add('detail-expanded');document.body.classList.add('detail-open')}else if(!expanded){$('#ticketDetail').classList.remove('detail-expanded');document.body.classList.remove('detail-open')}
       $('#ticketList').scrollTop=queueScroll;$('#ticketDetail').scrollTop=detailScroll;
       const newcomers=tickets.filter(ticket=>!before.has(ticket.dbId)&&!ticket.deletedAt);
-      if(knownTicketIds.size&&newcomers.length)toast(newcomers.length===1?`Novo chamado recebido: ${newcomers[0].id}`:`${newcomers.length} novos chamados recebidos.`);
+      if(knownTicketIds.size&&newcomers.length){
+        const newest=newcomers[0];
+        showIncomingTicketAlert(newest);
+      }
       knownTicketIds=new Set(tickets.map(ticket=>ticket.dbId));
       lastAdminSignature=await adminSignature();
     }catch(error){console.error('Falha ao atualizar o painel automaticamente',error)}
@@ -548,6 +551,10 @@
     knownTicketIds=new Set(tickets.map(ticket=>ticket.dbId));
     adminSignature().then(signature=>{lastAdminSignature=signature}).catch(error=>console.error('Falha ao iniciar sincronização',error));
     sb.channel('labinfo-admin-live')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'tickets'},()=>{
+        if(state.profile&&!$('#adminView').hidden)scheduleAdminSync(100);
+        else if(document.hidden)adminSyncQueued=true;
+      })
       .on('postgres_changes',{event:'*',schema:'public',table:'tickets'},()=>document.hidden?adminSyncQueued=true:scheduleAdminSync())
       .on('postgres_changes',{event:'*',schema:'public',table:'ticket_updates'},()=>document.hidden?adminSyncQueued=true:scheduleAdminSync())
       .on('postgres_changes',{event:'*',schema:'public',table:'ticket_assignees'},()=>document.hidden?adminSyncQueued=true:scheduleAdminSync())
@@ -557,6 +564,70 @@
     document.addEventListener('visibilitychange',()=>{if(!document.hidden){if(adminSyncQueued){adminSyncQueued=false;scheduleAdminSync(100)}else checkAdminChanges()}});
     window.addEventListener('focus',checkAdminChanges);
   }
+
+  let activeIncomingTicketAlert=null;
+  function showIncomingTicketAlert(ticket){
+    if(!ticket||!state.profile||$('#adminView').hidden)return;
+    if(activeIncomingTicketAlert===ticket.dbId||activeIncomingTicketAlert===ticket.id)return;
+    activeIncomingTicketAlert=ticket.dbId||ticket.id;
+
+    const modal=$('#incomingTicketAlert');
+    if(!modal)return;
+
+    const protoBadge=$('#incomingTicketProtocolBadge');
+    const catBadge=$('#incomingTicketCategoryBadge');
+    const nameEl=$('#incomingTicketServerName');
+    const detailsEl=$('#incomingTicketServerDetails');
+    const titleEl=$('#incomingTicketTitle');
+    const descEl=$('#incomingTicketDescription');
+
+    if(protoBadge)protoBadge.textContent=ticket.id||'NOVO CHAMADO';
+    if(catBadge)catBadge.textContent=ticket.category||'Geral';
+    if(nameEl)nameEl.textContent=ticket.teacher||'Servidor Solicitante';
+    if(detailsEl)detailsEl.textContent=`${ticket.lab||'Local não informado'} • ${ticket.time||'Agora'}`;
+    if(titleEl)titleEl.textContent=ticket.title||'Solicitação de Suporte';
+    if(descEl)descEl.textContent=ticket.description||'Sem descrição detalhada informada.';
+
+    modal.hidden=false;
+    document.body.classList.add('modal-open');
+    playChatNotificationSound();
+  }
+
+  $('#dismissIncomingTicketBtn')?.addEventListener('click',()=>{
+    $('#incomingTicketAlert').hidden=true;
+    document.body.classList.remove('modal-open');
+    activeIncomingTicketAlert=null;
+  });
+
+  $('#viewIncomingTicketBtn')?.addEventListener('click',()=>{
+    const alertTicketId=activeIncomingTicketAlert;
+    $('#incomingTicketAlert').hidden=true;
+    document.body.classList.remove('modal-open');
+    activeIncomingTicketAlert=null;
+
+    if(alertTicketId){
+      const target=tickets.find(t=>t.dbId===alertTicketId||t.id===alertTicketId);
+      if(target){
+        selected=target;
+        renderTickets();
+        renderDetail();
+        const row=document.querySelector(`.ticket-row[data-id="${target.id}"]`);
+        if(row)row.scrollIntoView({behavior:'smooth',block:'center'});
+        if(window.innerWidth<=900){
+          $('#ticketDetail')?.classList.add('detail-expanded');
+          document.body.classList.add('detail-open');
+        }
+      }
+    }
+  });
+
+  $('#incomingTicketAlert')?.addEventListener('click',e=>{
+    if(e.target===$('#incomingTicketAlert')){
+      $('#incomingTicketAlert').hidden=true;
+      document.body.classList.remove('modal-open');
+      activeIncomingTicketAlert=null;
+    }
+  });
 
   // ==========================================================================
   // MÓDULO DE CHAT AO VIVO — ATENDIMENTO EM TEMPO REAL E GERAÇÃO DE CHAMADOS

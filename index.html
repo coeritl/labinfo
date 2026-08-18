@@ -292,6 +292,56 @@
       </div>
     </div>
 
+    <!-- Notificação em Destaque de Novo Chamado na Caixa para o Técnico (Modal de Tela Cheia) -->
+    <div id="incomingTicketAlert" class="modal-backdrop incoming-ticket-backdrop" hidden>
+      <div class="card incoming-ticket-modal" role="dialog" aria-modal="true" aria-labelledby="incomingTicketHeading">
+        <div class="incoming-ticket-top-badge">
+          <span class="live-dot-pulse-blue"></span>
+          <span>NOVO CHAMADO NA FILA</span>
+        </div>
+        <div class="incoming-ticket-radar">
+          <div class="radar-pulse-blue"></div>
+          <div class="incoming-ticket-icon-box">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          </div>
+        </div>
+        <div class="incoming-ticket-body">
+          <h2 id="incomingTicketHeading">Novo chamado aberto no sistema!</h2>
+          <p class="incoming-ticket-subtitle">Uma nova solicitação de suporte técnico acabou de entrar na fila de atendimento.</p>
+
+          <div class="incoming-ticket-details-card">
+            <div class="incoming-ticket-header-row">
+              <span id="incomingTicketProtocolBadge" class="ticket-protocol-badge">LAB01-0000</span>
+              <span id="incomingTicketCategoryBadge" class="ticket-cat-badge">Categoria</span>
+            </div>
+
+            <div class="incoming-ticket-server-row">
+              <div class="incoming-ticket-server-avatar">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <div class="incoming-ticket-server-meta">
+                <strong id="incomingTicketServerName">Prof. Nome do Solicitante</strong>
+                <span id="incomingTicketServerDetails">SIAPE: 0000000 • LabInfo 01</span>
+              </div>
+            </div>
+
+            <div class="incoming-ticket-problem-box">
+              <strong id="incomingTicketTitle">Título do chamado</strong>
+              <p id="incomingTicketDescription">Descrição detalhada do problema...</p>
+            </div>
+          </div>
+
+          <div class="incoming-ticket-actions">
+            <button id="viewIncomingTicketBtn" class="primary view-ticket-hero-btn" type="button">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+              Visualizar chamado
+            </button>
+            <button id="dismissIncomingTicketBtn" class="secondary dismiss-ticket-btn" type="button">Entendido (OK)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal / Drawer do Chat no Painel Técnico -->
     <div id="adminChatModal" class="modal-backdrop" hidden>
       <div class="card admin-chat-modal" role="dialog" aria-modal="true" aria-labelledby="adminChatModalTitle">
