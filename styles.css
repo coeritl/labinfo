@@ -79,15 +79,32 @@
 .reservations-public-view .reservation-form-toggle{order:3;margin-bottom:14px}
 .public-lab-picker{order:4;padding:24px;margin-bottom:14px}
 .public-lab-picker-head h2{margin:4px 0;font-size:24px}.public-lab-picker-head p{margin:0;color:var(--muted)}
-.public-lab-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:18px}
-.public-lab-card{display:grid;grid-template-columns:42px 1fr;gap:12px;position:relative;min-height:112px;padding:17px;border:1px solid var(--line);border-radius:13px;background:#fff;color:var(--ink);text-align:left;cursor:pointer;transition:.18s}
-.public-lab-card:hover{transform:translateY(-2px);border-color:#78a98b;box-shadow:0 10px 24px rgba(17,115,60,.1)}
-.public-lab-card.selected{border:2px solid var(--green);padding:16px;background:var(--green-soft);box-shadow:0 0 0 3px rgba(17,115,60,.08)}
-.public-lab-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:11px;background:var(--green-soft);color:var(--green);font-size:21px}.public-lab-card.selected .public-lab-icon{background:var(--green);color:#fff}
-.public-lab-card strong,.public-lab-card small,.public-lab-card b{display:block}.public-lab-card strong{font-size:15px}.public-lab-card small{margin-top:3px;color:var(--muted);font-size:11px}.public-lab-card b{margin-top:8px;color:var(--green-dark);font-size:11px}.public-lab-card>i{grid-column:2;margin-top:auto;color:var(--green);font-size:10px;font-style:normal;font-weight:900}
+.public-lab-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;margin-top:18px}
+.public-lab-card{display:flex;flex-direction:column;justify-content:space-between;gap:12px;position:relative;min-height:148px;padding:18px;border:1.5px solid #dce8e0;border-radius:14px;background:#fff;color:var(--ink);text-align:left;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.03);transition:all .2s cubic-bezier(.16,1,.3,1)}
+.public-lab-card:hover{transform:translateY(-2px);border-color:var(--green);box-shadow:0 10px 22px rgba(17,115,60,.1)}
+.public-lab-card.selected{border:2px solid var(--green);background:linear-gradient(180deg,#f3f9f5 0%,#fff 100%);box-shadow:0 0 0 3px rgba(17,115,60,.12),0 8px 18px rgba(17,115,60,.06)}
+.lab-card-header{display:flex;align-items:flex-start;gap:12px}
+.public-lab-icon{width:40px;height:40px;min-width:40px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--green-soft);color:var(--green);font-size:18px;transition:all .2s ease}
+.public-lab-card:hover .public-lab-icon{background:#daf0e1}
+.public-lab-card.selected .public-lab-icon{background:var(--green);color:#fff}
+.lab-card-title-group{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.lab-card-name{font-size:15.5px;font-weight:700;color:var(--ink);line-height:1.25;letter-spacing:-.01em;word-break:break-word}
+.lab-card-location{font-size:12px;color:var(--muted);font-weight:500}
+.lab-card-specs{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:2px}
+.lab-spec-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:7px;font-size:11.5px;font-weight:600;line-height:1.2;background:#f1f5f9;color:#334155;border:1px solid #e2e8f0}
+.lab-spec-chip svg{opacity:.8;flex-shrink:0}
+.lab-spec-pc{background:#f0fdf4;color:#166534;border-color:#bbf7d0}
+.lab-spec-os{background:#f8fafc;color:#334155;border-color:#e2e8f0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lab-card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:10px;border-top:1px solid rgba(0,0,0,.05)}
+.lab-card-status-badge{font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.lab-card-status-badge.available{color:#15803d}
+.lab-card-status-badge.active{color:#0d5c2e;font-weight:700}
+.lab-card-action{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--green);transition:transform .18s ease}
+.public-lab-card:hover .lab-card-action{transform:translateX(3px)}
+.public-lab-card.selected .lab-card-action{color:#0d5c2e;font-weight:800;transform:none}
 .reservations-public-view .public-schedule-card{order:5}.reservations-public-view .reservation-public-grid{order:6}
 .reservation-selected-lab{margin-bottom:15px;padding:13px 15px;border:1px solid #bad4c3;border-radius:11px;background:var(--green-soft)}.reservation-selected-lab strong,.reservation-selected-lab span{display:block}.reservation-selected-lab span{margin-top:3px;color:var(--muted);font-size:11px}
-@media(max-width:620px){.public-lab-picker{padding:18px 14px}.public-lab-picker-head h2{font-size:21px}.public-lab-cards{grid-template-columns:1fr}.public-lab-card{min-height:100px}.reservations-public-view .reservation-form-toggle{position:relative;z-index:1}.public-schedule-card{scroll-margin-top:12px}}
+@media(max-width:620px){.public-lab-picker{padding:18px 14px}.public-lab-picker-head h2{font-size:21px}.public-lab-cards{grid-template-columns:1fr;gap:12px}.public-lab-card{min-height:auto;padding:16px}.reservations-public-view .reservation-form-toggle{position:relative;z-index:1}.public-schedule-card{scroll-margin-top:12px}}
 .registry-actions{display:flex;align-items:center;gap:7px}.edit-lab-button{width:auto!important;padding:9px 14px!important}.cancel-lab-edit{margin-top:4px}
 @media(max-width:620px){.registry-actions{align-items:stretch;flex-direction:column}.registry-actions button{width:100%!important}}
 .reservation-time-row{grid-template-columns:1.15fr .8fr .8fr}.reservation-time-row input[type="time"]{font-variant-numeric:tabular-nums}

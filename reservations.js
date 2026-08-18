@@ -35,7 +35,50 @@
   let publicServer=null,publicLabs=[],publicScheduleRows=[],publicWeekStart=publicMonday(new Date());
   function publicMonday(value){const date=new Date(value);date.setHours(12,0,0,0);const day=date.getDay()||7;date.setDate(date.getDate()-day+1);return date}
   const publicIsoDate=date=>date.toLocaleDateString('en-CA',{timeZone:'America/Cuiaba'}),publicAddDays=(date,days)=>{const copy=new Date(date);copy.setDate(copy.getDate()+days);return copy};
-  function renderPublicLabCards(){const selected=$('#publicScheduleLab').value;$('#publicLabCards').innerHTML=publicLabs.map(lab=>`<button class="public-lab-card ${selected===lab.id?'selected':''}" type="button" data-lab="${lab.id}" aria-pressed="${selected===lab.id}"><span class="public-lab-icon">▦</span><span><strong>${safe(lab.name)}</strong><small>${safe(lab.location||'Localização não informada')}</small><b>${Number(lab.computer_count)||0} computador(es)${lab.operating_system ? ' • ' + safe(lab.operating_system) : ''}</b></span><i>${selected===lab.id?'Agenda aberta':'Ver agenda →'}</i></button>`).join('')||'<p class="empty">Nenhum laboratório disponível.</p>';$('#publicLabCards').querySelectorAll('[data-lab]').forEach(button=>button.onclick=async()=>{const lab=publicLabs.find(item=>item.id===button.dataset.lab);$('#publicScheduleLab').value=lab.id;$('#reservationLab').value=lab.id;$('#reservationSelectedLab').innerHTML=`<strong>${safe(lab.name)}</strong><span>${safe(lab.location||'Localização não informada')} • ${Number(lab.computer_count)||0} computador(es)${lab.operating_system ? ' • SO: ' + safe(lab.operating_system) : ''}</span>`;$('#publicScheduleTitle').textContent=lab.name;$('#publicScheduleDescription').textContent=`${lab.location||'Localização não informada'} • ${Number(lab.computer_count)||0} computador(es)${lab.operating_system ? ' • SO: ' + lab.operating_system : ''}`;$('#publicScheduleCard').hidden=false;renderPublicLabCards();await loadPublicSchedule();setTimeout(()=>$('#publicScheduleCard').scrollIntoView({behavior:'smooth',block:'start'}),50)})}
+  function renderPublicLabCards(){
+    const selected=$('#publicScheduleLab').value;
+    $('#publicLabCards').innerHTML=publicLabs.map(lab=>{
+      const isSel=selected===lab.id,count=Number(lab.computer_count)||0,os=lab.operating_system?safe(lab.operating_system):'';
+      return `<button class="public-lab-card ${isSel?'selected':''}" type="button" data-lab="${lab.id}" aria-pressed="${isSel}">
+        <div class="lab-card-header">
+          <div class="public-lab-icon" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+          </div>
+          <div class="lab-card-title-group">
+            <strong class="lab-card-name">${safe(lab.name)}</strong>
+            <span class="lab-card-location">${safe(lab.location||'Localização não informada')}</span>
+          </div>
+        </div>
+        <div class="lab-card-specs">
+          <span class="lab-spec-chip lab-spec-pc">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>
+            ${count} ${count===1?'computador':'computadores'}
+          </span>
+          ${os?`<span class="lab-spec-chip lab-spec-os" title="Sistema operacional: ${os}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+            ${os}
+          </span>`:''}
+        </div>
+        <div class="lab-card-footer">
+          <span class="lab-card-status-badge ${isSel?'active':'available'}">${isSel?'● Aberto':'● Disponível'}</span>
+          <span class="lab-card-action">${isSel?'Agenda selecionada ✓':'Ver agenda →'}</span>
+        </div>
+      </button>`;
+    }).join('')||'<p class="empty">Nenhum laboratório disponível.</p>';
+    $('#publicLabCards').querySelectorAll('[data-lab]').forEach(button=>button.onclick=async()=>{
+      const lab=publicLabs.find(item=>item.id===button.dataset.lab);
+      if(!lab)return;
+      $('#publicScheduleLab').value=lab.id;
+      $('#reservationLab').value=lab.id;
+      $('#reservationSelectedLab').innerHTML=`<strong>${safe(lab.name)}</strong><span>${safe(lab.location||'Localização não informada')} • ${Number(lab.computer_count)||0} computador(es)${lab.operating_system ? ' • SO: ' + safe(lab.operating_system) : ''}</span>`;
+      $('#publicScheduleTitle').textContent=lab.name;
+      $('#publicScheduleDescription').textContent=`${lab.location||'Localização não informada'} • ${Number(lab.computer_count)||0} computador(es) disponíveis${lab.operating_system ? ' • SO: ' + lab.operating_system : ''}`;
+      $('#publicScheduleCard').hidden=false;
+      renderPublicLabCards();
+      await loadPublicSchedule();
+      setTimeout(()=>$('#publicScheduleCard').scrollIntoView({behavior:'smooth',block:'start'}),50);
+    });
+  }
   async function loadPublicLabs(){const {data,error}=await sb.from('labs').select('id,name,code,location,computer_count,operating_system').eq('active',true).order('name');if(error)return;publicLabs=data||[];const options=publicLabs.map(lab=>`<option value="${lab.id}">${safe(lab.name)}</option>`).join('');$('#reservationLab').innerHTML='<option value="">Selecione o laboratório</option>'+options;$('#publicScheduleLab').innerHTML='<option value=""></option>'+options;renderPublicLabCards()}
   async function loadPublicSchedule(){const lab=$('#publicScheduleLab').value||publicLabs[0]?.id;if(!lab)return;$('#publicScheduleLab').value=lab;const days=Array.from({length:6},(_,index)=>publicAddDays(publicWeekStart,index)),from=publicIsoDate(days[0]),to=publicIsoDate(days[5]),{data,error}=await sb.rpc('public_reservation_schedule',{p_lab:lab,p_from:from,p_to:to});if(error){$('#publicReservationSchedule').innerHTML=`<p class="empty error-text">${safe(error.message)}</p>`;return}publicScheduleRows=data||[];const scheduleTimes=[...new Set([...times,...publicScheduleRows.map(row=>localTime(row.starts_at))])].sort((a,b)=>timeMinutes(a)-timeMinutes(b));$('#publicScheduleWeek').textContent=`${localDate(days[0])} a ${localDate(days[5])}`;let html='<div class="calendar-corner">Horário</div>'+days.map(day=>`<div class="calendar-day"><strong>${day.toLocaleDateString('pt-BR',{weekday:'short'})}</strong><span>${day.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span></div>`).join('');scheduleTimes.forEach(time=>{html+=`<div class="calendar-time">${time}</div>`;days.forEach(day=>{const date=publicIsoDate(day),items=publicScheduleRows.filter(row=>publicIsoDate(new Date(row.starts_at))===date&&localTime(row.starts_at)===time);html+=`<div class="calendar-cell public-calendar-cell ${items.length?'occupied-cell':'available-cell'}">${items.map(row=>`<article class="public-calendar-reservation ${row.status==='Autorizada'?'authorized':'pending'}"><strong>${safe(row.subject)}</strong>${row.server_name?`<span>${safe(row.server_name)}</span>`:''}<small>${localTime(row.starts_at)}–${localTime(row.ends_at)}</small></article>`).join('')}</div>`})});$('#publicReservationSchedule').innerHTML=html}
   $('#publicScheduleLab').onchange=loadPublicSchedule;$('#publicSchedulePrev').onclick=()=>{publicWeekStart=publicAddDays(publicWeekStart,-7);loadPublicSchedule()};$('#publicScheduleNext').onclick=()=>{publicWeekStart=publicAddDays(publicWeekStart,7);loadPublicSchedule()};
