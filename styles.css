@@ -401,5 +401,84 @@
   }
 }
 
+/* Indicadores de status e ícones universais compatíveis com todos os dispositivos */
+.status-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.status-dot.online {
+  background: #16a34a;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25);
+}
+.status-dot.offline {
+  background: #94a3b8;
+}
+.status-dot.waiting {
+  background: #f59e0b;
+}
+
+.service-choice-icon svg {
+  width: 28px;
+  height: 28px;
+  color: var(--green);
+}
+.service-choice:hover .service-choice-icon svg {
+  color: var(--green-dark);
+}
+
+.metric-icon svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.status-icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  color: var(--green);
+}
+
+.chat-tech-avatar svg,
+.admin-chat-avatar svg {
+  width: 22px;
+  height: 22px;
+  color: var(--green);
+}
+
+.pulse-bell svg {
+  width: 24px;
+  height: 24px;
+  color: var(--green);
+}
+
+.chat-ended-icon svg {
+  width: 36px;
+  height: 36px;
+  color: var(--green);
+}
+
+.waiting-icon svg {
+  width: 32px;
+  height: 32px;
+  color: var(--green);
+}
+
+.ticket-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ticket-meta svg {
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
 
 

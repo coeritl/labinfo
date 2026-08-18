@@ -26,24 +26,30 @@
         </div>
         <div class="service-choice-grid">
           <button id="openReservations" class="service-choice card" type="button">
-            <span class="service-choice-icon">📅</span>
+            <span class="service-choice-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><circle cx="8" cy="14" r="1"/><circle cx="12" cy="14" r="1"/><circle cx="16" cy="14" r="1"/><circle cx="8" cy="18" r="1"/><circle cx="12" cy="18" r="1"/></svg>
+            </span>
             <small>LABORATÓRIOS</small>
             <strong>Ver ou solicitar uma reserva</strong>
             <p>Consulte a agenda dos laboratórios e solicite horários para suas aulas.</p>
             <b>Acessar reservas →</b>
           </button>
           <button id="openSupport" class="service-choice card" type="button">
-            <span class="service-choice-icon">🛠</span>
+            <span class="service-choice-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </span>
             <small>APOIO TÉCNICO</small>
             <strong>Abrir chamado de suporte</strong>
             <p>Solicite atendimento para computadores, rede, projetores e periféricos.</p>
             <b>Abrir chamado →</b>
           </button>
           <button id="openLiveChat" class="service-choice card live-chat-choice" type="button">
-            <span class="service-choice-icon">💬</span>
+            <span class="service-choice-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/></svg>
+            </span>
             <div class="service-choice-head">
               <small>ATENDIMENTO IMEDIATO</small>
-              <span id="chatAvailabilityBadge" class="chat-status-badge offline">⚪ Offline</span>
+              <span id="chatAvailabilityBadge" class="chat-status-badge offline"><i class="status-dot offline"></i> Offline</span>
             </div>
             <strong>Chat ao vivo com técnico</strong>
             <p id="chatAvailabilityDescription">Converse em tempo real com os técnicos de plantão dos laboratórios.</p>
@@ -79,7 +85,9 @@
               <input id="chatSubject" maxlength="140" placeholder="Ex.: Problema com o projetor do Lab 02 ou dúvida de software..." required />
             </label>
             <div id="chatAvailabilityWarning" class="chat-warning-banner" hidden>
-              <span>⚠️</span>
+              <span class="chat-warning-icon" aria-hidden="true">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+              </span>
               <p>Nenhum técnico está online no momento. Você pode aguardar na fila ou <a href="#" id="chatGoToSupport">abrir um chamado convencional</a>.</p>
             </div>
             <button id="startChatButton" class="primary" type="submit">Iniciar atendimento ao vivo <span>→</span></button>
@@ -89,7 +97,9 @@
         <div id="chatWaitingCard" class="card chat-waiting-card" hidden>
           <div class="chat-waiting-animation">
             <div class="waiting-ripple"></div>
-            <span class="waiting-icon">⏳</span>
+            <span class="waiting-icon" aria-hidden="true">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </span>
           </div>
           <h2>Conectando ao plantão técnico...</h2>
           <p id="chatWaitingStatus">Sua solicitação foi enviada aos técnicos. Aguarde enquanto um técnico aceita seu chamado.</p>
@@ -103,7 +113,9 @@
         <div id="chatActiveCard" class="card chat-active-card" hidden>
           <header class="chat-room-header">
             <div class="chat-room-profile">
-              <div class="chat-tech-avatar">👨‍💻</div>
+              <div class="chat-tech-avatar" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
               <div>
                 <strong id="chatRoomTechName">Técnico de Plantão</strong>
                 <span class="chat-room-status"><i class="live-dot"></i> Em atendimento</span>
@@ -114,12 +126,14 @@
           <div id="chatMessagesList" class="chat-messages-container" aria-live="polite"></div>
           <form id="chatMessageForm" class="chat-input-bar">
             <input id="chatMessageInput" type="text" placeholder="Digite sua mensagem e pressione Enter..." autocomplete="off" required />
-            <button id="chatSendMessageBtn" class="primary chat-send-btn" type="submit" aria-label="Enviar mensagem">Enviar ➔</button>
+            <button id="chatSendMessageBtn" class="primary chat-send-btn" type="submit" aria-label="Enviar mensagem">Enviar →</button>
           </form>
         </div>
 
         <div id="chatEndedCard" class="card chat-ended-card" hidden>
-          <div class="chat-ended-icon">✓</div>
+          <div class="chat-ended-icon" aria-hidden="true">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
           <h2>Atendimento Finalizado</h2>
           <p>O atendimento foi concluído pela equipe de TI. Foi gerado um chamado oficial com todo o histórico da conversa.</p>
           <div id="chatProtocolDisplay" class="chat-protocol-box">
@@ -186,7 +200,10 @@
 
           <aside class="side-column">
             <div class="card status-card">
-              <span class="status-icon">⌕</span><h2>Minhas solicitações</h2><p>Informe seu SIAPE para acompanhar suas solicitações e o status atual.</p>
+              <span class="status-icon" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
+              </span>
+              <h2>Minhas solicitações</h2><p>Informe seu SIAPE para acompanhar suas solicitações e o status atual.</p>
               <div class="protocol-search"><input id="protocolInput" inputmode="numeric" placeholder="Digite seu SIAPE" /><button id="protocolButton" type="button">Buscar</button></div>
               <div id="protocolResult" class="protocol-result" aria-live="polite"></div>
             </div>
@@ -213,10 +230,10 @@
           </div>
         </div>
         <div class="metrics">
-          <article><span class="metric-icon red">!</span><div><small>Recebido</small><strong>0</strong><em>Aguardando dados</em></div></article>
-          <article><span class="metric-icon amber">↻</span><div><small>Em atendimento</small><strong>0</strong><em>Aguardando dados</em></div></article>
-          <article><span class="metric-icon green">✓</span><div><small>Concluídos no total</small><strong>0</strong><em>Em todo o período</em></div></article>
-          <article><span class="metric-icon blue">◷</span><div><small>Tempo médio</small><strong>—</strong><em>Sem chamados concluídos</em></div></article>
+          <article><span class="metric-icon red" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg></span><div><small>Recebido</small><strong>0</strong><em>Aguardando dados</em></div></article>
+          <article><span class="metric-icon amber" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 21h5v-5"/></svg></span><div><small>Em atendimento</small><strong>0</strong><em>Aguardando dados</em></div></article>
+          <article><span class="metric-icon green" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span><div><small>Concluídos no total</small><strong>0</strong><em>Em todo o período</em></div></article>
+          <article><span class="metric-icon blue" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span><div><small>Tempo médio</small><strong>—</strong><em>Sem chamados concluídos</em></div></article>
         </div>
         <div class="dashboard-grid">
           <section class="card queue">
@@ -231,7 +248,9 @@
     <!-- Notificação Flutuante de Atendimento ao Vivo para o Técnico -->
     <div id="incomingChatAlert" class="incoming-chat-alert card" hidden>
       <div class="incoming-chat-top">
-        <span class="pulse-bell">🔔</span>
+        <span class="pulse-bell" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        </span>
         <div class="incoming-chat-text">
           <small>NOVO CHAT AO VIVO</small>
           <strong id="incomingChatServerName">Prof. Nome do Servidor</strong>
@@ -239,7 +258,7 @@
         </div>
       </div>
       <div class="incoming-chat-actions">
-        <button id="acceptIncomingChatBtn" class="primary" type="button">Atender agora ➔</button>
+        <button id="acceptIncomingChatBtn" class="primary" type="button">Atender agora →</button>
         <button id="dismissIncomingChatBtn" class="secondary" type="button">Fechar</button>
       </div>
     </div>
@@ -249,7 +268,9 @@
       <div class="card admin-chat-modal" role="dialog" aria-modal="true" aria-labelledby="adminChatModalTitle">
         <header class="modal-heading admin-chat-modal-head">
           <div class="admin-chat-user-info">
-            <div class="admin-chat-avatar">🎓</div>
+            <div class="admin-chat-avatar" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            </div>
             <div>
               <span class="eyebrow">ATENDIMENTO AO VIVO</span>
               <h2 id="adminChatModalTitle">Atendimento com Servidor</h2>
@@ -264,7 +285,7 @@
         <div id="adminChatMessagesList" class="chat-messages-container admin-chat-messages-container"></div>
         <form id="adminChatMessageForm" class="chat-input-bar admin-chat-input-bar">
           <input id="adminChatMessageInput" type="text" placeholder="Digite sua resposta para o servidor..." autocomplete="off" required />
-          <button class="primary chat-send-btn" type="submit">Enviar ➔</button>
+          <button class="primary chat-send-btn" type="submit">Enviar →</button>
         </form>
       </div>
     </div>
@@ -306,7 +327,7 @@
           </label>
           <div class="modal-actions">
             <button id="cancelChatToTicket" class="secondary" type="button">Voltar ao chat</button>
-            <button class="primary" type="submit">Confirmar e gerar protocolo ➔</button>
+            <button class="primary" type="submit">Confirmar e gerar protocolo →</button>
           </div>
         </form>
       </div>
