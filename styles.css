@@ -280,4 +280,109 @@
   .chat-history-row{min-width:680px}
 }
 
+/* ==========================================================================
+   Ajustes Cirúrgicos de Responsividade para Smartphones (Mobile Enhancements)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* Evita auto-zoom ao focar em campos no iOS Safari */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Chat Público em Smartphones */
+  .chat-public-view {
+    padding: 20px 14px 48px;
+  }
+  .chat-active-card {
+    min-height: auto;
+    height: calc(100dvh - 130px);
+    border-radius: 12px;
+  }
+  .chat-messages-container {
+    min-height: 200px;
+    padding: 14px 12px;
+  }
+  .chat-bubble {
+    max-width: 88%;
+  }
+  .chat-input-bar {
+    padding: 10px 12px;
+  }
+
+  /* Modais de Chat e Detalhes no Mobile */
+  .admin-chat-modal {
+    width: 96vw;
+    max-height: 94vh;
+  }
+  .admin-chat-messages-container {
+    min-height: 220px;
+    max-height: calc(94vh - 150px);
+  }
+
+  /* Detalhe do Chamado aberto pelo Técnico em Telas Menores */
+  .ticket-detail.detail-expanded {
+    position: fixed !important;
+    inset: 0 !important;
+    max-height: 100dvh !important;
+    border-radius: 0 !important;
+    padding: 20px 16px 40px !important;
+    z-index: 90 !important;
+    overflow-y: auto !important;
+    background: #fff !important;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.25) !important;
+  }
+  .ticket-detail.detail-expanded .detail-close {
+    display: flex !important;
+    position: sticky !important;
+    float: right !important;
+    top: 0 !important;
+    right: 0 !important;
+    margin-bottom: 12px !important;
+    background: var(--bg) !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 8px !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    font-weight: 800 !important;
+    cursor: pointer !important;
+    z-index: 2 !important;
+  }
+  .ticket-detail.detail-expanded .detail-close:before {
+    content: 'Fechar ';
+  }
+  .ticket-detail.detail-expanded .detail-close:after {
+    content: ' ✕';
+  }
+  .ticket-detail.detail-expanded .detail-data {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .ticket-detail.detail-expanded .detail-actions {
+    flex-direction: column !important;
+  }
+  .ticket-detail.detail-expanded .detail-actions button {
+    width: 100% !important;
+  }
+
+  /* Switch compacto no topo em telas mobile */
+  .chat-toggle-label {
+    display: none;
+  }
+  .staff-chat-toggle-wrap {
+    padding: 4px 8px;
+  }
+  
+  /* Cards de serviço no portal inicial com padding equilibrado */
+  .service-choice {
+    padding: 22px 18px !important;
+  }
+  .service-choice-icon {
+    width: 46px !important;
+    height: 46px !important;
+    font-size: 22px !important;
+    margin-bottom: 14px !important;
+  }
+}
+
+
 
