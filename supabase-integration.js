@@ -266,7 +266,7 @@
   supervisor=function(){const waiting=tickets.filter(t=>t.status==='Recebido').length,active=tickets.filter(t=>t.status==='Em atendimento').length,done=tickets.filter(t=>t.status==='Concluído').length;$('#supTotal').textContent=tickets.length;$('#supWaiting').textContent=waiting;$('#supActive').textContent=active;$('#supDone').textContent=done;$('#supervisorTable').innerHTML='<div class="supervisor-row supervisor-head"><span>Protocolo</span><span>Solicitante</span><span>Laboratório</span><span>Categoria</span><span>Status</span><span>Técnico</span></div>'+tickets.map(t=>`<div class="supervisor-row"><strong>${t.id}</strong><span>${t.teacher}</span><span>${t.lab}</span><span>${t.category}</span>${badge(t.status)}<span>${t.technician}</span></div>`).join('')+(tickets.length?'':'<p class="empty">Nenhum chamado registrado.</p>');const hours=Array.from({length:16},(_,i)=>[`${i+7}h`,tickets.filter(t=>t.createdAt&&new Date(t.createdAt).getHours()===i+7).length]),max=Math.max(1,...hours.map(x=>x[1]));$('#supHourChart').innerHTML=hours.map(([l,v])=>`<div class="bar-column"><small>${v}</small><i style="height:${v/max*85}%"></i><strong>${label}</strong></div>`).join('');renderRank('#supCategoryChart',grouped(tickets,'category'));renderRank('#supLabChart',grouped(tickets,'lab'));const people=grouped(tickets,'teacher').map(([name,count])=>[name,grouped(tickets.filter(x=>x.teacher===name),'category')[0]?.[0]||'—',count]);$('#supTeacherChart').innerHTML='<div><span>Servidor</span><span>Principal categoria</span><span>Chamados</span></div>'+people.map(x=>`<div><strong>${x[0]}</strong><span>${x[1]}</span><strong>${x[2]}</strong></div>`).join('')+(people.length?'':'<p class="empty">Sem dados registrados.</p>')};
   $('#applyAnalytics').onclick=analytics;
   async function enterAdmin(){const p=await getProfile();if(!p){openLogin();return}await loadAdmin();$('#adminView').hidden=false;$('#teacherView').hidden=true;$('#homeView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;$('#adminToggle').textContent='Sair';$('#accountName').textContent=p.full_name;$('#accountMenuName').textContent=p.full_name;$('#accountEmail').textContent=p.email;$('#accountRole').textContent=p.role==='supervisor'?'Supervisor':'Técnico';$('#accountAvatar').textContent=p.full_name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();const menuButtons=document.querySelectorAll('#adminMenuDropdown button');menuButtons.forEach(b=>b.hidden=false);if(p.role==='supervisor'){menuButtons.forEach(b=>b.hidden=b.dataset.section!=='supervisor'&&b.id!=='reservationsMenuButton');showSection('supervisor')}else showSection('tickets');await initStaffChatStatus();listenIncomingChats();startAdminSynchronization();window.scrollTo(0,0)}
-  $('#adminToggle').onclick=async()=>{if(state.profile&&!$('#adminView').hidden){stopStaffHeartbeat();await sb.auth.signOut();state.profile=null;state.session=null;accountDropdown.hidden=true;$('#adminView').hidden=true;document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;$('#adminToggle').textContent='Área técnica';history.pushState({},'', '/labinfo/admin/');openLogin();return}document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;history.pushState({},'', '/labinfo/admin/');await enterAdmin()};
+  $('#adminToggle').onclick=async()=>{if(state.profile&&!$('#adminView').hidden){stopStaffHeartbeat();stopIncomingCallRingtone();await sb.auth.signOut();state.profile=null;state.session=null;accountDropdown.hidden=true;$('#adminView').hidden=true;document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;$('#adminToggle').textContent='Área técnica';history.pushState({},'', '/labinfo/admin/');openLogin();return}document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;history.pushState({},'', '/labinfo/admin/');await enterAdmin()};
 
   const originalDetail=renderDetail;
   renderDetail=function(){if(!selected){$('#ticketDetail').innerHTML='<div class="empty-state-detail"><strong>Nenhum chamado selecionado</strong><p>Os chamados reais aparecerão aqui assim que forem registrados.</p></div>';return}originalDetail();if(!state.profile||state.profile.role==='supervisor')return;const technicianSelect=$('#technician');if(technicianSelect){const label=technicianSelect.closest('label');label.childNodes[0].textContent='Técnicos responsáveis';technicianSelect.hidden=true;technicianSelect.required=false;technicianSelect.insertAdjacentHTML('afterend',`<div id="assigneeChoices" class="multi-assignee"><label class="team-option"><input type="checkbox" value="__all__" ${selected.technician==='Toda a equipe'?'checked':''}>Toda a equipe</label>${data.technicians.filter(x=>x.role==='tecnico'&&x.active!==false).map(x=>`<label><input type="checkbox" value="${x.id}" ${(selected.technicianIds||[]).includes(x.id)?'checked':''}>${x.name}</label>`).join('')}</div>`);const choices=$('#assigneeChoices');choices.onchange=e=>{const all=choices.querySelector('[value="__all__"]'),individuals=[...choices.querySelectorAll('input:not([value="__all__"])')];if(e.target===all&&all.checked)individuals.forEach(x=>x.checked=false);else if(e.target!==all&&e.target.checked)all.checked=false}}const assign=$('#assign'),send=$('#sendReply'),close=$('#closeTicket');if(assign)assign.onclick=async()=>{const checked=[...$('#assigneeChoices').querySelectorAll('input:checked')].map(x=>x.value),collective=checked.includes('__all__'),ids=checked.filter(x=>x!=='__all__');if(!collective&&!ids.length)return toast('Selecione ao menos um técnico ou toda a equipe.');const primary=ids[0]||null,{error}=await sb.from('tickets').update({assigned_to:primary,status:'Em atendimento',started_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',selected.dbId);if(error)return fail(error);const removed=await sb.from('ticket_assignees').delete().eq('ticket_id',selected.dbId);if(removed.error)return fail(removed.error);if(ids.length){const inserted=await sb.from('ticket_assignees').insert(ids.map(id=>({ticket_id:selected.dbId,profile_id:id,assigned_by:state.profile.id})));if(inserted.error)return fail(inserted.error)}const names=collective?'Toda a equipe':data.technicians.filter(x=>ids.includes(x.id)).map(x=>x.name).join(', ');await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:'Atendimento atribuído a '+names,kind:'status'});await loadAdmin();toast('Responsáveis atualizados: '+names)};if(send)send.onclick=async()=>{const msg=$('#reply').value.trim();if(!msg)return toast('Digite uma atualização.');const {error}=await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:msg});if(error)return fail(error);toast('Atualização registrada.')};if(close)close.onclick=async()=>{const msg=$('#reply').value.trim();if(!msg)return toast('Descreva a solução.');if(selected.attachments?.length){const {error:se}=await sb.storage.from('ticket-attachments').remove(selected.attachments.map(x=>x.path));if(se)return fail(se);await sb.from('attachments').delete().eq('ticket_id',selected.dbId)}const {error}=await sb.from('tickets').update({status:'Concluído',resolution:msg,closed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',selected.dbId);if(error)return fail(error);await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:msg,kind:'fechamento'});await loadAdmin();toast('Chamado concluído e anexos removidos.')}};
@@ -704,25 +704,59 @@
   let activeAdminChatSession = null;
   let activeAdminChatMessages = [];
   let incomingAlertSessionId = null;
+  let incomingCallRingtoneTimer = null;
 
   function playChatNotificationSound() {
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
       const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
-      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.12);
-      gain.gain.setValueAtTime(0.18, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.45);
+      if (ctx.state === 'suspended') ctx.resume();
+      
+      const now = ctx.currentTime;
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(587.33, now);
+      gain1.gain.setValueAtTime(0.22, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.35);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(880, now + 0.14);
+      gain2.gain.setValueAtTime(0.24, now + 0.14);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.14);
+      osc2.stop(now + 0.6);
     } catch (e) {
       console.warn('Alerta sonoro indisponível:', e);
+    }
+  }
+
+  function startIncomingCallRingtone() {
+    stopIncomingCallRingtone();
+    playChatNotificationSound();
+    incomingCallRingtoneTimer = setInterval(() => {
+      const alert = $('#incomingChatAlert');
+      if (alert && !alert.hidden) {
+        playChatNotificationSound();
+      } else {
+        stopIncomingCallRingtone();
+      }
+    }, 1800);
+  }
+
+  function stopIncomingCallRingtone() {
+    if (incomingCallRingtoneTimer) {
+      clearInterval(incomingCallRingtoneTimer);
+      incomingCallRingtoneTimer = null;
     }
   }
 
@@ -1047,9 +1081,15 @@
             if (alert) {
               alert.hidden = false;
               document.body.classList.add('modal-open');
+              startIncomingCallRingtone();
             }
-            playChatNotificationSound();
           }
+        } else if (incomingAlertSessionId && (payload.new?.id === incomingAlertSessionId || payload.old?.id === incomingAlertSessionId) && payload.new?.status !== 'waiting') {
+          // Se outro técnico atendeu ou o chamado foi cancelado, para o ringtone e fecha o modal
+          stopIncomingCallRingtone();
+          $('#incomingChatAlert').hidden = true;
+          document.body.classList.remove('modal-open');
+          incomingAlertSessionId = null;
         }
       })
       .subscribe();
@@ -1058,6 +1098,7 @@
   }
 
   $('#dismissIncomingChatBtn')?.addEventListener('click', () => {
+    stopIncomingCallRingtone();
     $('#incomingChatAlert').hidden = true;
     document.body.classList.remove('modal-open');
     incomingAlertSessionId = null;
@@ -1065,6 +1106,7 @@
 
   $('#incomingChatAlert')?.addEventListener('click', (e) => {
     if (e.target === $('#incomingChatAlert')) {
+      stopIncomingCallRingtone();
       $('#incomingChatAlert').hidden = true;
       document.body.classList.remove('modal-open');
       incomingAlertSessionId = null;
@@ -1074,6 +1116,7 @@
   $('#acceptIncomingChatBtn')?.addEventListener('click', async () => {
     if (!incomingAlertSessionId) return;
     const sessionId = incomingAlertSessionId;
+    stopIncomingCallRingtone();
     $('#incomingChatAlert').hidden = true;
     document.body.classList.remove('modal-open');
     incomingAlertSessionId = null;
