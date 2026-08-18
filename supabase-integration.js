@@ -1050,20 +1050,58 @@
   }
 
   let staffIncomingPollTimer = null;
+  let staffIncomingChannel = null;
 
   function listenIncomingChats() {
     if (!state.profile || (state.profile.role !== 'tecnico' && state.profile.role !== 'supervisor')) return;
 
     if (staffIncomingPollTimer) clearInterval(staffIncomingPollTimer);
-    staffIncomingPollTimer = setInterval(() => {
+    staffIncomingPollTimer = setInterval(async () => {
       if (!state.profile || document.hidden) return;
+
+      // Se há um alerta tocando na tela, checa se a sessão ainda está em espera
+      if (incomingAlertSessionId) {
+        try {
+          const { data: currentSess } = await sb.from('chat_sessions').select('id, status, technician_id').eq('id', incomingAlertSessionId).maybeSingle();
+          if (!currentSess || currentSess.status !== 'waiting') {
+            stopIncomingCallRingtone();
+            $('#incomingChatAlert').hidden = true;
+            document.body.classList.remove('modal-open');
+            if (currentSess && currentSess.technician_id && currentSess.technician_id !== state.profile.id) {
+              toast('O chamado foi assumido por outro técnico.');
+            }
+            incomingAlertSessionId = null;
+          }
+        } catch (e) {
+          console.warn('Checagem de alerta ativo:', e);
+        }
+      }
+
       const chatSec = $('#chatAdminSection');
       if (chatSec && !chatSec.hidden) {
         renderChatAdminDashboard();
       }
-    }, 3000);
+    }, 1500);
 
-    sb.channel('labinfo-staff-chat-incoming')
+    if (staffIncomingChannel) {
+      sb.removeChannel(staffIncomingChannel);
+      staffIncomingChannel = null;
+    }
+
+    staffIncomingChannel = sb.channel('labinfo-staff-chat-incoming')
+      .on('broadcast', { event: 'chat_session_accepted' }, (payload) => {
+        const p = payload.payload;
+        if (p && incomingAlertSessionId === p.session_id) {
+          if (!state.profile || p.technician_id !== state.profile.id) {
+            stopIncomingCallRingtone();
+            $('#incomingChatAlert').hidden = true;
+            document.body.classList.remove('modal-open');
+            toast(`O atendimento foi assumido por ${p.technician_name || 'outro técnico'}.`);
+            incomingAlertSessionId = null;
+          }
+        }
+        renderChatAdminDashboard();
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_sessions' }, async (payload) => {
         renderChatAdminDashboard();
         if (payload.eventType === 'INSERT' && payload.new.status === 'waiting') {
@@ -1084,12 +1122,16 @@
               startIncomingCallRingtone();
             }
           }
-        } else if (incomingAlertSessionId && (payload.new?.id === incomingAlertSessionId || payload.old?.id === incomingAlertSessionId) && payload.new?.status !== 'waiting') {
-          // Se outro técnico atendeu ou o chamado foi cancelado, para o ringtone e fecha o modal
-          stopIncomingCallRingtone();
-          $('#incomingChatAlert').hidden = true;
-          document.body.classList.remove('modal-open');
-          incomingAlertSessionId = null;
+        } else if (incomingAlertSessionId && (payload.new?.id === incomingAlertSessionId || payload.old?.id === incomingAlertSessionId)) {
+          if (payload.new?.status !== 'waiting') {
+            stopIncomingCallRingtone();
+            $('#incomingChatAlert').hidden = true;
+            document.body.classList.remove('modal-open');
+            if (payload.new?.technician_id && payload.new?.technician_id !== state.profile?.id) {
+              toast('O chamado foi assumido por outro técnico.');
+            }
+            incomingAlertSessionId = null;
+          }
         }
       })
       .subscribe();
@@ -1128,6 +1170,23 @@
       const { data: acceptRes, error: acceptErr } = await sb.rpc('accept_chat_session', { p_session_id: sessionId });
       if (acceptErr) {
         console.warn('Aviso no accept_chat_session:', acceptErr);
+      }
+
+      // Notifica todos os outros técnicos em tempo real que a chamada foi aceita
+      try {
+        if (staffIncomingChannel) {
+          staffIncomingChannel.send({
+            type: 'broadcast',
+            event: 'chat_session_accepted',
+            payload: {
+              session_id: sessionId,
+              technician_id: state.profile?.id,
+              technician_name: state.profile?.full_name || 'Outro técnico'
+            }
+          }).catch(() => {});
+        }
+      } catch (e) {
+        console.warn('Broadcast chat aceito:', e);
       }
 
       const { data: session, error: sessErr } = await sb.from('chat_sessions').select('*, servers(*)').eq('id', sessionId).maybeSingle();
