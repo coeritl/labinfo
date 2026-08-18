@@ -129,7 +129,6 @@
 .service-choice-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px}
 .chat-status-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.3px}
 .chat-status-badge.online{background:#dff3e7;color:#08733b}
-.chat-status-badge.online:before{content:'';width:7px;height:7px;border-radius:50%;background:#08733b;box-shadow:0 0 0 0 rgba(8,115,59,.7);animation:chatPulse 1.8s infinite}
 .chat-status-badge.offline{background:#eef1ef;color:#6d7c73}
 
 @keyframes chatPulse{
@@ -831,17 +830,18 @@
 /* Indicadores de status e ícones universais compatíveis com todos os dispositivos */
 .status-dot {
   display: inline-block;
-  width: 8px;
-  height: 8px;
-  min-width: 8px;
+  width: 7px;
+  height: 7px;
+  min-width: 7px;
   border-radius: 50%;
   background: #94a3b8;
   vertical-align: middle;
   margin-right: 4px;
 }
 .status-dot.online {
-  background: #16a34a;
-  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.25);
+  background: #08733b;
+  box-shadow: 0 0 0 0 rgba(8, 115, 59, 0.7);
+  animation: chatPulse 1.8s infinite;
 }
 .status-dot.offline {
   background: #94a3b8;

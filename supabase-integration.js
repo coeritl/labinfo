@@ -78,7 +78,7 @@
         <span class="toggle-slider"></span>
       </label>
       <span id="staffChatToggleLabel" class="chat-toggle-label">Chat: <strong>Offline</strong></span>
-      <span id="topbarOnlineStaffPill" class="chat-status-badge offline" style="font-size:10px;padding:2px 7px;cursor:pointer;" title="Técnicos online agora">⚪ 0 online</span>
+      <span id="topbarOnlineStaffPill" class="chat-status-badge offline" style="font-size:10px;padding:2px 7px;cursor:pointer;" title="Técnicos online agora"><span class="status-dot offline"></span> 0 online</span>
     </div>
     <div class="account-menu">
       <button id="accountButton" class="account-button" type="button" aria-expanded="false"><span id="accountAvatar">U</span><span><strong id="accountName">Usuário</strong><small id="accountRole">Perfil</small></span><b>▾</b></button>
