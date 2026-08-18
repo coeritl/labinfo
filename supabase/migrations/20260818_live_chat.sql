@@ -523,6 +523,13 @@ language plpgsql security definer set search_path = public as $$
 declare
   v_sessions jsonb;
 begin
+  -- Auto-encerra solicitações que ficaram esperando por mais de 20 minutos sem atendimento
+  update public.chat_sessions
+  set status = 'closed',
+      closed_at = now(),
+      notes = coalesce(notes, 'Expirado por inatividade na fila')
+  where status = 'waiting' and created_at < (now() - interval '20 minutes');
+
   select coalesce(jsonb_agg(jsonb_build_object(
     'id', cs.id,
     'status', cs.status,
@@ -553,4 +560,24 @@ begin
   return v_sessions;
 end $$;
 grant execute on function public.get_admin_chat_dashboard() to authenticated;
+
+-- Limpar chamadas pendentes da fila de espera
+drop function if exists public.clear_stale_chat_sessions();
+create or replace function public.clear_stale_chat_sessions()
+returns integer
+language plpgsql security definer set search_path = public as $$
+declare
+  v_count integer;
+begin
+  update public.chat_sessions
+  set status = 'closed',
+      closed_at = now(),
+      notes = 'Fila limpa pelo técnico'
+  where status = 'waiting';
+
+  get diagnostics v_count = row_count;
+  return v_count;
+end $$;
+grant execute on function public.clear_stale_chat_sessions() to authenticated;
+
 

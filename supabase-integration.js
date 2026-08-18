@@ -83,7 +83,10 @@
         <div class="chat-admin-grid">
           <div class="chat-admin-queue-card">
             <div class="chat-queue-heading">
-              <h3>Fila de Espera <span id="chatWaitingCount" class="count-pill">0</span></h3>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <h3>Fila de Espera <span id="chatWaitingCount" class="count-pill">0</span></h3>
+                <button id="clearChatQueueBtn" class="secondary" type="button" style="padding:4px 10px;font-size:11px;" title="Limpar chamadas pendentes ou testes da fila">Limpar fila</button>
+              </div>
               <p>Servidores aguardando conexão com um técnico de plantão</p>
             </div>
             <div id="chatWaitingList" class="chat-sessions-list">
@@ -120,6 +123,19 @@
   $('#chatMenuButton').onclick=()=>{document.querySelectorAll('.admin-section').forEach(x=>x.hidden=true);$('#chatAdminSection').hidden=false;$('#adminTitle').textContent='Chat ao vivo';$('#adminSubtitle').textContent='Gerencie atendimentos em tempo real e conversas com os servidores.';$('#adminMenuDropdown').hidden=true;renderChatAdminDashboard()};
   $('#refreshChatDashboard')?.addEventListener('click', renderChatAdminDashboard);
   $('#chatAdminToggleStatusBtn')?.addEventListener('click', ()=>{const toggle=$('#staffChatToggle');if(toggle){toggle.checked=!toggle.checked;toggle.dispatchEvent(new Event('change'))}});
+  $('#clearChatQueueBtn')?.addEventListener('click', async () => {
+    if (!confirm('Deseja limpar e encerrar todas as solicitações pendentes da fila de espera?')) return;
+    try {
+      const { error } = await sb.rpc('clear_stale_chat_sessions');
+      if (error) throw error;
+      toast('Fila de espera limpa.');
+      renderChatAdminDashboard();
+    } catch (e) {
+      await sb.from('chat_sessions').update({ status: 'closed', closed_at: new Date().toISOString(), notes: 'Fila limpa pelo técnico' }).eq('status', 'waiting');
+      toast('Fila de espera limpa.');
+      renderChatAdminDashboard();
+    }
+  });
   $('#hoursForm').onsubmit=async e=>{e.preventDefault();const form=new FormData(e.target),days={};for(const [key] of dayMeta){const enabled=form.has(`${key}-enabled`),start=form.get(`${key}-start`)||'07:00',end=form.get(`${key}-end`)||'18:00';if(enabled&&start>=end)return toast('O horário final deve ser posterior ao inicial.');days[key]={enabled,start,end}}const value={days,note:$('#hoursNote').value.trim()};const {error}=await sb.from('system_settings').upsert({key:'service_hours',value,updated_by:state.profile.id,updated_at:new Date().toISOString()});if(error)return fail(error);serviceHours=value;$('#serviceHoursText').textContent=value.note||serviceHoursSummary(value);toast('Horários atualizados com sucesso.')};
 
   async function catalogs(){
@@ -529,9 +545,23 @@
         });
       }
 
-      const waiting = sessions.filter(s => s.status === 'waiting');
-      const active = sessions.filter(s => s.status === 'active');
-      const closed = sessions.filter(s => s.status === 'closed');
+      // Filtra e auto-encerra solicitações que ficaram esperando há mais de 20 minutos
+      const nowMs = Date.now();
+      const validSessions = (sessions || []).filter(s => {
+        if (!s || !s.id) return false;
+        if (s.status === 'waiting' && s.created_at) {
+          const ageMin = (nowMs - new Date(s.created_at).getTime()) / 60000;
+          if (ageMin > 20) {
+            sb.rpc('close_chat_session', { p_session_id: s.id, p_notes: 'Expirado por inatividade na fila' }).catch(() => {});
+            return false;
+          }
+        }
+        return true;
+      });
+
+      const waiting = validSessions.filter(s => s.status === 'waiting');
+      const active = validSessions.filter(s => s.status === 'active');
+      const closed = validSessions.filter(s => s.status === 'closed');
 
       const menuBadge = $('#chatMenuBadge');
       if (menuBadge) {
@@ -552,12 +582,29 @@
               <small>SIAPE: ${safe(s.server_siape || '—')} • Aberto ${fmt(s.created_at)}</small>
               <p>${safe(s.subject || 'Dúvida geral')}</p>
             </div>
-            <button class="primary chat-attend-btn" type="button" data-attend-session="${s.id}">Atender agora ➔</button>
+            <div class="chat-waiting-item-actions" style="display:flex;gap:6px;align-items:center;">
+              <button class="primary chat-attend-btn" type="button" data-attend-session="${s.id}">Atender agora ➔</button>
+              <button class="secondary chat-dismiss-btn" type="button" data-dismiss-session="${s.id}" title="Descartar esta solicitação">Descartar</button>
+            </div>
           </div>
         `).join('') : '<p class="empty">Nenhum servidor aguardando no momento.</p>';
 
         waitingList.querySelectorAll('[data-attend-session]').forEach(b => {
           b.onclick = () => openAdminChatRoom(b.dataset.attendSession);
+        });
+        waitingList.querySelectorAll('[data-dismiss-session]').forEach(b => {
+          b.onclick = async () => {
+            const sid = b.dataset.dismissSession;
+            b.disabled = true;
+            b.textContent = '…';
+            try {
+              await sb.rpc('close_chat_session', { p_session_id: sid, p_notes: 'Cancelado pelo técnico' });
+            } catch {
+              await sb.from('chat_sessions').update({ status: 'closed', closed_at: new Date().toISOString(), notes: 'Cancelado pelo técnico' }).eq('id', sid);
+            }
+            toast('Solicitação removida da fila.');
+            renderChatAdminDashboard();
+          };
         });
       }
 
