@@ -97,6 +97,7 @@
     const cellMap=new Map();
     const scheduleTimesSet=new Set(times);
 
+    const preparedRows=[];
     for(let i=0;i<publicScheduleRows.length;i++){
       const row=publicScheduleRows[i];
       const rDate=publicIsoDate(new Date(row.starts_at));
@@ -106,16 +107,21 @@
 
       const startMin=timeMinutes(rTime);
       const endMin=timeMinutes(rEndTime);
-      const durationMin=endMin>startMin?(endMin-startMin):45;
-      const rowsCount=Math.max(1,Math.round(durationMin/45));
-
-      const item={...row,rDate,rTime,rEndTime,rowsCount};
-      const key=`${rDate}|${rTime}`;
-      if(!cellMap.has(key))cellMap.set(key,[]);
-      cellMap.get(key).push(item);
+      preparedRows.push({...row,rDate,rTime,rEndTime,startMin,endMin});
     }
 
     const scheduleTimes=[...scheduleTimesSet].sort((a,b)=>timeMinutes(a)-timeMinutes(b));
+    const scheduleTimeMinutes=scheduleTimes.map(timeMinutes);
+
+    const cellMap=new Map();
+    for(let i=0;i<preparedRows.length;i++){
+      const row=preparedRows[i];
+      const rowsCount=Math.max(1,scheduleTimeMinutes.filter(t=>t>=row.startMin&&t<row.endMin).length);
+      const item={...row,rowsCount};
+      const key=`${row.rDate}|${row.rTime}`;
+      if(!cellMap.has(key))cellMap.set(key,[]);
+      cellMap.get(key).push(item);
+    }
     $('#publicScheduleWeek').textContent=`${localDate(days[0])} a ${localDate(days[5])}`;
 
     let html='<div class="calendar-corner">Horário</div>'+days.map(day=>`<div class="calendar-day"><strong>${day.toLocaleDateString('pt-BR',{weekday:'short'})}</strong><span>${day.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span></div>`).join('');
@@ -301,7 +307,7 @@
     const dayIsoStrings=days.map(isoDate);
     const minTime=days[0].getTime(),maxTime=addDays(days[5],1).getTime();
 
-    const cellMap=new Map();
+    const weekRows=[];
     const scheduleTimesSet=new Set(times);
 
     for(let i=0;i<reservations.length;i++){
@@ -317,16 +323,21 @@
 
       const startMin=timeMinutes(rTime);
       const endMin=timeMinutes(rEndTime);
-      const durationMin=endMin>startMin?(endMin-startMin):45;
-      const rowsCount=Math.max(1,Math.round(durationMin/45));
-
-      const item={...r,rDate,rTime,rEndTime,rowsCount};
-      const key=`${rDate}|${rTime}`;
-      if(!cellMap.has(key))cellMap.set(key,[]);
-      cellMap.get(key).push(item);
+      weekRows.push({...r,rDate,rTime,rEndTime,startMin,endMin});
     }
 
     const scheduleTimes=[...scheduleTimesSet].sort((a,b)=>timeMinutes(a)-timeMinutes(b));
+    const scheduleTimeMinutes=scheduleTimes.map(timeMinutes);
+
+    const cellMap=new Map();
+    for(let i=0;i<weekRows.length;i++){
+      const r=weekRows[i];
+      const rowsCount=Math.max(1,scheduleTimeMinutes.filter(t=>t>=r.startMin&&t<r.endMin).length);
+      const item={...r,rowsCount};
+      const key=`${r.rDate}|${r.rTime}`;
+      if(!cellMap.has(key))cellMap.set(key,[]);
+      cellMap.get(key).push(item);
+    }
     $('#reservationWeekLabel').textContent=`${localDate(days[0])} a ${localDate(days[5])}`;
 
     let html='<div class="calendar-corner">Horário</div>'+days.map(day=>`<div class="calendar-day"><strong>${day.toLocaleDateString('pt-BR',{weekday:'short'})}</strong><span>${day.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span></div>`).join('');
