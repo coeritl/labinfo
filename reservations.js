@@ -562,7 +562,7 @@
       button.disabled=false;
       button.textContent='Salvar alterações';
     }
-  };
+  });
 
   async function openReservationsAdmin(){
     const menu=$('#adminMenuDropdown');
