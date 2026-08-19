@@ -1,6 +1,21 @@
 (()=>{
-  const sb=window.labinfoDb,$=selector=>document.querySelector(selector),safe=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  if(!sb)return;
+  const getDb=()=>window.labinfoDb||window.supabaseClient;
+  const sb=new Proxy({},{
+    get(target,prop){
+      const client=getDb();
+      if(!client){
+        if(prop==='auth')return {getSession:()=>Promise.resolve({data:null}),onAuthStateChange:()=>({})};
+        if(prop==='channel')return ()=>({on:()=>({subscribe:()=>({})})});
+        return (...args)=>({
+          select:()=>({eq:()=>({order:()=>Promise.resolve({data:[],error:null})}),in:()=>Promise.resolve({data:[],error:null}),order:()=>Promise.resolve({data:[],error:null})}),
+          rpc:()=>Promise.resolve({data:null,error:new Error('Supabase DB não conectado.')})
+        });
+      }
+      const val=client[prop];
+      return typeof val==='function'?val.bind(client):val;
+    }
+  });
+  const $=selector=>document.querySelector(selector),safe=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const localIso=(date,time)=>new Date(`${date}T${time}:00-04:00`).toISOString(),localDate=value=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Cuiaba',dateStyle:'short'}).format(new Date(value)),localTime=value=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Cuiaba',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
   const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
   function setupChoiceGroup(inputId){const input=$('#'+inputId),group=document.querySelector(`[data-choice-for="${inputId}"]`);if(!input||!group)return()=>{};const select=value=>{input.value=value;group.querySelectorAll('.choice-block').forEach(button=>{const active=button.dataset.value===String(value);button.classList.toggle('selected',active);button.setAttribute('aria-pressed',active)});input.dispatchEvent(new Event('change'))};group.querySelectorAll('.choice-block').forEach(button=>button.onclick=()=>select(button.dataset.value));select(input.value);return select}
@@ -61,27 +76,44 @@
   if ($('#reservationTime') && $('#reservationTime').tagName === 'SELECT') {
     $('#reservationTime').innerHTML = '<option value="">Selecione o horário</option>' + standardClassSlots.map(s => `<option value="${s.start}">${s.start} - ${s.end} (${s.name})</option>`).join('');
   }
-  $('#reservationDate').min = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Cuiaba' });
+  if ($('#reservationDate')) {
+    $('#reservationDate').min = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Cuiaba' });
+  }
 
   function showPublic(view,push=true){
     document.body.classList.remove('admin-route');
-    $('#homeView').hidden=view!=='home';
-    $('#reservationsPublicView').hidden=view!=='reservations';
-    $('#teacherView').hidden=view!=='support';
+    if($('#homeView'))$('#homeView').hidden=view!=='home';
+    if($('#reservationsPublicView'))$('#reservationsPublicView').hidden=view!=='reservations';
+    if($('#teacherView'))$('#teacherView').hidden=view!=='support';
     const chatView=$('#chatPublicView');if(chatView)chatView.hidden=view!=='chat';
-    $('#adminView').hidden=true;
+    if($('#adminView'))$('#adminView').hidden=true;
     if(push)history.pushState({},'',view==='home'?'/labinfo/':view==='reservations'?'/labinfo/reservas/':view==='chat'?'/labinfo/chat/':'/labinfo/suporte/');
     window.scrollTo(0,0);
+    if(view==='reservations'&&publicLabs.length===0){
+      loadPublicLabs();
+    }
   }
   window.labinfoShowPublic=showPublic;
-  $('#openReservations').onclick=()=>showPublic('reservations');
-  $('#openSupport')?.addEventListener('click',()=>showPublic('support'));
-  $('#openLiveChat')?.addEventListener('click',()=>showPublic('chat'));
-  $('#backHome').onclick=()=>showPublic('home');
-  $('#backHomeFromChat')?.addEventListener('click',()=>showPublic('home'));
-  $('#backHomeFromSupport')?.addEventListener('click',()=>showPublic('home'));
-  $('#chatGoToSupport')?.addEventListener('click',e=>{e.preventDefault();showPublic('support')});
-  $('.brand').addEventListener('click',event=>{if(!$('#adminView').hidden)return;event.preventDefault();showPublic('home')});
+
+  // Delegação global de navegação no documento inteiro
+  document.addEventListener('click',event=>{
+    if(event.target.closest('#openReservations')){event.preventDefault();showPublic('reservations');return}
+    if(event.target.closest('#openSupport')){event.preventDefault();showPublic('support');return}
+    if(event.target.closest('#openLiveChat')){event.preventDefault();showPublic('chat');return}
+    if(event.target.closest('#backHome, #backHomeFromChat, #backHomeFromSupport')){event.preventDefault();showPublic('home');return}
+    if(event.target.closest('#chatGoToSupport')){event.preventDefault();showPublic('support');return}
+    if(event.target.closest('#reservationsMenuButton, [data-section="reservations"], #reviewReservationsButton')){
+      event.preventDefault();
+      openReservationsAdmin();
+      return;
+    }
+    const brand=event.target.closest('.brand');
+    if(brand&&$('#adminView')&&$('#adminView').hidden){
+      event.preventDefault();
+      showPublic('home');
+    }
+  });
+
   window.addEventListener('popstate',()=>{const path=location.pathname;if(path.includes('/reservas'))showPublic('reservations',false);else if(path.includes('/chat'))showPublic('chat',false);else if(path.includes('/suporte'))showPublic('support',false);else if(!path.includes('/admin'))showPublic('home',false)});
   const initialParams=new URLSearchParams(location.search),initialPublicRoute=initialParams.get('route');if(location.pathname.includes('/reservas')||initialPublicRoute==='reservas'||initialParams.has('confirm_reservation'))showPublic('reservations',false);else if(location.pathname.includes('/chat')||initialPublicRoute==='chat')showPublic('chat',false);else if(location.pathname.includes('/suporte')||initialPublicRoute==='suporte'||initialParams.has('feedback'))showPublic('support',false);
 
@@ -510,16 +542,14 @@
     await loadReservationAdmin();
   }
 
-  $('#reservationCalendar').onclick=event=>{const card=event.target.closest('.calendar-reservation');if(card)openReservationEditor(card.dataset.id,'occurrence')};
-  $('#reservationEditModal .modal-close').onclick=()=>modal('reservationEditModal',false);
-  $('#cancelReservationEdit').onclick=()=>modal('reservationEditModal',false);
+  $('#reservationCalendar')?.addEventListener('click',event=>{const card=event.target.closest('.calendar-reservation');if(card)openReservationEditor(card.dataset.id,'occurrence')});
+  document.querySelectorAll('#reservationEditModal .modal-close, #cancelReservationEdit').forEach(b=>b.addEventListener('click',()=>modal('reservationEditModal',false)));
 
-  $('#reservationEditForm').onsubmit=async event=>{
+  $('#reservationEditForm')?.addEventListener('submit',async event=>{
     event.preventDefault();
     const button=event.submitter;
-    if(button.disabled)return;
-    button.disabled=true;
-    button.textContent='Salvando…';
+    if(button?.disabled)return;
+    if(button){button.disabled=true;button.textContent='Salvando…';}
     try{
       const {error}=await sb.rpc('staff_edit_reservation',{p_id:$('#reservationEditId').value,p_server:$('#reservationEditServer').value,p_lab:$('#reservationEditLab').value,p_subject:$('#reservationEditSubject').value.trim(),p_start:localIso($('#reservationEditDate').value,$('#reservationEditTime').value),p_blocks:Number($('#reservationEditBlocks').value),p_notes:$('#reservationEditNotes').value.trim()||null,p_scope:$('#reservationEditScope').value});
       if(error)throw error;
