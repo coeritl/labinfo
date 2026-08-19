@@ -1,4 +1,4 @@
-(()=>{
+﻿(()=>{
   const getDb=()=>window.labinfoDb||window.supabaseClient;
   const sb=new Proxy({},{
     get(target,prop){
@@ -179,7 +179,6 @@
     }
     publicScheduleRows=data||[];
     const dayIsoStrings=days.map(publicIsoDate);
-    const scheduleTimesSet=new Set(times);
 
     const preparedRows=[];
     for(let i=0;i<publicScheduleRows.length;i++){
@@ -187,40 +186,35 @@
       const rDate=publicIsoDate(new Date(row.starts_at));
       const rTime=localTime(row.starts_at);
       const rEndTime=localTime(row.ends_at);
-      scheduleTimesSet.add(rTime);
-
       const startMin=timeMinutes(rTime);
       const endMin=timeMinutes(rEndTime);
       preparedRows.push({...row,rDate,rTime,rEndTime,startMin,endMin});
     }
 
-    const scheduleTimes=[...scheduleTimesSet].sort((a,b)=>timeMinutes(a)-timeMinutes(b));
-    const scheduleTimeMinutes=scheduleTimes.map(timeMinutes);
-
-    const cellMap=new Map();
-    for(let i=0;i<preparedRows.length;i++){
-      const row=preparedRows[i];
-      const rowsCount=Math.max(1,scheduleTimeMinutes.filter(t=>t>=row.startMin&&t<row.endMin).length);
-      const item={...row,rowsCount};
-      const key=`${row.rDate}|${row.rTime}`;
-      if(!cellMap.has(key))cellMap.set(key,[]);
-      cellMap.get(key).push(item);
-    }
     $('#publicScheduleWeek').textContent=`${localDate(days[0])} a ${localDate(days[5])}`;
 
+    const CAL_START=420,CAL_END=1380,PPM=1.3;
+    const H=(CAL_END-CAL_START)*PPM;
     let html='<div class="calendar-corner">Horário</div>'+days.map(day=>`<div class="calendar-day"><strong>${day.toLocaleDateString('pt-BR',{weekday:'short'})}</strong><span>${day.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span></div>`).join('');
+    
+    html+=`<div class="calendar-time-col" style="position:relative;border-right:1px solid var(--line);height:${H}px;background:#fbfcfb;">`;
+    for(let h=7;h<=22;h++) html+=`<div style="position:absolute;top:${(h*60-CAL_START)*PPM}px;right:10px;transform:translateY(-50%);font-size:11px;font-weight:800;color:var(--muted);">${h.toString().padStart(2,'0')}:00</div>`;
+    html+=`</div>`;
 
-    for(let t=0;t<scheduleTimes.length;t++){
-      const time=scheduleTimes[t];
-      html+=`<div class="calendar-time">${time}</div>`;
-      for(let d=0;d<days.length;d++){
-        const date=dayIsoStrings[d];
-        const items=cellMap.get(`${date}|${time}`)||[];
-        html+=`<div class="calendar-cell public-calendar-cell ${items.length?'occupied-cell':'available-cell'}">${items.map(row=>`<article class="public-calendar-reservation ${row.status==='Autorizada'?'authorized':'pending'}" style="--reservation-rows:${row.rowsCount}"><strong>${safe(row.subject)}</strong>${row.server_name?`<span>${safe(row.server_name)}</span>`:''}<small>${row.rTime}–${row.rEndTime}</small></article>`).join('')}</div>`;
-      }
+    for(let d=0;d<days.length;d++){
+      const date=dayIsoStrings[d];
+      html+=`<div class="public-calendar-cell" data-date="${date}" style="position:relative;min-height:${H}px;padding:0;border-right:1px solid var(--line);background:repeating-linear-gradient(to bottom, transparent, transparent ${60*PPM-1}px, #e9ecef ${60*PPM-1}px, #e9ecef ${60*PPM}px);">`;
+      const items=preparedRows.filter(r=>r.rDate===date);
+      html+=items.map(row=>{
+        const top=(row.startMin-CAL_START)*PPM;
+        const height=(row.endMin-row.startMin)*PPM;
+        return `<article class="public-calendar-reservation ${row.status==='Autorizada'?'authorized':'pending'}" style="position:absolute;top:${top}px;height:${height}px;left:4px;right:4px;margin:0;min-height:unset;overflow:hidden;"><strong>${safe(row.subject)}</strong>${row.server_name?`<span>${safe(row.server_name)}</span>`:''}<small>${row.rTime}–${row.rEndTime}</small></article>`;
+      }).join('');
+      html+=`</div>`;
     }
     $('#publicReservationSchedule').innerHTML=html;
   }
+
   $('#publicScheduleLab').onchange=loadPublicSchedule;$('#publicSchedulePrev').onclick=()=>{publicWeekStart=publicAddDays(publicWeekStart,-7);loadPublicSchedule()};$('#publicScheduleNext').onclick=()=>{publicWeekStart=publicAddDays(publicWeekStart,7);loadPublicSchedule()};
   const publicReservationForm=$('#publicReservationForm'),publicReservationToggle=$('#togglePublicReservationForm');function togglePublicReservationForm(open){publicReservationForm.hidden=!open;publicReservationToggle.setAttribute('aria-expanded',open);publicReservationToggle.querySelector('i').textContent=open?'−':'+';publicReservationToggle.querySelector('b').textContent=open?'Recolher ↑':'Expandir ↓';if(open)setTimeout(()=>publicReservationForm.scrollIntoView({behavior:'smooth',block:'start'}),50)}publicReservationToggle.onclick=()=>togglePublicReservationForm(publicReservationForm.hidden);
   let identityTimer;
@@ -392,8 +386,6 @@
     const minTime=days[0].getTime(),maxTime=addDays(days[5],1).getTime();
 
     const weekRows=[];
-    const scheduleTimesSet=new Set(times);
-
     for(let i=0;i<reservations.length;i++){
       const r=reservations[i];
       if(r.lab_id!==labId||r.status==='Cancelada')continue;
@@ -403,37 +395,27 @@
       const rDate=isoDate(new Date(r.starts_at));
       const rTime=localTime(r.starts_at);
       const rEndTime=localTime(r.ends_at);
-      scheduleTimesSet.add(rTime);
-
       const startMin=timeMinutes(rTime);
       const endMin=timeMinutes(rEndTime);
       weekRows.push({...r,rDate,rTime,rEndTime,startMin,endMin});
     }
 
-    const scheduleTimes=[...scheduleTimesSet].sort((a,b)=>timeMinutes(a)-timeMinutes(b));
-    const scheduleTimeMinutes=scheduleTimes.map(timeMinutes);
-
-    const cellMap=new Map();
-    for(let i=0;i<weekRows.length;i++){
-      const r=weekRows[i];
-      const rowsCount=Math.max(1,scheduleTimeMinutes.filter(t=>t>=r.startMin&&t<r.endMin).length);
-      const item={...r,rowsCount};
-      const key=`${r.rDate}|${r.rTime}`;
-      if(!cellMap.has(key))cellMap.set(key,[]);
-      cellMap.get(key).push(item);
-    }
     $('#reservationWeekLabel').textContent=`${localDate(days[0])} a ${localDate(days[5])}`;
 
-    let html='<div class="calendar-corner">Horário</div>'+days.map(day=>`<div class="calendar-day"><strong>${day.toLocaleDateString('pt-BR',{weekday:'short'})}</strong><span>${day.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span></div>`).join('');
+    const CAL_START=420,CAL_END=1380,PPM=1.3;
+    const H=(CAL_END-CAL_START)*PPM;
+    let html='<div class="calendar-corner">Hor�rio</div>'+days.map(day=>`<div class="calendar-day"><strong>${day.toLocaleDateString('pt-BR',{weekday:'short'})}</strong><span>${day.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span></div>`).join('');
+    
+    html+=`<div class="calendar-time-col" style="position:relative;border-right:1px solid var(--line);height:${H}px;background:#fbfcfb;">`;
+    for(let h=7;h<=22;h++) html+=`<div style="position:absolute;top:${(h*60-CAL_START)*PPM}px;right:10px;transform:translateY(-50%);font-size:11px;font-weight:800;color:var(--muted);">${h.toString().padStart(2,'0')}:00</div>`;
+    html+=`</div>`;
 
-    for(let t=0;t<scheduleTimes.length;t++){
-      const time=scheduleTimes[t];
-      html+=`<div class="calendar-time">${time}</div>`;
-      for(let d=0;d<days.length;d++){
-        const date=dayIsoStrings[d];
-        const items=cellMap.get(`${date}|${time}`)||[];
-        html+=`<div class="calendar-cell" data-date="${date}" data-time="${time}">${items.map(r=>`<article class="calendar-reservation status-${normalize(r.status).replace(/\s/g,'-')}" draggable="true" data-id="${r.id}" style="--reservation-rows:${r.rowsCount}" title="Arraste para alterar data ou horário"><strong>${safe(r.subject)}</strong><span>${safe(r.servers?.full_name)}</span><small>${r.rTime}–${r.rEndTime}</small></article>`).join('')}</div>`;
-      }
+    for(let d=0;d<days.length;d++){
+      const date=dayIsoStrings[d];
+      html+=`<div class="calendar-cell" data-date="${date}" style="position:relative;min-height:${H}px;padding:0;background:repeating-linear-gradient(to bottom, transparent, transparent ${60*PPM-1}px, var(--line) ${60*PPM-1}px, var(--line) ${60*PPM}px);">`;
+      const items=weekRows.filter(r=>r.rDate===date);
+      html+=items.map(r=>`<article class="calendar-reservation status-${normalize(r.status).replace(/\s/g,'-')}" draggable="true" data-id="${r.id}" style="position:absolute;top:${(r.startMin-CAL_START)*PPM}px;height:${(r.endMin-r.startMin)*PPM}px;left:4px;right:4px;margin:0;min-height:unset;z-index:2;overflow:hidden;" title="Arraste para alterar data ou hor�rio"><strong>${safe(r.subject)}</strong><span>${safe(r.servers?.full_name)}</span><small>${r.rTime}�${r.rEndTime}</small></article>`).join('');
+      html+=`</div>`;
     }
 
     const calEl=$('#reservationCalendar');
@@ -448,7 +430,12 @@
         event.preventDefault();
         cell.classList.remove('drag-over');
         if(!draggedReservation)return;
-        const {error}=await sb.rpc('staff_update_reservation',{p_id:draggedReservation.id,p_start:localIso(cell.dataset.date,cell.dataset.time),p_lab:labId,p_status:null,p_reason:null});
+        const rect=cell.getBoundingClientRect();
+        const dropMin=CAL_START+Math.round((event.clientY-rect.top)/PPM);
+        const snapMin=Math.round(dropMin/5)*5;
+        const h=Math.floor(snapMin/60).toString().padStart(2,'0');
+        const m=(snapMin%60).toString().padStart(2,'0');
+        const {error}=await sb.rpc('staff_update_reservation',{p_id:draggedReservation.id,p_start:localIso(cell.dataset.date,`${h}:${m}`),p_lab:labId,p_status:null,p_reason:null});
         draggedReservation=null;
         if(error)return toast(error.message);
         toast('Reserva reagendada e servidor notificado.');
