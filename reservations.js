@@ -4,11 +4,64 @@
   const localIso=(date,time)=>new Date(`${date}T${time}:00-04:00`).toISOString(),localDate=value=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Cuiaba',dateStyle:'short'}).format(new Date(value)),localTime=value=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Cuiaba',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
   const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
   function setupChoiceGroup(inputId){const input=$('#'+inputId),group=document.querySelector(`[data-choice-for="${inputId}"]`);if(!input||!group)return()=>{};const select=value=>{input.value=value;group.querySelectorAll('.choice-block').forEach(button=>{const active=button.dataset.value===String(value);button.classList.toggle('selected',active);button.setAttribute('aria-pressed',active)});input.dispatchEvent(new Event('change'))};group.querySelectorAll('.choice-block').forEach(button=>button.onclick=()=>select(button.dataset.value));select(input.value);return select}
-  const periods=[['07:00','12:35'],['13:00','18:35'],['18:45','22:50']],times=[];
-  const timeMinutes=value=>{const [hour,minute]=String(value||'').split(':').map(Number);return hour*60+minute};
-  periods.forEach(([start,end])=>{let [hour,minute]=start.split(':').map(Number);while(hour*60+minute+45<=Number(end.slice(0,2))*60+Number(end.slice(3))){times.push(`${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`);minute+=45;hour+=Math.floor(minute/60);minute%=60}});
-  if($('#reservationTime').tagName==='SELECT')$('#reservationTime').innerHTML='<option value="">Selecione o horário</option>'+times.map(time=>`<option value="${time}">${time}</option>`).join('');
-  $('#reservationDate').min=new Date().toLocaleDateString('en-CA',{timeZone:'America/Cuiaba'});
+  const standardClassSlots = [
+    // Matutino (07:00 - 12:35) • Intervalo: 09:15 - 09:35
+    { start: '07:00', end: '07:45', name: '1ª Aula', period: 'matutino' },
+    { start: '07:45', end: '08:30', name: '2ª Aula', period: 'matutino' },
+    { start: '08:30', end: '09:15', name: '3ª Aula', period: 'matutino' },
+    { start: '09:35', end: '10:20', name: '4ª Aula', period: 'matutino' },
+    { start: '10:20', end: '11:05', name: '5ª Aula', period: 'matutino' },
+    { start: '11:05', end: '11:50', name: '6ª Aula', period: 'matutino' },
+    { start: '11:50', end: '12:35', name: '7ª Aula', period: 'matutino' },
+    // Vespertino (13:00 - 18:35) • Intervalo: 15:15 - 15:35
+    { start: '13:00', end: '13:45', name: '1ª Aula', period: 'vespertino' },
+    { start: '13:45', end: '14:30', name: '2ª Aula', period: 'vespertino' },
+    { start: '14:30', end: '15:15', name: '3ª Aula', period: 'vespertino' },
+    { start: '15:35', end: '16:20', name: '4ª Aula', period: 'vespertino' },
+    { start: '16:20', end: '17:05', name: '5ª Aula', period: 'vespertino' },
+    { start: '17:05', end: '17:50', name: '6ª Aula', period: 'vespertino' },
+    { start: '17:50', end: '18:35', name: '7ª Aula', period: 'vespertino' },
+    // Noturno (18:50 - 22:50) • Intervalo: 21:05 - 21:20
+    { start: '18:50', end: '19:35', name: '1ª Aula', period: 'noturno' },
+    { start: '19:35', end: '20:20', name: '2ª Aula', period: 'noturno' },
+    { start: '20:20', end: '21:05', name: '3ª Aula', period: 'noturno' },
+    { start: '21:20', end: '22:05', name: '4ª Aula', period: 'noturno' },
+    { start: '22:05', end: '22:50', name: '5ª Aula', period: 'noturno' }
+  ];
+  const times = standardClassSlots.map(s => s.start);
+  const timeMinutes = value => { const [hour, minute] = String(value || '').split(':').map(Number); return (hour || 0) * 60 + (minute || 0); };
+
+  function calculateSlotEndTime(startStr, blocks = 1) {
+    const idx = standardClassSlots.findIndex(s => s.start === startStr);
+    if (idx >= 0) {
+      const period = standardClassSlots[idx].period;
+      const periodSlots = standardClassSlots.filter(s => s.period === period);
+      const pos = periodSlots.findIndex(s => s.start === startStr);
+      const targetPos = Math.min(periodSlots.length - 1, pos + blocks - 1);
+      return periodSlots[targetPos].end;
+    }
+    const [h, m] = String(startStr || '07:00').split(':').map(Number);
+    const totalMin = (h || 0) * 60 + (m || 0) + (blocks * 45);
+    const endH = Math.floor(totalMin / 60);
+    const endM = totalMin % 60;
+    return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+  }
+
+  function calculateBlockCount(startsAt, endsAt) {
+    const sTime = localTime(startsAt);
+    const eTime = localTime(endsAt);
+    const sMin = timeMinutes(sTime);
+    const eMin = timeMinutes(eTime);
+    const matched = standardClassSlots.filter(s => timeMinutes(s.start) >= sMin && timeMinutes(s.end) <= eMin);
+    if (matched.length > 0) return matched.length;
+    const dur = (new Date(endsAt) - new Date(startsAt)) / 60000;
+    return Math.max(1, Math.round(dur / 45));
+  }
+
+  if ($('#reservationTime') && $('#reservationTime').tagName === 'SELECT') {
+    $('#reservationTime').innerHTML = '<option value="">Selecione o horário</option>' + standardClassSlots.map(s => `<option value="${s.start}">${s.start} - ${s.end} (${s.name})</option>`).join('');
+  }
+  $('#reservationDate').min = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Cuiaba' });
 
   function showPublic(view,push=true){
     document.body.classList.remove('admin-route');
@@ -222,7 +275,7 @@
     const serverOptions=adminServers.map(server=>`<option value="${server.id}">${safe(server.full_name)} • ${safe(server.siape)}</option>`).join('');
     if($('#staffReservationServer'))$('#staffReservationServer').innerHTML=serverOptions;
     if($('#reservationEditServer'))$('#reservationEditServer').innerHTML=serverOptions;
-    if($('#staffReservationTime'))$('#staffReservationTime').innerHTML=times.map(time=>`<option value="${time}">${time}</option>`).join('');
+    if($('#staffReservationTime'))$('#staffReservationTime').innerHTML=standardClassSlots.map(s=>`<option value="${s.start}">${s.start} (${s.name})</option>`).join('');
   }
 
   function groupedReservations(){
@@ -443,7 +496,7 @@
     $('#reservationEditSubject').value=row.subject;
     $('#reservationEditDate').value=isoDate(new Date(row.starts_at));
     $('#reservationEditTime').value=localTime(row.starts_at);
-    $('#reservationEditBlocks').value=String(Math.round((new Date(row.ends_at)-new Date(row.starts_at))/2700000));
+    $('#reservationEditBlocks').value=String(calculateBlockCount(row.starts_at,row.ends_at));
     $('#reservationEditNotes').value=row.notes||'';
     modal('reservationEditModal',true);
   }
@@ -539,7 +592,64 @@
   function parseCsvDate(value){const clean=String(value||'').trim();if(/^\d{4}-\d{2}-\d{2}$/.test(clean))return clean;const match=clean.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);return match?`${match[3]}-${match[2].padStart(2,'0')}-${match[1].padStart(2,'0')}`:''}
   function firstWeekdayOnOrAfter(start,weekday){if(!start)return '';const date=new Date(`${start}T12:00:00`);if(Number.isNaN(date.getTime()))return '';date.setDate(date.getDate()+(weekday-date.getDay()+7)%7);return isoDate(date)}
   function matchCsvServer(name){const wanted=normalize(name).split(/\s+/).filter(Boolean),matches=adminServers.filter(server=>{const available=normalize(server.full_name).split(/\s+/);return wanted.length&&wanted.every(token=>available.includes(token))});return matches.length===1?matches[0]:null}
-  function parseCsv(text){const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(line=>line.trim()),delimiter=(lines[0].match(/;/g)||[]).length>(lines[0].match(/,/g)||[]).length?';':',';const cells=line=>line.split(delimiter).map(value=>value.trim().replace(/^"|"$/g,'')),headers=cells(lines.shift()).map(normalize),weekdays={domingo:0,segunda:1,terca:2,quarta:3,quinta:4,sexta:5,sabado:6},semesterStart=$('#csvReservationStart').value;return lines.map((line,index)=>{const values=cells(line),get=name=>{const position=headers.indexOf(name);return position<0?'':values[position]||''},professor=get('professor')||get('nome completo')||get('nome'),server=matchCsvServer(professor),dateRaw=get('data'),weekdayName=normalize(dateRaw).replace(/\s*-?feira\s*/g,''),weekday=weekdays[weekdayName],date=weekday===undefined?parseCsvDate(dateRaw):firstWeekdayOnOrAfter(semesterStart,weekday),untilRaw=get('data fim')||get('fim'),until=untilRaw?parseCsvDate(untilRaw):null,recurrence=weekday!==undefined||normalize(get('recorrencia'))==='semanal'||!!until?'weekly':'none',timeRaw=get('hora')||get('horario'),range=timeRaw.match(/^(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})$/),single=timeRaw.match(/^(\d{1,2}):(\d{2})$/),timeMatch=range||single,time=timeMatch?`${timeMatch[1].padStart(2,'0')}:${timeMatch[2]}`:'',duration=range?(Number(range[3])*60+Number(range[4]))-(Number(range[1])*60+Number(range[2])):45,blocks=duration>0&&duration%45===0?duration/45:0,subject=get('disciplina')||get('atividade'),errors=[];if(!server)errors.push('Professor não cadastrado ou nome ambíguo');if(weekday!==undefined&&!semesterStart)errors.push('Informe o início do semestre/lote');if(!/^\d{4}-\d{2}-\d{2}$/.test(date))errors.push('Data inválida');if(recurrence==='weekly'&&!/^\d{4}-\d{2}-\d{2}$/.test(until||''))errors.push('Data final inválida');if(until&&date&&until<date)errors.push('Data final anterior ao início');if(!time||!blocks)errors.push('Horário ou duração inválida');if(!subject)errors.push('Disciplina ausente');return {line:index+2,date,dateRaw,until,recurrence,time,timeRaw,blocks,subject,professor,server,errors}})}
+  function parseCsv(text){
+    const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(line=>line.trim()),
+          delimiter=(lines[0].match(/;/g)||[]).length>(lines[0].match(/,/g)||[]).length?';':',';
+    const cells=line=>line.split(delimiter).map(value=>value.trim().replace(/^"|"$/g,'')),
+          headers=cells(lines.shift()).map(normalize),
+          weekdays={domingo:0,segunda:1,terca:2,quarta:3,quinta:4,sexta:5,sabado:6},
+          semesterStart=$('#csvReservationStart').value;
+
+    return lines.map((line,index)=>{
+      const values=cells(line),
+            get=name=>{const position=headers.indexOf(name);return position<0?'':values[position]||''},
+            professor=get('professor')||get('nome completo')||get('nome'),
+            server=matchCsvServer(professor),
+            dateRaw=get('data'),
+            weekdayName=normalize(dateRaw).replace(/\s*-?feira\s*/g,''),
+            weekday=weekdays[weekdayName],
+            date=weekday===undefined?parseCsvDate(dateRaw):firstWeekdayOnOrAfter(semesterStart,weekday),
+            untilRaw=get('data fim')||get('fim'),
+            until=untilRaw?parseCsvDate(untilRaw):null,
+            recurrence=weekday!==undefined||normalize(get('recorrencia'))==='semanal'||!!until?'weekly':'none',
+            timeRaw=get('hora')||get('horario'),
+            range=timeRaw.match(/^(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})$/),
+            single=timeRaw.match(/^(\d{1,2}):(\d{2})$/),
+            timeMatch=range||single,
+            startH=timeMatch?timeMatch[1].padStart(2,'0'):'',
+            startM=timeMatch?timeMatch[2].padStart(2,'0'):'',
+            time=timeMatch?`${startH}:${startM}`:'',
+            endH=range?range[3].padStart(2,'0'):'',
+            endM=range?range[4].padStart(2,'0'):'';
+
+      let blocks = 1;
+      if(range){
+        const sMin = Number(startH)*60 + Number(startM);
+        const eMin = Number(endH)*60 + Number(endM);
+        const matched = standardClassSlots.filter(s => {
+          const slotStart = timeMinutes(s.start);
+          const slotEnd = timeMinutes(s.end);
+          return slotStart >= sMin && slotEnd <= eMin;
+        });
+        if(matched.length > 0){
+          blocks = matched.length;
+        }else{
+          const dur = eMin - sMin;
+          blocks = dur > 0 ? Math.max(1, Math.round(dur/45)) : 1;
+        }
+      }
+
+      const subject=get('disciplina')||get('atividade'),errors=[];
+      if(!server)errors.push('Professor não cadastrado ou nome ambíguo');
+      if(weekday!==undefined&&!semesterStart)errors.push('Informe o início do semestre/lote');
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date))errors.push('Data inválida');
+      if(recurrence==='weekly'&&!/^\d{4}-\d{2}-\d{2}$/.test(until||''))errors.push('Data final inválida');
+      if(until&&date&&until<date)errors.push('Data final anterior ao início');
+      if(!time)errors.push('Horário ausente ou inválido');
+      if(!subject)errors.push('Disciplina ausente');
+      return {line:index+2,date,dateRaw,until,recurrence,time,timeRaw,blocks,subject,professor,server,errors};
+    });
+  }
   async function previewCsv(){const file=$('#reservationCsvFile').files[0];if(!file)return;csvRows=parseCsv(await file.text());const preview=$('#reservationCsvPreview');preview.classList.remove('csv-preview-empty');preview.innerHTML=`<div class="csv-summary"><strong>${csvRows.filter(row=>!row.errors.length).length} válida(s)</strong><span>${csvRows.filter(row=>row.errors.length).length} com erro</span></div>`+csvRows.slice(0,50).map(row=>`<div class="csv-row ${row.errors.length?'invalid':''}"><span>Linha ${row.line}</span><strong>${safe(row.professor)}</strong><span>${safe(row.dateRaw)} → ${safe(row.date)} • ${safe(row.timeRaw)} • ${safe(row.subject)}</span><small>${safe(row.errors.join(', ')||row.server.email)}</small></div>`).join('');$('#importReservationsCsv').disabled=!csvRows.some(row=>!row.errors.length)}
   const previewCsvAndFocusWeek=async()=>{await previewCsv();const first=csvRows.filter(row=>!row.errors.length).map(row=>row.date).sort()[0];if(first)weekStart=getMonday(new Date(`${first}T12:00:00`))};
   $('#reservationCsvFile')?.addEventListener('change',previewCsvAndFocusWeek);
