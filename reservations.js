@@ -179,7 +179,6 @@
     }
     publicScheduleRows=data||[];
     const dayIsoStrings=days.map(publicIsoDate);
-    const cellMap=new Map();
     const scheduleTimesSet=new Set(times);
 
     const preparedRows=[];
