@@ -66,9 +66,50 @@
   const loginModal=$('#loginModal');
   const loginIsRequired=()=>location.pathname.includes('/admin')||new URLSearchParams(location.search).get('route')==='admin';
   const openLogin=()=>{loginModal.hidden=false;document.body.classList.add('modal-open')};
-  const closeLogin=(force=false)=>{if(!force&&loginIsRequired()&&!state.profile)return;loginModal.hidden=true;document.body.classList.remove('modal-open')};
+  const closeLogin=(force=false)=>{
+    loginModal.hidden=true;
+    document.body.classList.remove('modal-open');
+    if(!state.profile){
+      document.body.classList.remove('admin-route');
+      $('#homeView').hidden=false;
+      $('#teacherView').hidden=true;
+      $('#reservationsPublicView').hidden=true;
+      const cp=$('#chatPublicView');if(cp)cp.hidden=true;
+      $('#adminToggle').textContent='Área técnica';
+      history.pushState({},'', '/labinfo/');
+    }
+  };
   $('#closeLogin').onclick=()=>closeLogin();
   $('#loginForm').onsubmit=async e=>{e.preventDefault();$('#loginError').textContent='';const button=e.submitter||e.target.querySelector('[type="submit"]');button.disabled=true;button.textContent='Entrando…';const {data:auth,error}=await sb.auth.signInWithPassword({email:$('#loginEmail').value.trim(),password:$('#loginPassword').value});if(error){button.disabled=false;button.textContent='Entrar';$('#loginError').textContent='Usuário ou senha inválidos.';return}state.session=auth.session;closeLogin(true);await enterAdmin();button.disabled=false;button.textContent='Entrar'};
+
+  async function performLogout(){
+    try {
+      stopStaffHeartbeat();
+      stopIncomingCallRingtone();
+      await sb.auth.signOut();
+    } catch(err) {
+      console.warn('Erro ao encerrar sessão:', err);
+    }
+    state.profile=null;
+    state.session=null;
+    if(accountDropdown)accountDropdown.hidden=true;
+    accountActions.hidden=true;
+    $('#adminView').hidden=true;
+    document.body.classList.remove('admin-route');
+    document.body.classList.remove('modal-open');
+    if(loginModal)loginModal.hidden=true;
+
+    $('#homeView').hidden=false;
+    $('#teacherView').hidden=true;
+    $('#reservationsPublicView').hidden=true;
+    const cp=$('#chatPublicView');if(cp)cp.hidden=true;
+
+    $('#adminToggle').textContent='Área técnica';
+    $('#adminToggle').hidden=false;
+    history.pushState({},'', '/labinfo/');
+    window.scrollTo({top:0,behavior:'smooth'});
+    toast('Você saiu do sistema.');
+  }
 
   const accountActions=document.createElement('div');accountActions.className='admin-heading-actions topbar-admin-actions';accountActions.hidden=true;const adminMenu=$('.admin-menu');adminMenu.before(accountActions);accountActions.append(adminMenu);
   accountActions.insertAdjacentHTML('beforeend',`
@@ -97,7 +138,7 @@
   $('#accountButton').onclick=()=>{accountDropdown.hidden=!accountDropdown.hidden;$('#accountButton').setAttribute('aria-expanded',String(!accountDropdown.hidden))};
   $('#changePasswordButton').onclick=()=>{accountDropdown.hidden=true;passwordModal.hidden=false;document.body.classList.add('modal-open');$('#currentPassword').focus()};
   $('#closePasswordModal').onclick=closePasswordModal;passwordModal.onclick=e=>{if(e.target===passwordModal)closePasswordModal()};
-  $('#accountLogout').onclick=()=>$('#adminToggle').click();
+  $('#accountLogout').onclick=performLogout;
   $('#passwordForm').onsubmit=async e=>{e.preventDefault();const current=$('#currentPassword').value,next=$('#newPassword').value,confirm=$('#confirmPassword').value,errorBox=$('#passwordError');errorBox.textContent='';if(next!==confirm){errorBox.textContent='A confirmação não corresponde à nova senha.';return}if(next===current){errorBox.textContent='A nova senha deve ser diferente da senha atual.';return}const email=state.session?.user?.email;const {error:authError}=await sb.auth.signInWithPassword({email,password:current});if(authError){errorBox.textContent='A senha atual está incorreta.';return}const {error:updateError}=await sb.auth.updateUser({password:next});if(updateError){errorBox.textContent=updateError.message;return}closePasswordModal();toast('Senha atualizada com sucesso.')};
 
   $('#adminMenuDropdown').querySelector('[data-section="tickets"]')?.remove();$('#adminMenuDropdown').querySelector('[data-section="analytics"]').textContent='Relatórios';$('#adminMenuDropdown').querySelector('[data-section="supervisor"]').textContent='Supervisor';$('#adminMenuDropdown').insertAdjacentHTML('beforeend','<button id="chatMenuButton" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg> Chat ao vivo <span id="chatMenuBadge" class="chat-menu-badge" hidden>0</span></button><button id="hoursMenuButton">Horários</button><button id="maintenanceMenuButton">Manutenção</button><button id="reservationsMenuButton" type="button">Reservas</button>');
@@ -265,8 +306,35 @@
   analytics=function(){const rows=filteredTickets(),hours=Array.from({length:16},(_,i)=>[`${i+7}h`,rows.filter(t=>t.createdAt&&new Date(t.createdAt).getHours()===i+7).length]),max=Math.max(1,...hours.map(x=>x[1])),categories=grouped(rows,'category'),labs=grouped(rows,'lab'),done=rows.filter(x=>x.status==='Concluído').length,peak=hours.reduce((a,b)=>b[1]>a[1]?b:a,['—',0]),serverRows=grouped(rows,'teacher').map(([name,count])=>{const mine=rows.filter(x=>x.teacher===name),top=grouped(mine,'category')[0]?.[0]||'—';return [name,top,count]}),cards=document.querySelectorAll('#analyticsSection .analytics-metrics article');const vals=[[rows.length,'Registros reais'],[rows.length?Math.round(done/rows.length*100)+'%':'0%','Chamados concluídos'],[peak[1]?peak[0]:'—',peak[1]+' abertura(s)'],[labs[0]?.[0]||'—',(labs[0]?.[1]||0)+' ocorrência(s)']];cards.forEach((c,i)=>{c.querySelector('strong').textContent=vals[i][0];c.querySelector('em').textContent=vals[i][1]});$('#hourChart').innerHTML=hours.map(([l,v])=>`<div class="bar-column"><small>${v}</small><i style="height:${v/max*85}%"></i><strong>${l}</strong></div>`).join('');renderRank('#categoryChart',categories);renderRank('#labChart',labs);$('#teacherChart').innerHTML='<div><span>Servidor</span><span>Principal categoria</span><span>Chamados</span></div>'+serverRows.map(x=>`<div><strong>${x[0]}</strong><span>${x[1]}</span><strong>${x[2]}</strong></div>`).join('')+(serverRows.length?'':'<p class="empty">Sem dados no período.</p>')};
   supervisor=function(){const waiting=tickets.filter(t=>t.status==='Recebido').length,active=tickets.filter(t=>t.status==='Em atendimento').length,done=tickets.filter(t=>t.status==='Concluído').length;$('#supTotal').textContent=tickets.length;$('#supWaiting').textContent=waiting;$('#supActive').textContent=active;$('#supDone').textContent=done;$('#supervisorTable').innerHTML='<div class="supervisor-row supervisor-head"><span>Protocolo</span><span>Solicitante</span><span>Laboratório</span><span>Categoria</span><span>Status</span><span>Técnico</span></div>'+tickets.map(t=>`<div class="supervisor-row"><strong>${t.id}</strong><span>${t.teacher}</span><span>${t.lab}</span><span>${t.category}</span>${badge(t.status)}<span>${t.technician}</span></div>`).join('')+(tickets.length?'':'<p class="empty">Nenhum chamado registrado.</p>');const hours=Array.from({length:16},(_,i)=>[`${i+7}h`,tickets.filter(t=>t.createdAt&&new Date(t.createdAt).getHours()===i+7).length]),max=Math.max(1,...hours.map(x=>x[1]));$('#supHourChart').innerHTML=hours.map(([l,v])=>`<div class="bar-column"><small>${v}</small><i style="height:${v/max*85}%"></i><strong>${label}</strong></div>`).join('');renderRank('#supCategoryChart',grouped(tickets,'category'));renderRank('#supLabChart',grouped(tickets,'lab'));const people=grouped(tickets,'teacher').map(([name,count])=>[name,grouped(tickets.filter(x=>x.teacher===name),'category')[0]?.[0]||'—',count]);$('#supTeacherChart').innerHTML='<div><span>Servidor</span><span>Principal categoria</span><span>Chamados</span></div>'+people.map(x=>`<div><strong>${x[0]}</strong><span>${x[1]}</span><strong>${x[2]}</strong></div>`).join('')+(people.length?'':'<p class="empty">Sem dados registrados.</p>')};
   $('#applyAnalytics').onclick=analytics;
-  async function enterAdmin(){const p=await getProfile();if(!p){openLogin();return}await loadAdmin();$('#adminView').hidden=false;$('#teacherView').hidden=true;$('#homeView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;$('#adminToggle').textContent='Sair';$('#accountName').textContent=p.full_name;$('#accountMenuName').textContent=p.full_name;$('#accountEmail').textContent=p.email;$('#accountRole').textContent=p.role==='supervisor'?'Supervisor':'Técnico';$('#accountAvatar').textContent=p.full_name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();const menuButtons=document.querySelectorAll('#adminMenuDropdown button');menuButtons.forEach(b=>b.hidden=false);if(p.role==='supervisor'){menuButtons.forEach(b=>b.hidden=b.dataset.section!=='supervisor'&&b.id!=='reservationsMenuButton');showSection('supervisor')}else showSection('tickets');await initStaffChatStatus();listenIncomingChats();startAdminSynchronization();window.scrollTo(0,0)}
-  $('#adminToggle').onclick=async()=>{if(state.profile&&!$('#adminView').hidden){stopStaffHeartbeat();stopIncomingCallRingtone();await sb.auth.signOut();state.profile=null;state.session=null;accountDropdown.hidden=true;$('#adminView').hidden=true;document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;$('#adminToggle').textContent='Área técnica';history.pushState({},'', '/labinfo/admin/');openLogin();return}document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;history.pushState({},'', '/labinfo/admin/');await enterAdmin()};
+  async function enterAdmin(){
+    const p=await getProfile();
+    if(!p){openLogin();return}
+    await loadAdmin();
+    $('#adminView').hidden=false;
+    $('#teacherView').hidden=true;
+    $('#homeView').hidden=true;
+    $('#reservationsPublicView').hidden=true;
+    const cp=$('#chatPublicView');if(cp)cp.hidden=true;
+    $('#adminToggle').textContent='Sair';
+    $('#accountName').textContent=p.full_name;
+    $('#accountMenuName').textContent=p.full_name;
+    $('#accountEmail').textContent=p.email;
+    $('#accountRole').textContent=p.role==='supervisor'?'Supervisor':'Técnico';
+    $('#accountAvatar').textContent=p.full_name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();
+    const menuButtons=document.querySelectorAll('#adminMenuDropdown button');
+    menuButtons.forEach(b=>b.hidden=false);
+    if(p.role==='supervisor'){
+      menuButtons.forEach(b=>b.hidden=b.dataset.section!=='supervisor'&&b.id!=='reservationsMenuButton');
+      showSection('supervisor');
+    }else{
+      showSection('tickets');
+    }
+    await initStaffChatStatus();
+    listenIncomingChats();
+    startAdminSynchronization();
+    window.scrollTo(0,0);
+  }
+  $('#adminToggle').onclick=async()=>{if(state.profile&&!$('#adminView').hidden){await performLogout();return}document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;history.pushState({},'', '/labinfo/admin/');await enterAdmin()};
 
   const originalDetail=renderDetail;
   renderDetail=function(){if(!selected){$('#ticketDetail').innerHTML='<div class="empty-state-detail"><strong>Nenhum chamado selecionado</strong><p>Os chamados reais aparecerão aqui assim que forem registrados.</p></div>';return}originalDetail();if(!state.profile||state.profile.role==='supervisor')return;const technicianSelect=$('#technician');if(technicianSelect){const label=technicianSelect.closest('label');label.childNodes[0].textContent='Técnicos responsáveis';technicianSelect.hidden=true;technicianSelect.required=false;technicianSelect.insertAdjacentHTML('afterend',`<div id="assigneeChoices" class="multi-assignee"><label class="team-option"><input type="checkbox" value="__all__" ${selected.technician==='Toda a equipe'?'checked':''}>Toda a equipe</label>${data.technicians.filter(x=>x.role==='tecnico'&&x.active!==false).map(x=>`<label><input type="checkbox" value="${x.id}" ${(selected.technicianIds||[]).includes(x.id)?'checked':''}>${x.name}</label>`).join('')}</div>`);const choices=$('#assigneeChoices');choices.onchange=e=>{const all=choices.querySelector('[value="__all__"]'),individuals=[...choices.querySelectorAll('input:not([value="__all__"])')];if(e.target===all&&all.checked)individuals.forEach(x=>x.checked=false);else if(e.target!==all&&e.target.checked)all.checked=false}}const assign=$('#assign'),send=$('#sendReply'),close=$('#closeTicket');if(assign)assign.onclick=async()=>{const checked=[...$('#assigneeChoices').querySelectorAll('input:checked')].map(x=>x.value),collective=checked.includes('__all__'),ids=checked.filter(x=>x!=='__all__');if(!collective&&!ids.length)return toast('Selecione ao menos um técnico ou toda a equipe.');const primary=ids[0]||null,{error}=await sb.from('tickets').update({assigned_to:primary,status:'Em atendimento',started_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',selected.dbId);if(error)return fail(error);const removed=await sb.from('ticket_assignees').delete().eq('ticket_id',selected.dbId);if(removed.error)return fail(removed.error);if(ids.length){const inserted=await sb.from('ticket_assignees').insert(ids.map(id=>({ticket_id:selected.dbId,profile_id:id,assigned_by:state.profile.id})));if(inserted.error)return fail(inserted.error)}const names=collective?'Toda a equipe':data.technicians.filter(x=>ids.includes(x.id)).map(x=>x.name).join(', ');await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:'Atendimento atribuído a '+names,kind:'status'});await loadAdmin();toast('Responsáveis atualizados: '+names)};if(send)send.onclick=async()=>{const msg=$('#reply').value.trim();if(!msg)return toast('Digite uma atualização.');const {error}=await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:msg});if(error)return fail(error);toast('Atualização registrada.')};if(close)close.onclick=async()=>{const msg=$('#reply').value.trim();if(!msg)return toast('Descreva a solução.');if(selected.attachments?.length){const {error:se}=await sb.storage.from('ticket-attachments').remove(selected.attachments.map(x=>x.path));if(se)return fail(se);await sb.from('attachments').delete().eq('ticket_id',selected.dbId)}const {error}=await sb.from('tickets').update({status:'Concluído',resolution:msg,closed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',selected.dbId);if(error)return fail(error);await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:msg,kind:'fechamento'});await loadAdmin();toast('Chamado concluído e anexos removidos.')}};
