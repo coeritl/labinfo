@@ -535,15 +535,32 @@
   };
 
   async function openReservationsAdmin(){
+    const menu=$('#adminMenuDropdown');
+    if(menu)menu.hidden=true;
     document.querySelectorAll('.admin-section').forEach(section=>section.hidden=true);
-    $('#reservationsSection').hidden=false;
+    const sec=$('#reservationsSection');
+    if(sec)sec.hidden=false;
     $('#adminTitle').textContent='Reservas dos laboratórios';
     $('#adminSubtitle').textContent='Organize a agenda, autorize solicitações e importe reservas em lote.';
-    await loadReservationAdmin();
+    window.scrollTo(0,0);
+    try{
+      await loadReservationAdmin();
+    }catch(err){
+      console.error('Erro ao carregar reservas:',err);
+      toast(err.message||'Erro ao carregar reservas.');
+    }
     if(!reservationChannel)reservationChannel=sb.channel('labinfo-reservations').on('postgres_changes',{event:'*',schema:'public',table:'reservations'},()=>loadReservationAdmin()).subscribe();
   }
+  window.labinfoOpenReservations=openReservationsAdmin;
+  window.labinfoLoadReservationAdmin=loadReservationAdmin;
 
   if(reservationsMenuButton)reservationsMenuButton.onclick=openReservationsAdmin;
+  document.addEventListener('click',e=>{
+    if(e.target.closest('#reservationsMenuButton')||e.target.closest('[data-section="reservations"]')){
+      e.preventDefault();
+      openReservationsAdmin();
+    }
+  });
   $('#adminReservationLab')?.addEventListener('change',renderCalendar);
   $('#reservationAdminSearch')?.addEventListener('input',renderReservationList);
   $('#reservationPrevWeek')?.addEventListener('click',()=>{weekStart=addDays(weekStart,-7);renderCalendar()});
