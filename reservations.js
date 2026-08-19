@@ -80,7 +80,57 @@
     });
   }
   async function loadPublicLabs(){const {data,error}=await sb.from('labs').select('id,name,code,location,computer_count,operating_system').eq('active',true).order('name');if(error)return;publicLabs=data||[];const options=publicLabs.map(lab=>`<option value="${lab.id}">${safe(lab.name)}</option>`).join('');$('#reservationLab').innerHTML='<option value="">Selecione o laboratório</option>'+options;$('#publicScheduleLab').innerHTML='<option value=""></option>'+options;renderPublicLabCards()}
-  async function loadPublicSchedule(){const lab=$('#publicScheduleLab').value||publicLabs[0]?.id;if(!lab)return;$('#publicScheduleLab').value=lab;const days=Array.from({length:6},(_,index)=>publicAddDays(publicWeekStart,index)),from=publicIsoDate(days[0]),to=publicIsoDate(days[5]),{data,error}=await sb.rpc('public_reservation_schedule',{p_lab:lab,p_from:from,p_to:to});if(error){$('#publicReservationSchedule').innerHTML=`<p class="empty error-text">${safe(error.message)}</p>`;return}publicScheduleRows=data||[];const scheduleTimes=[...new Set([...times,...publicScheduleRows.map(row=>localTime(row.starts_at))])].sort((a,b)=>timeMinutes(a)-timeMinutes(b));$('#publicScheduleWeek').textContent=`${localDate(days[0])} a ${localDate(days[5])}`;let html='<div class="calendar-corner">Horário</div>'+days.map(day=>`<div class="calendar-day"><strong>${day.toLocaleDateString('pt-BR',{weekday:'short'})}</strong><span>${day.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span></div>`).join('');scheduleTimes.forEach(time=>{html+=`<div class="calendar-time">${time}</div>`;days.forEach(day=>{const date=publicIsoDate(day),items=publicScheduleRows.filter(row=>publicIsoDate(new Date(row.starts_at))===date&&localTime(row.starts_at)===time);html+=`<div class="calendar-cell public-calendar-cell ${items.length?'occupied-cell':'available-cell'}">${items.map(row=>`<article class="public-calendar-reservation ${row.status==='Autorizada'?'authorized':'pending'}"><strong>${safe(row.subject)}</strong>${row.server_name?`<span>${safe(row.server_name)}</span>`:''}<small>${localTime(row.starts_at)}–${localTime(row.ends_at)}</small></article>`).join('')}</div>`})});$('#publicReservationSchedule').innerHTML=html}
+  async function loadPublicSchedule(){
+    const lab=$('#publicScheduleLab').value||publicLabs[0]?.id;
+    if(!lab)return;
+    $('#publicScheduleLab').value=lab;
+    const days=Array.from({length:6},(_,index)=>publicAddDays(publicWeekStart,index)),
+          from=publicIsoDate(days[0]),
+          to=publicIsoDate(days[5]),
+          {data,error}=await sb.rpc('public_reservation_schedule',{p_lab:lab,p_from:from,p_to:to});
+    if(error){
+      $('#publicReservationSchedule').innerHTML=`<p class="empty error-text">${safe(error.message)}</p>`;
+      return;
+    }
+    publicScheduleRows=data||[];
+    const dayIsoStrings=days.map(publicIsoDate);
+    const cellMap=new Map();
+    const scheduleTimesSet=new Set(times);
+
+    for(let i=0;i<publicScheduleRows.length;i++){
+      const row=publicScheduleRows[i];
+      const rDate=publicIsoDate(new Date(row.starts_at));
+      const rTime=localTime(row.starts_at);
+      const rEndTime=localTime(row.ends_at);
+      scheduleTimesSet.add(rTime);
+
+      const startMin=timeMinutes(rTime);
+      const endMin=timeMinutes(rEndTime);
+      const durationMin=endMin>startMin?(endMin-startMin):45;
+      const rowsCount=Math.max(1,Math.round(durationMin/45));
+
+      const item={...row,rDate,rTime,rEndTime,rowsCount};
+      const key=`${rDate}|${rTime}`;
+      if(!cellMap.has(key))cellMap.set(key,[]);
+      cellMap.get(key).push(item);
+    }
+
+    const scheduleTimes=[...scheduleTimesSet].sort((a,b)=>timeMinutes(a)-timeMinutes(b));
+    $('#publicScheduleWeek').textContent=`${localDate(days[0])} a ${localDate(days[5])}`;
+
+    let html='<div class="calendar-corner">Horário</div>'+days.map(day=>`<div class="calendar-day"><strong>${day.toLocaleDateString('pt-BR',{weekday:'short'})}</strong><span>${day.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span></div>`).join('');
+
+    for(let t=0;t<scheduleTimes.length;t++){
+      const time=scheduleTimes[t];
+      html+=`<div class="calendar-time">${time}</div>`;
+      for(let d=0;d<days.length;d++){
+        const date=dayIsoStrings[d];
+        const items=cellMap.get(`${date}|${time}`)||[];
+        html+=`<div class="calendar-cell public-calendar-cell ${items.length?'occupied-cell':'available-cell'}">${items.map(row=>`<article class="public-calendar-reservation ${row.status==='Autorizada'?'authorized':'pending'}" style="--reservation-rows:${row.rowsCount}"><strong>${safe(row.subject)}</strong>${row.server_name?`<span>${safe(row.server_name)}</span>`:''}<small>${row.rTime}–${row.rEndTime}</small></article>`).join('')}</div>`;
+      }
+    }
+    $('#publicReservationSchedule').innerHTML=html;
+  }
   $('#publicScheduleLab').onchange=loadPublicSchedule;$('#publicSchedulePrev').onclick=()=>{publicWeekStart=publicAddDays(publicWeekStart,-7);loadPublicSchedule()};$('#publicScheduleNext').onclick=()=>{publicWeekStart=publicAddDays(publicWeekStart,7);loadPublicSchedule()};
   const publicReservationForm=$('#publicReservationForm'),publicReservationToggle=$('#togglePublicReservationForm');function togglePublicReservationForm(open){publicReservationForm.hidden=!open;publicReservationToggle.setAttribute('aria-expanded',open);publicReservationToggle.querySelector('i').textContent=open?'−':'+';publicReservationToggle.querySelector('b').textContent=open?'Recolher ↑':'Expandir ↓';if(open)setTimeout(()=>publicReservationForm.scrollIntoView({behavior:'smooth',block:'start'}),50)}publicReservationToggle.onclick=()=>togglePublicReservationForm(publicReservationForm.hidden);
   let identityTimer;
@@ -100,21 +150,9 @@
   <div id="reservationModal" class="modal-backdrop" hidden><form id="staffReservationForm" class="modal card"><button class="modal-close" type="button" aria-label="Fechar">×</button><span class="eyebrow">NOVA RESERVA</span><h2>Cadastrar reserva</h2><label>Servidor<select id="staffReservationServer" required></select></label><label>Laboratório<select id="staffReservationLab" required></select></label><label>Disciplina ou atividade<input id="staffReservationSubject" maxlength="160" required></label><div class="field-row"><label>Data inicial<input id="staffReservationDate" type="date" required></label><label>Hora<select id="staffReservationTime" required></select></label></div><fieldset class="choice-field"><legend>Duração</legend><input id="staffReservationBlocks" type="hidden" value="1"><div class="choice-blocks duration-choices" data-choice-for="staffReservationBlocks"><button class="choice-block selected" type="button" data-value="1"><strong>1 bloco</strong><span>45 min</span></button><button class="choice-block" type="button" data-value="2"><strong>2 blocos</strong><span>1h30</span></button><button class="choice-block" type="button" data-value="3"><strong>3 blocos</strong><span>2h15</span></button><button class="choice-block" type="button" data-value="4"><strong>4 blocos</strong><span>3h</span></button></div></fieldset><div class="field-row recurrence-row"><fieldset class="choice-field"><legend>Repetição</legend><input id="staffReservationRecurrence" type="hidden" value="none"><div class="choice-blocks recurrence-choices" data-choice-for="staffReservationRecurrence"><button class="choice-block selected" type="button" data-value="none"><strong>Somente nesta data</strong></button><button class="choice-block" type="button" data-value="weekly"><strong>Semanalmente</strong><span>No mesmo dia da semana</span></button></div></fieldset><label id="staffReservationUntilLabel" hidden>Repetir até<input id="staffReservationUntil" type="date"></label></div><label>Observações<textarea id="staffReservationNotes" rows="3"></textarea></label><button class="primary" type="submit">Cadastrar e autorizar</button></form></div>
   <div id="reservationCsvModal" class="modal-backdrop" hidden><section class="modal card csv-reservation-modal" role="dialog" aria-modal="true" aria-labelledby="csvReservationTitle"><header class="csv-modal-head"><div><span class="eyebrow">IMPORTAÇÃO EM LOTE</span><h2 id="csvReservationTitle">Importar reservas por CSV</h2><p>Cadastre a grade recorrente do laboratório sem enviar notificações iniciais.</p></div><button class="modal-close" type="button" aria-label="Fechar">×</button></header><div class="csv-modal-body"><div class="csv-format-help"><strong>Formato esperado</strong><span>Data · Hora · Disciplina · Professor · Data fim · Recorrência</span><small>A data pode ser “Segunda-feira” e o horário “7:00 - 8:30”.</small></div><div class="field-row csv-settings"><label>Laboratório<select id="csvReservationLab" required></select></label><label>Início do semestre/lote<input id="csvReservationStart" type="date" required></label></div><label class="csv-file-field">Arquivo CSV<input id="reservationCsvFile" type="file" accept=".csv,text/csv"><small>Selecione um arquivo .csv para conferir os registros antes de importar.</small></label><div id="reservationCsvPreview" class="csv-preview-empty"><p>Nenhum arquivo selecionado.</p></div></div><footer class="csv-modal-footer"><div id="csvImportProgress" class="csv-import-progress" hidden><span>Preparando importação…</span><div><i></i></div></div><button id="importReservationsCsv" class="primary" type="button" disabled>Importar reservas válidas</button></footer></section></div>`);
   admin.insertAdjacentHTML('beforeend',`<div id="reservationEditModal" class="modal-backdrop" hidden><form id="reservationEditForm" class="modal card reservation-edit-modal"><div class="modal-heading"><div><span class="eyebrow">EDITAR RESERVA</span><h2>Alterar informações</h2><p id="reservationEditScopeText"></p></div><button class="modal-close" type="button" aria-label="Fechar">×</button></div><input id="reservationEditId" type="hidden"><input id="reservationEditScope" type="hidden"><label>Servidor<select id="reservationEditServer" required></select></label><label>Disciplina ou atividade<input id="reservationEditSubject" maxlength="160" required></label><div class="field-row"><label>Laboratório<select id="reservationEditLab" required></select></label><label>Duração<select id="reservationEditBlocks"><option value="1">1 bloco • 45 min</option><option value="2">2 blocos • 1h30</option><option value="3">3 blocos • 2h15</option><option value="4">4 blocos • 3h</option><option value="5">5 blocos • 3h45</option></select></label></div><div class="field-row"><label>Data<input id="reservationEditDate" type="date" required></label><label>Horário inicial<input id="reservationEditTime" type="time" required></label></div><label>Observações<textarea id="reservationEditNotes" rows="3" maxlength="500"></textarea></label><div class="modal-actions"><button id="cancelReservationEdit" class="secondary" type="button">Voltar</button><button class="primary" type="submit">Salvar alterações</button></div></form></div>`);
-  function sizeReservationCards(root){
-    const scheduleTimes=[...root.querySelectorAll(':scope > .calendar-time')].map(cell=>timeMinutes(cell.textContent.trim()));
-    root.querySelectorAll('.calendar-reservation,.public-calendar-reservation').forEach(card=>{
-      const match=card.querySelector('small')?.textContent.match(/(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})/);
-      if(!match)return;
-      const start=Number(match[1])*60+Number(match[2]),end=Number(match[3])*60+Number(match[4]);
-      const occupiedRows=Math.max(1,scheduleTimes.filter(time=>time>=start&&time<end).length);
-      card.style.setProperty('--reservation-rows',occupiedRows);
-    });
-  }
-  const reservationSizeObserver=new MutationObserver(entries=>entries.forEach(entry=>sizeReservationCards(entry.target)));
-  reservationSizeObserver.observe($('#publicReservationSchedule'),{childList:true});
-  reservationSizeObserver.observe($('#reservationCalendar'),{childList:true});
 
-  const reservationsMenuButton=$('#reservationsMenuButton');reservationsMenuButton.disabled=false;reservationsMenuButton.classList.remove('future-menu-button');reservationsMenuButton.removeAttribute('title');
+  const reservationsMenuButton=$('#reservationsMenuButton');
+  if(reservationsMenuButton){reservationsMenuButton.disabled=false;reservationsMenuButton.classList.remove('future-menu-button');reservationsMenuButton.removeAttribute('title');}
 
   const reservationNotice=document.createElement('section');
   reservationNotice.id='reservationReviewNotice';
@@ -129,57 +167,414 @@
     rows.forEach(row=>{const key=row.recurrence_group||row.id;if(!groups.has(key))groups.set(key,row.status)});
     return {confirmed:[...groups.values()].filter(status=>status==='Aguardando autorização').length,unconfirmed:[...groups.values()].filter(status=>status==='Aguardando confirmação').length};
   }
+  function updateReservationNoticeFromList(rows){
+    const counts=countReservationRequests(rows||reservations||[]),total=counts.confirmed+counts.unconfirmed;
+    const confEl=$('#confirmedReservationCount');
+    const unconfEl=$('#unconfirmedReservationCount');
+    if(confEl)confEl.textContent=counts.confirmed;
+    if(unconfEl)unconfEl.textContent=counts.unconfirmed;
+    if(reservationNotice)reservationNotice.hidden=!total;
+    if(reservationsMenuButton){
+      reservationsMenuButton.classList.toggle('has-pending-reservations',total>0);
+      reservationsMenuButton.dataset.pending=String(total);
+    }
+  }
   async function refreshReservationNotice(){
     const {data:sessionData}=await sb.auth.getSession();
-    if(!sessionData?.session){reservationNotice.hidden=true;return}
+    if(!sessionData?.session){if(reservationNotice)reservationNotice.hidden=true;return}
     const {data:rows,error}=await sb.from('reservations').select('id,recurrence_group,status').in('status',['Aguardando confirmação','Aguardando autorização']);
     if(error){console.error('Não foi possível atualizar o aviso de reservas',error);return}
-    const counts=countReservationRequests(rows||[]),total=counts.confirmed+counts.unconfirmed;
-    $('#confirmedReservationCount').textContent=counts.confirmed;
-    $('#unconfirmedReservationCount').textContent=counts.unconfirmed;
-    reservationNotice.hidden=!total;
-    reservationsMenuButton.classList.toggle('has-pending-reservations',total>0);
-    reservationsMenuButton.dataset.pending=String(total);
+    updateReservationNoticeFromList(rows||[]);
   }
 
   let reservations=[],adminLabs=[],adminServers=[],weekStart=getMonday(new Date()),draggedReservation=null,reservationChannel=null;
   function getMonday(value){const date=new Date(value);date.setHours(12,0,0,0);const day=date.getDay()||7;date.setDate(date.getDate()-day+1);return date}
   const isoDate=date=>date.toLocaleDateString('en-CA',{timeZone:'America/Cuiaba'}),addDays=(date,days)=>{const copy=new Date(date);copy.setDate(copy.getDate()+days);return copy};
-  async function loadReservationAdmin(){const [{data:r,error},{data:l},{data:s}]=await Promise.all([sb.from('reservations').select('*,servers(full_name,siape,email),labs(name,code)').order('starts_at'),sb.from('labs').select('id,name,code').eq('active',true).order('name'),sb.from('servers').select('id,full_name,siape,email').eq('active',true).order('full_name')]);if(error)return toast(error.message);reservations=r||[];adminLabs=l||[];adminServers=s||[];fillAdminOptions();renderReservationAdmin();await refreshReservationNotice()}
-  function fillAdminOptions(){const labOptions=adminLabs.map(lab=>`<option value="${lab.id}">${safe(lab.name)}</option>`).join('');['adminReservationLab','staffReservationLab','csvReservationLab','reservationEditLab'].forEach(id=>{const element=$('#'+id),value=element.value;element.innerHTML=labOptions;if(value)element.value=value});const serverOptions=adminServers.map(server=>`<option value="${server.id}">${safe(server.full_name)} • ${safe(server.siape)}</option>`).join('');$('#staffReservationServer').innerHTML=serverOptions;$('#reservationEditServer').innerHTML=serverOptions;$('#staffReservationTime').innerHTML=times.map(time=>`<option value="${time}">${time}</option>`).join('')}
-  function groupedReservations(){const groups=new Map;reservations.forEach(row=>{const key=row.recurrence_group||row.id;if(!groups.has(key))groups.set(key,{...row,occurrences:[],last_at:row.starts_at});const group=groups.get(key);group.occurrences.push(row);if(new Date(row.starts_at)>new Date(group.last_at))group.last_at=row.starts_at});return [...groups.values()]}
-  function renderReservationAdmin(){renderPendingReview();renderCalendar();renderReservationList();const groups=groupedReservations(),counts={pending:groups.filter(r=>r.status.includes('Aguardando')).length,authorized:groups.filter(r=>r.status==='Autorizada').length,cancelled:groups.filter(r=>r.status==='Cancelada').length};$('#reservationStats').innerHTML=`<article><small>Aguardando</small><strong>${counts.pending}</strong></article><article><small>Autorizadas</small><strong>${counts.authorized}</strong></article><article><small>Canceladas</small><strong>${counts.cancelled}</strong></article>`}
-  function renderPendingReview(){const rows=groupedReservations().filter(row=>row.status==='Aguardando confirmação'||row.status==='Aguardando autorização'),section=$('#reservationPendingReview');section.hidden=!rows.length;$('#reservationPendingCount').textContent=rows.length;$('#reservationPendingList').innerHTML=rows.map(row=>{const unconfirmed=row.status==='Aguardando confirmação',period=row.occurrences.length>1?`${localDate(row.starts_at)} a ${localDate(row.last_at)} • ${row.occurrences.length} semanas`:`${localDate(row.starts_at)}, ${localTime(row.starts_at)}–${localTime(row.ends_at)}`;return `<article class="reservation-pending-row"><div><span class="ticket-id">${safe(row.protocol)}${row.occurrences.length>1?' • RECORRENTE':''}</span><h3>${safe(row.subject)}</h3><p>${safe(row.servers?.full_name)} • ${safe(row.labs?.name)} • ${period}</p></div><span class="reservation-status status-${normalize(row.status).replace(/\s/g,'-')}">${safe(row.status)}</span><div class="reservation-row-actions"><button class="approve-reservation-button ${unconfirmed?'without-confirmation':''}" data-pending-approve="${row.id}" data-without-confirmation="${unconfirmed}">${unconfirmed?'Autorizar sem confirmação':'Autorizar reserva'}</button><button data-pending-edit="${row.id}">Editar</button><button data-pending-cancel="${row.id}">Cancelar</button></div></article>`}).join('');$('#reservationPendingList').querySelectorAll('[data-pending-approve]').forEach(button=>button.onclick=async()=>{if(button.dataset.withoutConfirmation==='true'&&!confirm('O servidor ainda não confirmou esta solicitação por e-mail. Deseja autorizar a reserva mesmo assim?'))return;const label=button.textContent;button.disabled=true;button.textContent='Autorizando…';if(!await updateStatus(button.dataset.pendingApprove,'Autorizada')){button.disabled=false;button.textContent=label}});$('#reservationPendingList').querySelectorAll('[data-pending-edit]').forEach(button=>button.onclick=()=>openReservationEditor(button.dataset.pendingEdit,'series'));$('#reservationPendingList').querySelectorAll('[data-pending-cancel]').forEach(button=>button.onclick=()=>cancelReservation(button.dataset.pendingCancel))}
-  function renderCalendar(){const labId=$('#adminReservationLab').value||adminLabs[0]?.id;if(labId&&!$('#adminReservationLab').value)$('#adminReservationLab').value=labId;const days=Array.from({length:6},(_,index)=>addDays(weekStart,index)),weekRows=reservations.filter(r=>r.lab_id===labId&&r.status!=='Cancelada'&&new Date(r.starts_at)>=days[0]&&new Date(r.starts_at)<addDays(days[5],1)),scheduleTimes=[...new Set([...times,...weekRows.map(row=>localTime(row.starts_at))])].sort((a,b)=>timeMinutes(a)-timeMinutes(b));$('#reservationWeekLabel').textContent=`${localDate(days[0])} a ${localDate(days[5])}`;let html='<div class="calendar-corner">Horário</div>'+days.map(day=>`<div class="calendar-day"><strong>${day.toLocaleDateString('pt-BR',{weekday:'short'})}</strong><span>${day.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span></div>`).join('');scheduleTimes.forEach(time=>{html+=`<div class="calendar-time">${time}</div>`;days.forEach(day=>{const date=isoDate(day),items=reservations.filter(r=>r.lab_id===labId&&r.status!=='Cancelada'&&isoDate(new Date(r.starts_at))===date&&localTime(r.starts_at)===time);html+=`<div class="calendar-cell" data-date="${date}" data-time="${time}">${items.map(r=>`<article class="calendar-reservation status-${normalize(r.status).replace(/\s/g,'-')}" draggable="true" data-id="${r.id}" title="Arraste para alterar data ou horário"><strong>${safe(r.subject)}</strong><span>${safe(r.servers?.full_name)}</span><small>${localTime(r.starts_at)}–${localTime(r.ends_at)}</small></article>`).join('')}</div>`})});$('#reservationCalendar').innerHTML=html;$('#reservationCalendar').querySelectorAll('.calendar-reservation').forEach(card=>card.ondragstart=()=>{draggedReservation=reservations.find(r=>r.id===card.dataset.id)});$('#reservationCalendar').querySelectorAll('.calendar-cell').forEach(cell=>{cell.ondragover=event=>{event.preventDefault();cell.classList.add('drag-over')};cell.ondragleave=()=>cell.classList.remove('drag-over');cell.ondrop=async event=>{event.preventDefault();cell.classList.remove('drag-over');if(!draggedReservation)return;const {error}=await sb.rpc('staff_update_reservation',{p_id:draggedReservation.id,p_start:localIso(cell.dataset.date,cell.dataset.time),p_lab:labId,p_status:null,p_reason:null});draggedReservation=null;if(error)return toast(error.message);toast('Reserva reagendada e servidor notificado.');await loadReservationAdmin()}})}
-  function renderReservationList(){const query=normalize($('#reservationAdminSearch').value),rows=groupedReservations().filter(r=>!query||normalize([r.protocol,r.subject,r.servers?.full_name,r.labs?.name,r.status].join(' ')).includes(query));$('#reservationCount').textContent=`${rows.length} reserva(s)${reservations.length!==rows.length?` • ${reservations.length} ocorrências`:''}`;$('#reservationAdminList').innerHTML=rows.map(r=>{const recurring=r.occurrences.length>1,period=recurring?`${localDate(r.starts_at)} a ${localDate(r.last_at)} • ${r.occurrences.length} semanas`:`${localDate(r.starts_at)}, ${localTime(r.starts_at)}–${localTime(r.ends_at)}`;return `<article class="reservation-admin-row"><div><span class="ticket-id">${safe(r.protocol)}${recurring?' • RECORRENTE':''}</span><h3>${safe(r.subject)}</h3><p>${safe(r.servers?.full_name)} • ${safe(r.labs?.name)} • ${period}</p></div><span class="reservation-status status-${normalize(r.status).replace(/\s/g,'-')}">${safe(r.status)}</span><div class="reservation-row-actions">${!recurring&&r.status==='Aguardando autorização'?`<button data-approve="${r.id}">Autorizar</button>`:''}${!recurring&&r.status!=='Cancelada'?`<button data-cancel="${r.id}">Cancelar</button>`:''}</div></article>`}).join('')||'<p class="empty">Nenhuma reserva encontrada.</p>';$('#reservationAdminList').querySelectorAll('[data-approve]').forEach(button=>button.onclick=()=>updateStatus(button.dataset.approve,'Autorizada'));$('#reservationAdminList').querySelectorAll('[data-cancel]').forEach(button=>button.onclick=()=>{const reason=prompt('Informe o motivo do cancelamento:');if(reason)updateStatus(button.dataset.cancel,'Cancelada',reason)})}
-  async function updateStatus(id,status,reason=null){const {error}=await sb.rpc('staff_update_reservation',{p_id:id,p_start:null,p_lab:null,p_status:status,p_reason:reason});if(error){toast(error.message);return false}toast(status==='Autorizada'?'Reserva autorizada e servidor notificado.':'Reserva cancelada e servidor notificado.');await loadReservationAdmin();return true}
-  function openReservationEditor(id,scope='occurrence'){const row=reservations.find(item=>item.id===id);if(!row)return;$('#reservationEditId').value=row.id;$('#reservationEditScope').value=scope;$('#reservationEditScopeText').textContent=scope==='series'&&row.occurrences?.length>1?'As alterações serão aplicadas a toda a série recorrente.':'As alterações serão aplicadas somente a esta ocorrência.';$('#reservationEditServer').value=row.server_id;$('#reservationEditLab').value=row.lab_id;$('#reservationEditSubject').value=row.subject;$('#reservationEditDate').value=isoDate(new Date(row.starts_at));$('#reservationEditTime').value=localTime(row.starts_at);$('#reservationEditBlocks').value=String(Math.round((new Date(row.ends_at)-new Date(row.starts_at))/2700000));$('#reservationEditNotes').value=row.notes||'';modal('reservationEditModal',true)}
-  async function cancelReservation(id){const row=reservations.find(item=>item.id===id),series=row&&reservations.filter(item=>item.recurrence_group===row.recurrence_group).length>1,reason=prompt(series?'Informe o motivo do cancelamento de toda a série:':'Informe o motivo do cancelamento:');if(!reason?.trim())return;const {error}=await sb.rpc('staff_update_reservation',{p_id:id,p_start:null,p_lab:null,p_status:'Cancelada',p_reason:reason.trim()});if(error)return toast(error.message);toast(series?'Série cancelada e servidor notificado.':'Reserva cancelada e servidor notificado.');await loadReservationAdmin()}
-  const renderReservationListWithActions=renderReservationList;renderReservationList=function(){renderReservationListWithActions();const query=normalize($('#reservationAdminSearch').value),rows=groupedReservations().filter(r=>!query||normalize([r.protocol,r.subject,r.servers?.full_name,r.labs?.name,r.status].join(' ')).includes(query)),articles=$('#reservationAdminList').querySelectorAll('.reservation-admin-row');articles.forEach((article,index)=>{const row=rows[index],actions=article.querySelector('.reservation-row-actions');if(!row||!actions)return;const awaitingConfirmation=row.status==='Aguardando confirmação',canApprove=awaitingConfirmation||row.status==='Aguardando autorização';actions.innerHTML=`${canApprove?`<button class="approve-reservation-button ${awaitingConfirmation?'without-confirmation':''}" data-approve-reservation="${row.id}" data-without-confirmation="${awaitingConfirmation}">${awaitingConfirmation?'Autorizar sem confirmação':'Autorizar reserva'}${row.occurrences.length>1?' recorrente':''}</button>`:''}<button data-edit="${row.id}">Editar</button>${row.status!=='Cancelada'?`<button data-cancel-reservation="${row.id}">Cancelar${row.occurrences.length>1?' série':''}</button>`:''}`});$('#reservationAdminList').querySelectorAll('[data-approve-reservation]').forEach(button=>button.onclick=async()=>{if(button.dataset.withoutConfirmation==='true'&&!confirm('O servidor ainda não confirmou esta solicitação por e-mail. Deseja autorizar a reserva mesmo assim?'))return;const originalLabel=button.textContent;button.disabled=true;button.textContent='Autorizando…';if(!await updateStatus(button.dataset.approveReservation,'Autorizada')){button.disabled=false;button.textContent=originalLabel}});$('#reservationAdminList').querySelectorAll('[data-edit]').forEach(button=>button.onclick=()=>openReservationEditor(button.dataset.edit,'series'));$('#reservationAdminList').querySelectorAll('[data-cancel-reservation]').forEach(button=>button.onclick=()=>cancelReservation(button.dataset.cancelReservation))};
-  const renderReservationHistory=renderReservationList;renderReservationList=function(){renderReservationHistory();$('#reservationAdminList').querySelectorAll('.reservation-admin-row').forEach(article=>{if(article.querySelector('.reservation-status')?.textContent.includes('Aguardando'))article.remove()});const visible=$('#reservationAdminList').querySelectorAll('.reservation-admin-row').length;$('#reservationCount').textContent=`${visible} reserva(s) autorizada(s) ou cancelada(s)`;if(!visible)$('#reservationAdminList').innerHTML='<p class="empty">Nenhuma reserva no histórico.</p>'};
+
+  async function loadReservationAdmin(){
+    const [{data:r,error},{data:l},{data:s}]=await Promise.all([
+      sb.from('reservations').select('*,servers(full_name,siape,email),labs(name,code)').order('starts_at'),
+      sb.from('labs').select('id,name,code').eq('active',true).order('name'),
+      sb.from('servers').select('id,full_name,siape,email').eq('active',true).order('full_name')
+    ]);
+    if(error)return toast(error.message);
+    reservations=r||[];adminLabs=l||[];adminServers=s||[];
+    fillAdminOptions();
+    renderReservationAdmin();
+    updateReservationNoticeFromList(reservations);
+  }
+
+  function fillAdminOptions(){
+    const labOptions=adminLabs.map(lab=>`<option value="${lab.id}">${safe(lab.name)}</option>`).join('');
+    ['adminReservationLab','staffReservationLab','csvReservationLab','reservationEditLab'].forEach(id=>{
+      const element=$('#'+id);
+      if(!element)return;
+      const value=element.value;
+      element.innerHTML=labOptions;
+      if(value)element.value=value;
+    });
+    const serverOptions=adminServers.map(server=>`<option value="${server.id}">${safe(server.full_name)} • ${safe(server.siape)}</option>`).join('');
+    if($('#staffReservationServer'))$('#staffReservationServer').innerHTML=serverOptions;
+    if($('#reservationEditServer'))$('#reservationEditServer').innerHTML=serverOptions;
+    if($('#staffReservationTime'))$('#staffReservationTime').innerHTML=times.map(time=>`<option value="${time}">${time}</option>`).join('');
+  }
+
+  function groupedReservations(){
+    const groups=new Map();
+    for(let i=0;i<reservations.length;i++){
+      const row=reservations[i];
+      const key=row.recurrence_group||row.id;
+      if(!groups.has(key)){
+        groups.set(key,{...row,occurrences:[],last_at:row.starts_at});
+      }
+      const group=groups.get(key);
+      group.occurrences.push(row);
+      if(row.starts_at>group.last_at)group.last_at=row.starts_at;
+    }
+    return [...groups.values()];
+  }
+
+  function renderReservationAdmin(){
+    renderPendingReview();
+    renderCalendar();
+    renderReservationList();
+    const groups=groupedReservations(),counts={pending:groups.filter(r=>r.status.includes('Aguardando')).length,authorized:groups.filter(r=>r.status==='Autorizada').length,cancelled:groups.filter(r=>r.status==='Cancelada').length};
+    const stats=$('#reservationStats');
+    if(stats)stats.innerHTML=`<article><small>Aguardando</small><strong>${counts.pending}</strong></article><article><small>Autorizadas</small><strong>${counts.authorized}</strong></article><article><small>Canceladas</small><strong>${counts.cancelled}</strong></article>`;
+  }
+
+  function renderPendingReview(){
+    const rows=groupedReservations().filter(row=>row.status==='Aguardando confirmação'||row.status==='Aguardando autorização');
+    const section=$('#reservationPendingReview');
+    if(!section)return;
+    section.hidden=!rows.length;
+    $('#reservationPendingCount').textContent=rows.length;
+    $('#reservationPendingList').innerHTML=rows.map(row=>{
+      const unconfirmed=row.status==='Aguardando confirmação';
+      const period=row.occurrences.length>1?`${localDate(row.starts_at)} a ${localDate(row.last_at)} • ${row.occurrences.length} semanas`:`${localDate(row.starts_at)}, ${localTime(row.starts_at)}–${localTime(row.ends_at)}`;
+      const statusClass=normalize(row.status).replace(/\s/g,'-');
+      return `<article class="reservation-pending-row">
+        <div>
+          <span class="ticket-id">${safe(row.protocol)}${row.occurrences.length>1?' • RECORRENTE':''}</span>
+          <h3>${safe(row.subject)}</h3>
+          <p>${safe(row.servers?.full_name)} • ${safe(row.labs?.name)} • ${period}</p>
+        </div>
+        <span class="reservation-status status-${statusClass}">${safe(row.status)}</span>
+        <div class="reservation-row-actions">
+          <button class="approve-reservation-button ${unconfirmed?'without-confirmation':''}" data-pending-approve="${row.id}" data-without-confirmation="${unconfirmed}">${unconfirmed?'Autorizar sem confirmação':'Autorizar reserva'}</button>
+          <button data-pending-edit="${row.id}">Editar</button>
+          <button data-pending-cancel="${row.id}">Cancelar</button>
+        </div>
+      </article>`;
+    }).join('');
+  }
+
+  $('#reservationPendingList')?.addEventListener('click',async(e)=>{
+    const approveBtn=e.target.closest('[data-pending-approve]');
+    if(approveBtn){
+      if(approveBtn.dataset.withoutConfirmation==='true'&&!confirm('O servidor ainda não confirmou esta solicitação por e-mail. Deseja autorizar a reserva mesmo assim?'))return;
+      const originalLabel=approveBtn.textContent;
+      approveBtn.disabled=true;
+      approveBtn.textContent='Autorizando…';
+      if(!await updateStatus(approveBtn.dataset.pendingApprove,'Autorizada')){
+        approveBtn.disabled=false;
+        approveBtn.textContent=originalLabel;
+      }
+      return;
+    }
+    const editBtn=e.target.closest('[data-pending-edit]');
+    if(editBtn){
+      openReservationEditor(editBtn.dataset.pendingEdit,'series');
+      return;
+    }
+    const cancelBtn=e.target.closest('[data-pending-cancel]');
+    if(cancelBtn){
+      cancelReservation(cancelBtn.dataset.pendingCancel);
+      return;
+    }
+  });
+
+  function renderCalendar(){
+    const labId=$('#adminReservationLab')?.value||adminLabs[0]?.id;
+    if(labId&&$('#adminReservationLab')&&!$('#adminReservationLab').value)$('#adminReservationLab').value=labId;
+    const days=Array.from({length:6},(_,index)=>addDays(weekStart,index));
+    const dayIsoStrings=days.map(isoDate);
+    const minTime=days[0].getTime(),maxTime=addDays(days[5],1).getTime();
+
+    const cellMap=new Map();
+    const scheduleTimesSet=new Set(times);
+
+    for(let i=0;i<reservations.length;i++){
+      const r=reservations[i];
+      if(r.lab_id!==labId||r.status==='Cancelada')continue;
+      const startTime=new Date(r.starts_at).getTime();
+      if(startTime<minTime||startTime>=maxTime)continue;
+
+      const rDate=isoDate(new Date(r.starts_at));
+      const rTime=localTime(r.starts_at);
+      const rEndTime=localTime(r.ends_at);
+      scheduleTimesSet.add(rTime);
+
+      const startMin=timeMinutes(rTime);
+      const endMin=timeMinutes(rEndTime);
+      const durationMin=endMin>startMin?(endMin-startMin):45;
+      const rowsCount=Math.max(1,Math.round(durationMin/45));
+
+      const item={...r,rDate,rTime,rEndTime,rowsCount};
+      const key=`${rDate}|${rTime}`;
+      if(!cellMap.has(key))cellMap.set(key,[]);
+      cellMap.get(key).push(item);
+    }
+
+    const scheduleTimes=[...scheduleTimesSet].sort((a,b)=>timeMinutes(a)-timeMinutes(b));
+    $('#reservationWeekLabel').textContent=`${localDate(days[0])} a ${localDate(days[5])}`;
+
+    let html='<div class="calendar-corner">Horário</div>'+days.map(day=>`<div class="calendar-day"><strong>${day.toLocaleDateString('pt-BR',{weekday:'short'})}</strong><span>${day.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span></div>`).join('');
+
+    for(let t=0;t<scheduleTimes.length;t++){
+      const time=scheduleTimes[t];
+      html+=`<div class="calendar-time">${time}</div>`;
+      for(let d=0;d<days.length;d++){
+        const date=dayIsoStrings[d];
+        const items=cellMap.get(`${date}|${time}`)||[];
+        html+=`<div class="calendar-cell" data-date="${date}" data-time="${time}">${items.map(r=>`<article class="calendar-reservation status-${normalize(r.status).replace(/\s/g,'-')}" draggable="true" data-id="${r.id}" style="--reservation-rows:${r.rowsCount}" title="Arraste para alterar data ou horário"><strong>${safe(r.subject)}</strong><span>${safe(r.servers?.full_name)}</span><small>${r.rTime}–${r.rEndTime}</small></article>`).join('')}</div>`;
+      }
+    }
+
+    const calEl=$('#reservationCalendar');
+    if(!calEl)return;
+    calEl.innerHTML=html;
+
+    calEl.querySelectorAll('.calendar-reservation').forEach(card=>card.ondragstart=()=>{draggedReservation=reservations.find(r=>r.id===card.dataset.id)});
+    calEl.querySelectorAll('.calendar-cell').forEach(cell=>{
+      cell.ondragover=event=>{event.preventDefault();cell.classList.add('drag-over')};
+      cell.ondragleave=()=>cell.classList.remove('drag-over');
+      cell.ondrop=async event=>{
+        event.preventDefault();
+        cell.classList.remove('drag-over');
+        if(!draggedReservation)return;
+        const {error}=await sb.rpc('staff_update_reservation',{p_id:draggedReservation.id,p_start:localIso(cell.dataset.date,cell.dataset.time),p_lab:labId,p_status:null,p_reason:null});
+        draggedReservation=null;
+        if(error)return toast(error.message);
+        toast('Reserva reagendada e servidor notificado.');
+        await loadReservationAdmin();
+      };
+    });
+  }
+
+  function renderReservationList(){
+    const query=normalize($('#reservationAdminSearch')?.value||'');
+    const allGroups=groupedReservations();
+    const historyRows=allGroups.filter(r=>!r.status.includes('Aguardando'));
+    const rows=historyRows.filter(r=>!query||normalize([r.protocol,r.subject,r.servers?.full_name,r.labs?.name,r.status].join(' ')).includes(query));
+
+    const countEl=$('#reservationCount');
+    if(countEl)countEl.textContent=`${rows.length} reserva(s) autorizada(s) ou cancelada(s)`;
+
+    const listEl=$('#reservationAdminList');
+    if(!listEl)return;
+
+    if(!rows.length){
+      listEl.innerHTML='<p class="empty">Nenhuma reserva no histórico.</p>';
+      return;
+    }
+
+    listEl.innerHTML=rows.map(r=>{
+      const recurring=r.occurrences.length>1;
+      const period=recurring?`${localDate(r.starts_at)} a ${localDate(r.last_at)} • ${r.occurrences.length} semanas`:`${localDate(r.starts_at)}, ${localTime(r.starts_at)}–${localTime(r.ends_at)}`;
+      const statusClass=normalize(r.status).replace(/\s/g,'-');
+      const isCancelled=r.status==='Cancelada';
+
+      return `<article class="reservation-admin-row">
+        <div>
+          <span class="ticket-id">${safe(r.protocol)}${recurring?' • RECORRENTE':''}</span>
+          <h3>${safe(r.subject)}</h3>
+          <p>${safe(r.servers?.full_name)} • ${safe(r.labs?.name)} • ${period}</p>
+        </div>
+        <span class="reservation-status status-${statusClass}">${safe(r.status)}</span>
+        <div class="reservation-row-actions">
+          <button data-edit="${r.id}">Editar</button>
+          ${!isCancelled?`<button data-cancel-reservation="${r.id}">Cancelar${recurring?' série':''}</button>`:''}
+        </div>
+      </article>`;
+    }).join('');
+  }
+
+  $('#reservationAdminList')?.addEventListener('click',(e)=>{
+    const editBtn=e.target.closest('[data-edit]');
+    if(editBtn){
+      openReservationEditor(editBtn.dataset.edit,'series');
+      return;
+    }
+    const cancelBtn=e.target.closest('[data-cancel-reservation]');
+    if(cancelBtn){
+      cancelReservation(cancelBtn.dataset.cancelReservation);
+      return;
+    }
+  });
+
+  async function updateStatus(id,status,reason=null){
+    const {error}=await sb.rpc('staff_update_reservation',{p_id:id,p_start:null,p_lab:null,p_status:status,p_reason:reason});
+    if(error){toast(error.message);return false}
+    toast(status==='Autorizada'?'Reserva autorizada e servidor notificado.':'Reserva cancelada e servidor notificado.');
+    await loadReservationAdmin();
+    return true;
+  }
+
+  function openReservationEditor(id,scope='occurrence'){
+    const row=reservations.find(item=>item.id===id);
+    if(!row)return;
+    $('#reservationEditId').value=row.id;
+    $('#reservationEditScope').value=scope;
+    $('#reservationEditScopeText').textContent=scope==='series'&&row.occurrences?.length>1?'As alterações serão aplicadas a toda a série recorrente.':'As alterações serão aplicadas somente a esta ocorrência.';
+    $('#reservationEditServer').value=row.server_id;
+    $('#reservationEditLab').value=row.lab_id;
+    $('#reservationEditSubject').value=row.subject;
+    $('#reservationEditDate').value=isoDate(new Date(row.starts_at));
+    $('#reservationEditTime').value=localTime(row.starts_at);
+    $('#reservationEditBlocks').value=String(Math.round((new Date(row.ends_at)-new Date(row.starts_at))/2700000));
+    $('#reservationEditNotes').value=row.notes||'';
+    modal('reservationEditModal',true);
+  }
+
+  async function cancelReservation(id){
+    const row=reservations.find(item=>item.id===id),series=row&&reservations.filter(item=>item.recurrence_group===row.recurrence_group).length>1,reason=prompt(series?'Informe o motivo do cancelamento de toda a série:':'Informe o motivo do cancelamento:');
+    if(!reason?.trim())return;
+    const {error}=await sb.rpc('staff_update_reservation',{p_id:id,p_start:null,p_lab:null,p_status:'Cancelada',p_reason:reason.trim()});
+    if(error)return toast(error.message);
+    toast(series?'Série cancelada e servidor notificado.':'Reserva cancelada e servidor notificado.');
+    await loadReservationAdmin();
+  }
+
   $('#reservationCalendar').onclick=event=>{const card=event.target.closest('.calendar-reservation');if(card)openReservationEditor(card.dataset.id,'occurrence')};
-  $('#reservationEditModal .modal-close').onclick=()=>modal('reservationEditModal',false);$('#cancelReservationEdit').onclick=()=>modal('reservationEditModal',false);
-  $('#reservationEditForm').onsubmit=async event=>{event.preventDefault();const button=event.submitter;if(button.disabled)return;button.disabled=true;button.textContent='Salvando…';try{const {error}=await sb.rpc('staff_edit_reservation',{p_id:$('#reservationEditId').value,p_server:$('#reservationEditServer').value,p_lab:$('#reservationEditLab').value,p_subject:$('#reservationEditSubject').value.trim(),p_start:localIso($('#reservationEditDate').value,$('#reservationEditTime').value),p_blocks:Number($('#reservationEditBlocks').value),p_notes:$('#reservationEditNotes').value.trim()||null,p_scope:$('#reservationEditScope').value});if(error)throw error;modal('reservationEditModal',false);toast('Reserva atualizada e servidor notificado.');await loadReservationAdmin()}catch(error){toast(error.message||'Não foi possível editar a reserva.')}finally{button.disabled=false;button.textContent='Salvar alterações'}};
-  async function openReservationsAdmin(){document.querySelectorAll('.admin-section').forEach(section=>section.hidden=true);$('#reservationsSection').hidden=false;$('#adminTitle').textContent='Reservas dos laboratórios';$('#adminSubtitle').textContent='Organize a agenda, autorize solicitações e importe reservas em lote.';await loadReservationAdmin();if(!reservationChannel)reservationChannel=sb.channel('labinfo-reservations').on('postgres_changes',{event:'*',schema:'public',table:'reservations'},()=>loadReservationAdmin()).subscribe()}
-  reservationsMenuButton.onclick=openReservationsAdmin;$('#adminReservationLab').onchange=renderCalendar;$('#reservationAdminSearch').oninput=renderReservationList;$('#reservationPrevWeek').onclick=()=>{weekStart=addDays(weekStart,-7);renderCalendar()};$('#reservationNextWeek').onclick=()=>{weekStart=addDays(weekStart,7);renderCalendar()};$('#reservationToday').onclick=()=>{weekStart=getMonday(new Date());renderCalendar()};
-  $('#reviewReservationsButton').onclick=openReservationsAdmin;
-  sb.auth.onAuthStateChange(event=>{if(event==='SIGNED_IN')setTimeout(refreshReservationNotice,0);if(event==='SIGNED_OUT')reservationNotice.hidden=true});
+  $('#reservationEditModal .modal-close').onclick=()=>modal('reservationEditModal',false);
+  $('#cancelReservationEdit').onclick=()=>modal('reservationEditModal',false);
+
+  $('#reservationEditForm').onsubmit=async event=>{
+    event.preventDefault();
+    const button=event.submitter;
+    if(button.disabled)return;
+    button.disabled=true;
+    button.textContent='Salvando…';
+    try{
+      const {error}=await sb.rpc('staff_edit_reservation',{p_id:$('#reservationEditId').value,p_server:$('#reservationEditServer').value,p_lab:$('#reservationEditLab').value,p_subject:$('#reservationEditSubject').value.trim(),p_start:localIso($('#reservationEditDate').value,$('#reservationEditTime').value),p_blocks:Number($('#reservationEditBlocks').value),p_notes:$('#reservationEditNotes').value.trim()||null,p_scope:$('#reservationEditScope').value});
+      if(error)throw error;
+      modal('reservationEditModal',false);
+      toast('Reserva atualizada e servidor notificado.');
+      await loadReservationAdmin();
+    }catch(error){
+      toast(error.message||'Não foi possível editar a reserva.');
+    }finally{
+      button.disabled=false;
+      button.textContent='Salvar alterações';
+    }
+  };
+
+  async function openReservationsAdmin(){
+    document.querySelectorAll('.admin-section').forEach(section=>section.hidden=true);
+    $('#reservationsSection').hidden=false;
+    $('#adminTitle').textContent='Reservas dos laboratórios';
+    $('#adminSubtitle').textContent='Organize a agenda, autorize solicitações e importe reservas em lote.';
+    await loadReservationAdmin();
+    if(!reservationChannel)reservationChannel=sb.channel('labinfo-reservations').on('postgres_changes',{event:'*',schema:'public',table:'reservations'},()=>loadReservationAdmin()).subscribe();
+  }
+
+  if(reservationsMenuButton)reservationsMenuButton.onclick=openReservationsAdmin;
+  $('#adminReservationLab')?.addEventListener('change',renderCalendar);
+  $('#reservationAdminSearch')?.addEventListener('input',renderReservationList);
+  $('#reservationPrevWeek')?.addEventListener('click',()=>{weekStart=addDays(weekStart,-7);renderCalendar()});
+  $('#reservationNextWeek')?.addEventListener('click',()=>{weekStart=addDays(weekStart,7);renderCalendar()});
+  $('#reservationToday')?.addEventListener('click',()=>{weekStart=getMonday(new Date());renderCalendar()});
+  $('#reviewReservationsButton')?.addEventListener('click',openReservationsAdmin);
+
+  sb.auth.onAuthStateChange(event=>{if(event==='SIGNED_IN')setTimeout(refreshReservationNotice,0);if(event==='SIGNED_OUT')if(reservationNotice)reservationNotice.hidden=true});
   sb.channel('labinfo-reservation-review-notice').on('postgres_changes',{event:'*',schema:'public',table:'reservations'},refreshReservationNotice).subscribe();
   window.addEventListener('focus',refreshReservationNotice);
   setInterval(()=>{if(!document.hidden)refreshReservationNotice()},60000);
   refreshReservationNotice();
+
   function modal(id,open){$('#'+id).hidden=!open;document.body.classList.toggle('modal-open',open)}
-  $('#newReservationButton').onclick=()=>modal('reservationModal',true);$('#csvReservationButton').onclick=()=>{if(!$('#csvReservationStart').value)$('#csvReservationStart').value=isoDate(getMonday(new Date()));modal('reservationCsvModal',true)};document.querySelectorAll('#reservationModal .modal-close,#reservationCsvModal .modal-close').forEach(button=>button.onclick=()=>modal(button.closest('.modal-backdrop').id,false));
-  const selectStaffBlocks=setupChoiceGroup('staffReservationBlocks'),selectStaffRecurrence=setupChoiceGroup('staffReservationRecurrence');$('#staffReservationRecurrence').onchange=()=>{const weekly=$('#staffReservationRecurrence').value==='weekly';$('#staffReservationUntilLabel').hidden=!weekly;$('#staffReservationUntil').required=weekly;$('#staffReservationUntil').min=$('#staffReservationDate').value};
-  $('#staffReservationForm').onsubmit=async event=>{event.preventDefault();const button=event.submitter;button.disabled=true;try{const recurrence=$('#staffReservationRecurrence').value,{data:created,error}=await sb.rpc('staff_create_reservation',{p_server:$('#staffReservationServer').value,p_lab:$('#staffReservationLab').value,p_subject:$('#staffReservationSubject').value.trim(),p_start:localIso($('#staffReservationDate').value,$('#staffReservationTime').value),p_blocks:Number($('#staffReservationBlocks').value),p_notes:$('#staffReservationNotes').value.trim()||null,p_source:'Equipe',p_recurrence:recurrence,p_until:recurrence==='weekly'?$('#staffReservationUntil').value:null});if(error)throw error;const notification=await sb.rpc('staff_update_reservation',{p_id:created.id,p_start:null,p_lab:null,p_status:'Autorizada',p_reason:null});if(notification.error)throw notification.error;event.target.reset();selectStaffBlocks('1');selectStaffRecurrence('none');$('#staffReservationUntilLabel').hidden=true;modal('reservationModal',false);toast('Reserva cadastrada, autorizada e servidor notificado.');await loadReservationAdmin()}catch(error){toast(error.message)}finally{button.disabled=false}};
+  $('#newReservationButton')?.addEventListener('click',()=>modal('reservationModal',true));
+  $('#csvReservationButton')?.addEventListener('click',()=>{if(!$('#csvReservationStart').value)$('#csvReservationStart').value=isoDate(getMonday(new Date()));modal('reservationCsvModal',true)});
+  document.querySelectorAll('#reservationModal .modal-close,#reservationCsvModal .modal-close').forEach(button=>button.onclick=()=>modal(button.closest('.modal-backdrop').id,false));
+
+  const selectStaffBlocks=setupChoiceGroup('staffReservationBlocks'),selectStaffRecurrence=setupChoiceGroup('staffReservationRecurrence');
+  $('#staffReservationRecurrence')?.addEventListener('change',()=>{const weekly=$('#staffReservationRecurrence').value==='weekly';$('#staffReservationUntilLabel').hidden=!weekly;$('#staffReservationUntil').required=weekly;$('#staffReservationUntil').min=$('#staffReservationDate').value});
+
+  $('#staffReservationForm')?.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const button=event.submitter;
+    button.disabled=true;
+    try{
+      const recurrence=$('#staffReservationRecurrence').value,{data:created,error}=await sb.rpc('staff_create_reservation',{p_server:$('#staffReservationServer').value,p_lab:$('#staffReservationLab').value,p_subject:$('#staffReservationSubject').value.trim(),p_start:localIso($('#staffReservationDate').value,$('#staffReservationTime').value),p_blocks:Number($('#staffReservationBlocks').value),p_notes:$('#staffReservationNotes').value.trim()||null,p_source:'Equipe',p_recurrence:recurrence,p_until:recurrence==='weekly'?$('#staffReservationUntil').value:null});
+      if(error)throw error;
+      const notification=await sb.rpc('staff_update_reservation',{p_id:created.id,p_start:null,p_lab:null,p_status:'Autorizada',p_reason:null});
+      if(notification.error)throw notification.error;
+      event.target.reset();
+      selectStaffBlocks('1');
+      selectStaffRecurrence('none');
+      $('#staffReservationUntilLabel').hidden=true;
+      modal('reservationModal',false);
+      toast('Reserva cadastrada, autorizada e servidor notificado.');
+      await loadReservationAdmin();
+    }catch(error){
+      toast(error.message);
+    }finally{
+      button.disabled=false;
+    }
+  });
+
   let csvRows=[];
   function parseCsvDate(value){const clean=String(value||'').trim();if(/^\d{4}-\d{2}-\d{2}$/.test(clean))return clean;const match=clean.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);return match?`${match[3]}-${match[2].padStart(2,'0')}-${match[1].padStart(2,'0')}`:''}
   function firstWeekdayOnOrAfter(start,weekday){if(!start)return '';const date=new Date(`${start}T12:00:00`);if(Number.isNaN(date.getTime()))return '';date.setDate(date.getDate()+(weekday-date.getDay()+7)%7);return isoDate(date)}
   function matchCsvServer(name){const wanted=normalize(name).split(/\s+/).filter(Boolean),matches=adminServers.filter(server=>{const available=normalize(server.full_name).split(/\s+/);return wanted.length&&wanted.every(token=>available.includes(token))});return matches.length===1?matches[0]:null}
   function parseCsv(text){const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(line=>line.trim()),delimiter=(lines[0].match(/;/g)||[]).length>(lines[0].match(/,/g)||[]).length?';':',';const cells=line=>line.split(delimiter).map(value=>value.trim().replace(/^"|"$/g,'')),headers=cells(lines.shift()).map(normalize),weekdays={domingo:0,segunda:1,terca:2,quarta:3,quinta:4,sexta:5,sabado:6},semesterStart=$('#csvReservationStart').value;return lines.map((line,index)=>{const values=cells(line),get=name=>{const position=headers.indexOf(name);return position<0?'':values[position]||''},professor=get('professor')||get('nome completo')||get('nome'),server=matchCsvServer(professor),dateRaw=get('data'),weekdayName=normalize(dateRaw).replace(/\s*-?feira\s*/g,''),weekday=weekdays[weekdayName],date=weekday===undefined?parseCsvDate(dateRaw):firstWeekdayOnOrAfter(semesterStart,weekday),untilRaw=get('data fim')||get('fim'),until=untilRaw?parseCsvDate(untilRaw):null,recurrence=weekday!==undefined||normalize(get('recorrencia'))==='semanal'||!!until?'weekly':'none',timeRaw=get('hora')||get('horario'),range=timeRaw.match(/^(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})$/),single=timeRaw.match(/^(\d{1,2}):(\d{2})$/),timeMatch=range||single,time=timeMatch?`${timeMatch[1].padStart(2,'0')}:${timeMatch[2]}`:'',duration=range?(Number(range[3])*60+Number(range[4]))-(Number(range[1])*60+Number(range[2])):45,blocks=duration>0&&duration%45===0?duration/45:0,subject=get('disciplina')||get('atividade'),errors=[];if(!server)errors.push('Professor não cadastrado ou nome ambíguo');if(weekday!==undefined&&!semesterStart)errors.push('Informe o início do semestre/lote');if(!/^\d{4}-\d{2}-\d{2}$/.test(date))errors.push('Data inválida');if(recurrence==='weekly'&&!/^\d{4}-\d{2}-\d{2}$/.test(until||''))errors.push('Data final inválida');if(until&&date&&until<date)errors.push('Data final anterior ao início');if(!time||!blocks)errors.push('Horário ou duração inválida');if(!subject)errors.push('Disciplina ausente');return {line:index+2,date,dateRaw,until,recurrence,time,timeRaw,blocks,subject,professor,server,errors}})}
   async function previewCsv(){const file=$('#reservationCsvFile').files[0];if(!file)return;csvRows=parseCsv(await file.text());const preview=$('#reservationCsvPreview');preview.classList.remove('csv-preview-empty');preview.innerHTML=`<div class="csv-summary"><strong>${csvRows.filter(row=>!row.errors.length).length} válida(s)</strong><span>${csvRows.filter(row=>row.errors.length).length} com erro</span></div>`+csvRows.slice(0,50).map(row=>`<div class="csv-row ${row.errors.length?'invalid':''}"><span>Linha ${row.line}</span><strong>${safe(row.professor)}</strong><span>${safe(row.dateRaw)} → ${safe(row.date)} • ${safe(row.timeRaw)} • ${safe(row.subject)}</span><small>${safe(row.errors.join(', ')||row.server.email)}</small></div>`).join('');$('#importReservationsCsv').disabled=!csvRows.some(row=>!row.errors.length)}
-  const previewCsvAndFocusWeek=async()=>{await previewCsv();const first=csvRows.filter(row=>!row.errors.length).map(row=>row.date).sort()[0];if(first)weekStart=getMonday(new Date(`${first}T12:00:00`))};$('#reservationCsvFile').onchange=previewCsvAndFocusWeek;$('#csvReservationStart').onchange=previewCsvAndFocusWeek;
-  $('#importReservationsCsv').onclick=async()=>{const valid=csvRows.filter(row=>!row.errors.length),button=$('#importReservationsCsv'),lab=$('#csvReservationLab').value,progress=$('#csvImportProgress');if(!lab)return toast('Selecione o laboratório deste lote.');if(!valid.length)return toast('Não há linhas válidas para importar.');if(button.dataset.running==='true')return;button.dataset.running='true';button.disabled=true;button.textContent='Importando…';progress.hidden=false;let imported=0,failed=0;const failures=[];try{for(let index=0;index<valid.length;index++){const row=valid[index],percent=Math.round(index/valid.length*100);progress.querySelector('span').textContent=`Importando ${index+1} de ${valid.length}: ${row.professor}`;progress.querySelector('i').style.width=percent+'%';await new Promise(resolve=>requestAnimationFrame(resolve));try{const {error}=await sb.rpc('staff_create_reservation',{p_server:row.server.id,p_lab:lab,p_subject:row.subject,p_start:localIso(row.date,row.time),p_blocks:row.blocks,p_notes:null,p_source:'CSV',p_recurrence:row.recurrence,p_until:row.until});if(error){failed++;failures.push(`Linha ${row.line}: ${error.message}`)}else imported++}catch(error){failed++;failures.push(`Linha ${row.line}: ${error.message||'falha inesperada'}`)}}progress.querySelector('i').style.width='100%';progress.querySelector('span').textContent=`Concluído: ${imported} importada(s), ${failed} não importada(s).`;await loadReservationAdmin();if(failures.length){$('#reservationCsvPreview').insertAdjacentHTML('afterbegin',`<div class="csv-import-errors"><strong>Linhas não importadas</strong>${failures.slice(0,12).map(message=>`<span>${safe(message)}</span>`).join('')}</div>`)}if(imported){toast(`${imported} linha(s) importada(s)${failed?`; ${failed} não importada(s)`:''}.`);if(!failed)setTimeout(()=>modal('reservationCsvModal',false),700)}else toast('Nenhuma reserva foi importada. Consulte os erros exibidos.')}catch(error){progress.querySelector('span').textContent='A importação foi interrompida.';toast(error.message||'Não foi possível concluir a importação.')}finally{button.dataset.running='false';button.disabled=false;button.textContent=failed?'Tentar importar novamente':'Importar reservas válidas'}};
+  const previewCsvAndFocusWeek=async()=>{await previewCsv();const first=csvRows.filter(row=>!row.errors.length).map(row=>row.date).sort()[0];if(first)weekStart=getMonday(new Date(`${first}T12:00:00`))};
+  $('#reservationCsvFile')?.addEventListener('change',previewCsvAndFocusWeek);
+  $('#csvReservationStart')?.addEventListener('change',previewCsvAndFocusWeek);
+
+  $('#importReservationsCsv')?.addEventListener('click',async()=>{
+    const valid=csvRows.filter(row=>!row.errors.length),button=$('#importReservationsCsv'),lab=$('#csvReservationLab').value,progress=$('#csvImportProgress');
+    if(!lab)return toast('Selecione o laboratório deste lote.');
+    if(!valid.length)return toast('Não há linhas válidas para importar.');
+    if(button.dataset.running==='true')return;
+    button.dataset.running='true';
+    button.disabled=true;
+    button.textContent='Importando…';
+    progress.hidden=false;
+    let imported=0,failed=0;
+    const failures=[];
+    try{
+      for(let index=0;index<valid.length;index++){
+        const row=valid[index],percent=Math.round(index/valid.length*100);
+        progress.querySelector('span').textContent=`Importando ${index+1} de ${valid.length}: ${row.professor}`;
+        progress.querySelector('i').style.width=percent+'%';
+        await new Promise(resolve=>requestAnimationFrame(resolve));
+        try{
+          const {error}=await sb.rpc('staff_create_reservation',{p_server:row.server.id,p_lab:lab,p_subject:row.subject,p_start:localIso(row.date,row.time),p_blocks:row.blocks,p_notes:null,p_source:'CSV',p_recurrence:row.recurrence,p_until:row.until});
+          if(error){failed++;failures.push(`Linha ${row.line}: ${error.message}`)}else imported++;
+        }catch(error){failed++;failures.push(`Linha ${row.line}: ${error.message||'falha inesperada'}`)}
+      }
+      progress.querySelector('i').style.width='100%';
+      progress.querySelector('span').textContent=`Concluído: ${imported} importada(s), ${failed} não importada(s).`;
+      await loadReservationAdmin();
+      if(failures.length){
+        $('#reservationCsvPreview').insertAdjacentHTML('afterbegin',`<div class="csv-import-errors"><strong>Linhas não importadas</strong>${failures.slice(0,12).map(message=>`<span>${safe(message)}</span>`).join('')}</div>`);
+      }
+      if(imported){
+        toast(`${imported} linha(s) importada(s)${failed?`; ${failed} não importada(s)`:''}.`);
+        if(!failed)setTimeout(()=>modal('reservationCsvModal',false),700);
+      }else toast('Nenhuma reserva foi importada. Consulte os erros exibidos.');
+    }catch(error){
+      progress.querySelector('span').textContent='A importação foi interrompida.';
+      toast(error.message||'Não foi possível concluir a importação.');
+    }finally{
+      button.dataset.running='false';
+      button.disabled=false;
+      button.textContent=failed?'Tentar importar novamente':'Importar reservas válidas';
+    }
+  });
 
   loadPublicLabs();confirmFromLink();
 })();
