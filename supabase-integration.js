@@ -558,7 +558,10 @@
         <div class="supervisor-tracking-toolbar"><input id="supervisorTicketSearch" type="search" autocomplete="off" placeholder="Buscar protocolo, servidor, laboratório ou categoria..." aria-label="Buscar no acompanhamento"></div>
         <div id="supervisorTable" class="supervisor-table"></div>
       </details>
-      <section id="deletionAudit" class="card deletion-audit"><div><h2>Auditoria de exclusões</h2><p>Chamados removidos das filas pelos técnicos.</p></div><div id="deletionAuditList"></div></section>`;
+      <details id="deletionAudit" class="card supervisor-tracking deletion-audit">
+        <summary><span><strong>Auditoria de exclusões</strong><small>Chamados removidos das filas pelos técnicos</small></span><b aria-hidden="true">⌄</b></summary>
+        <div id="deletionAuditList"></div>
+      </details>`;
     $('#applySupervisorFilters').onclick=()=>supervisor();
     $('#supervisorTicketSearch').oninput=()=>renderSupervisorTracking(supervisorFilteredTickets());
   }

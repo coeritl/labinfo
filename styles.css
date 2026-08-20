@@ -93,11 +93,14 @@
 .supervisor-row.is-archived{background:#f7f8f7;color:#526158}
 .supervisor-row.is-archived .supervisor-status-cell small{background:#e1e7e3;color:#3e5145}
 .deletion-audit{margin-top:18px}
+.deletion-audit.supervisor-tracking{padding:0}
+.deletion-audit.supervisor-tracking>#deletionAuditList{padding:0 22px 18px}
 
 @media(max-width:620px){
   .supervisor-tracking>summary{padding:17px 16px}
   .supervisor-tracking>summary strong{font-size:16px}
   .supervisor-tracking-toolbar{padding:12px}
+  .deletion-audit.supervisor-tracking>#deletionAuditList{padding:0 16px 15px}
 }
 
 /* Fluxo público de reservas: ação, escolha do espaço e agenda. */
