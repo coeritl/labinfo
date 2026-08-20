@@ -907,5 +907,27 @@
   opacity: 0.75;
 }
 
+/* Intervalo completo em destaque nos cartões da agenda. */
+.reservation-calendar .calendar-reservation .reservation-card-time,
+.reservation-calendar .public-calendar-reservation .reservation-card-time {
+  display: block;
+  margin-top: 6px;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+  color: #075c2e;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: 0.15px;
+}
+
+@media (max-width: 760px) {
+  .reservation-calendar .calendar-reservation .reservation-card-time,
+  .reservation-calendar .public-calendar-reservation .reservation-card-time {
+    font-size: 11px;
+  }
+}
+
 
 

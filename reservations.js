@@ -208,7 +208,7 @@
       html+=items.map(row=>{
         const top=(row.startMin-CAL_START)*PPM;
         const height=(row.endMin-row.startMin)*PPM;
-        return `<article class="public-calendar-reservation ${row.status==='Autorizada'?'authorized':'pending'}" style="position:absolute;top:${top}px;height:${height}px;left:4px;right:4px;margin:0;min-height:unset;overflow:hidden;"><strong>${safe(row.subject)}</strong>${row.server_name?`<span>${safe(row.server_name)}</span>`:''}<small>${row.rTime}–${row.rEndTime}</small></article>`;
+        return `<article class="public-calendar-reservation ${row.status==='Autorizada'?'authorized':'pending'}" style="position:absolute;top:${top}px;height:${height}px;left:4px;right:4px;margin:0;min-height:unset;overflow:hidden;"><strong>${safe(row.subject)}</strong>${row.server_name?`<span>${safe(row.server_name)}</span>`:''}<small class="reservation-card-time">${row.rTime} - ${row.rEndTime}</small></article>`;
       }).join('');
       html+=`</div>`;
     }
@@ -231,9 +231,9 @@
     <div id="reservationStats" class="reservation-stats"></div><section id="reservationPendingReview" class="card reservation-pending-review" hidden><div class="reservation-pending-head"><div><span class="eyebrow">AGUARDANDO DECISÃO</span><h2>Reservas para avaliar</h2><p>Autorize as solicitações antes de consultar a agenda completa.</p></div><strong id="reservationPendingCount">0</strong></div><div id="reservationPendingList"></div></section><section class="card reservation-calendar-wrap"><div id="reservationCalendar" class="reservation-calendar"></div></section>
     <section class="card reservation-list-card"><div class="registry-head"><div><h2>Solicitações e reservas</h2><span id="reservationCount"></span></div><input id="reservationAdminSearch" placeholder="Buscar professor, disciplina ou protocolo"></div><div id="reservationAdminList"></div></section>
   </section>
-  <div id="reservationModal" class="modal-backdrop" hidden><form id="staffReservationForm" class="modal card"><button class="modal-close" type="button" aria-label="Fechar">×</button><span class="eyebrow">NOVA RESERVA</span><h2>Cadastrar reserva</h2><label>Servidor<select id="staffReservationServer" required></select></label><label>Laboratório<select id="staffReservationLab" required></select></label><label>Disciplina ou atividade<input id="staffReservationSubject" maxlength="160" required></label><div class="field-row"><label>Data inicial<input id="staffReservationDate" type="date" required></label><label>Hora<select id="staffReservationTime" required></select></label></div><fieldset class="choice-field"><legend>Duração</legend><input id="staffReservationBlocks" type="hidden" value="1"><div class="choice-blocks duration-choices" data-choice-for="staffReservationBlocks"><button class="choice-block selected" type="button" data-value="1"><strong>1 bloco</strong><span>45 min</span></button><button class="choice-block" type="button" data-value="2"><strong>2 blocos</strong><span>1h30</span></button><button class="choice-block" type="button" data-value="3"><strong>3 blocos</strong><span>2h15</span></button><button class="choice-block" type="button" data-value="4"><strong>4 blocos</strong><span>3h</span></button></div></fieldset><div class="field-row recurrence-row"><fieldset class="choice-field"><legend>Repetição</legend><input id="staffReservationRecurrence" type="hidden" value="none"><div class="choice-blocks recurrence-choices" data-choice-for="staffReservationRecurrence"><button class="choice-block selected" type="button" data-value="none"><strong>Somente nesta data</strong></button><button class="choice-block" type="button" data-value="weekly"><strong>Semanalmente</strong><span>No mesmo dia da semana</span></button></div></fieldset><label id="staffReservationUntilLabel" hidden>Repetir até<input id="staffReservationUntil" type="date"></label></div><label>Observações<textarea id="staffReservationNotes" rows="3"></textarea></label><button class="primary" type="submit">Cadastrar e autorizar</button></form></div>
+  <div id="reservationModal" class="modal-backdrop" hidden><form id="staffReservationForm" class="modal card"><button class="modal-close" type="button" aria-label="Fechar">×</button><span class="eyebrow">NOVA RESERVA</span><h2>Cadastrar reserva</h2><label>Servidor<select id="staffReservationServer" required></select></label><label>Laboratório<select id="staffReservationLab" required></select></label><label>Disciplina ou atividade<input id="staffReservationSubject" maxlength="160" required></label><div class="field-row reservation-time-row"><label>Data inicial<input id="staffReservationDate" type="date" required></label><label>Início<input id="staffReservationTime" type="time" step="300" required></label><label>Fim<input id="staffReservationEndTime" type="time" step="300" required></label></div><div class="field-row recurrence-row"><fieldset class="choice-field"><legend>Repetição</legend><input id="staffReservationRecurrence" type="hidden" value="none"><div class="choice-blocks recurrence-choices" data-choice-for="staffReservationRecurrence"><button class="choice-block selected" type="button" data-value="none"><strong>Somente nesta data</strong></button><button class="choice-block" type="button" data-value="weekly"><strong>Semanalmente</strong><span>No mesmo dia da semana</span></button></div></fieldset><label id="staffReservationUntilLabel" hidden>Repetir até<input id="staffReservationUntil" type="date"></label></div><label>Observações<textarea id="staffReservationNotes" rows="3"></textarea></label><button class="primary" type="submit">Cadastrar e autorizar</button></form></div>
   <div id="reservationCsvModal" class="modal-backdrop" hidden><section class="modal card csv-reservation-modal" role="dialog" aria-modal="true" aria-labelledby="csvReservationTitle"><header class="csv-modal-head"><div><span class="eyebrow">IMPORTAÇÃO EM LOTE</span><h2 id="csvReservationTitle">Importar reservas por CSV</h2><p>Cadastre a grade recorrente do laboratório sem enviar notificações iniciais.</p></div><button class="modal-close" type="button" aria-label="Fechar">×</button></header><div class="csv-modal-body"><div class="csv-format-help"><strong>Formato esperado</strong><span>Data · Hora · Disciplina · Professor · Data fim · Recorrência</span><small>A data pode ser “Segunda-feira” e o horário “7:00 - 8:30”.</small></div><div class="field-row csv-settings"><label>Laboratório<select id="csvReservationLab" required></select></label><label>Início do semestre/lote<input id="csvReservationStart" type="date" required></label></div><label class="csv-file-field">Arquivo CSV<input id="reservationCsvFile" type="file" accept=".csv,text/csv"><small>Selecione um arquivo .csv para conferir os registros antes de importar.</small></label><div id="reservationCsvPreview" class="csv-preview-empty"><p>Nenhum arquivo selecionado.</p></div></div><footer class="csv-modal-footer"><div id="csvImportProgress" class="csv-import-progress" hidden><span>Preparando importação…</span><div><i></i></div></div><button id="importReservationsCsv" class="primary" type="button" disabled>Importar reservas válidas</button></footer></section></div>`);
-  admin.insertAdjacentHTML('beforeend',`<div id="reservationEditModal" class="modal-backdrop" hidden><form id="reservationEditForm" class="modal card reservation-edit-modal"><div class="modal-heading"><div><span class="eyebrow">EDITAR RESERVA</span><h2>Alterar informações</h2><p id="reservationEditScopeText"></p></div><button class="modal-close" type="button" aria-label="Fechar">×</button></div><input id="reservationEditId" type="hidden"><input id="reservationEditScope" type="hidden"><label>Servidor<select id="reservationEditServer" required></select></label><label>Disciplina ou atividade<input id="reservationEditSubject" maxlength="160" required></label><div class="field-row"><label>Laboratório<select id="reservationEditLab" required></select></label><label>Duração<select id="reservationEditBlocks"><option value="1">1 bloco • 45 min</option><option value="2">2 blocos • 1h30</option><option value="3">3 blocos • 2h15</option><option value="4">4 blocos • 3h</option><option value="5">5 blocos • 3h45</option></select></label></div><div class="field-row"><label>Data<input id="reservationEditDate" type="date" required></label><label>Horário inicial<input id="reservationEditTime" type="time" required></label></div><label>Observações<textarea id="reservationEditNotes" rows="3" maxlength="500"></textarea></label><div class="modal-actions"><button id="cancelReservationEdit" class="secondary" type="button">Voltar</button><button class="primary" type="submit">Salvar alterações</button></div></form></div>`);
+  admin.insertAdjacentHTML('beforeend',`<div id="reservationEditModal" class="modal-backdrop" hidden><form id="reservationEditForm" class="modal card reservation-edit-modal"><div class="modal-heading"><div><span class="eyebrow">EDITAR RESERVA</span><h2>Alterar informações</h2><p id="reservationEditScopeText"></p></div><button class="modal-close" type="button" aria-label="Fechar">×</button></div><input id="reservationEditId" type="hidden"><input id="reservationEditScope" type="hidden"><label>Servidor<select id="reservationEditServer" required></select></label><label>Disciplina ou atividade<input id="reservationEditSubject" maxlength="160" required></label><label>Laboratório<select id="reservationEditLab" required></select></label><div class="field-row reservation-time-row"><label>Data<input id="reservationEditDate" type="date" required></label><label>Início<input id="reservationEditTime" type="time" step="300" required></label><label>Fim<input id="reservationEditEndTime" type="time" step="300" required></label></div><label>Observações<textarea id="reservationEditNotes" rows="3" maxlength="500"></textarea></label><div class="modal-actions"><button id="cancelReservationEdit" class="secondary" type="button">Voltar</button><button class="primary" type="submit">Salvar alterações</button></div></form></div>`);
 
   const reservationsMenuButton=$('#reservationsMenuButton');
   if(reservationsMenuButton){reservationsMenuButton.disabled=false;reservationsMenuButton.classList.remove('future-menu-button');reservationsMenuButton.removeAttribute('title');}
@@ -404,7 +404,7 @@
 
     const CAL_START=420,CAL_END=1380,PPM=1.3;
     const H=(CAL_END-CAL_START)*PPM;
-    let html='<div class="calendar-corner">Hor�rio</div>'+days.map(day=>`<div class="calendar-day"><strong>${day.toLocaleDateString('pt-BR',{weekday:'short'})}</strong><span>${day.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span></div>`).join('');
+    let html='<div class="calendar-corner">Hor\u00e1rio</div>'+days.map(day=>`<div class="calendar-day"><strong>${day.toLocaleDateString('pt-BR',{weekday:'short'})}</strong><span>${day.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span></div>`).join('');
     
     html+=`<div class="calendar-time-col" style="position:relative;border-right:1px solid var(--line);height:${H}px;background:#fbfcfb;">`;
     for(let h=7;h<=22;h++) html+=`<div style="position:absolute;top:${(h*60-CAL_START)*PPM}px;right:10px;transform:translateY(-50%);font-size:11px;font-weight:800;color:var(--muted);">${h.toString().padStart(2,'0')}:00</div>`;
@@ -414,7 +414,7 @@
       const date=dayIsoStrings[d];
       html+=`<div class="calendar-cell" data-date="${date}" style="position:relative;min-height:${H}px;padding:0;background:repeating-linear-gradient(to bottom, transparent, transparent ${60*PPM-1}px, var(--line) ${60*PPM-1}px, var(--line) ${60*PPM}px);">`;
       const items=weekRows.filter(r=>r.rDate===date);
-      html+=items.map(r=>`<article class="calendar-reservation status-${normalize(r.status).replace(/\s/g,'-')}" draggable="true" data-id="${r.id}" style="position:absolute;top:${(r.startMin-CAL_START)*PPM}px;height:${(r.endMin-r.startMin)*PPM}px;left:4px;right:4px;margin:0;min-height:unset;z-index:2;overflow:hidden;" title="Arraste para alterar data ou hor�rio"><strong>${safe(r.subject)}</strong><span>${safe(r.servers?.full_name)}</span><small>${r.rTime}�${r.rEndTime}</small></article>`).join('');
+      html+=items.map(r=>`<article class="calendar-reservation status-${normalize(r.status).replace(/\s/g,'-')}" draggable="true" data-id="${r.id}" style="position:absolute;top:${(r.startMin-CAL_START)*PPM}px;height:${(r.endMin-r.startMin)*PPM}px;left:4px;right:4px;margin:0;min-height:unset;z-index:2;overflow:hidden;" title="Arraste para alterar data ou hor\u00e1rio"><strong>${safe(r.subject)}</strong><span>${safe(r.servers?.full_name)}</span><small class="reservation-card-time">${r.rTime} - ${r.rEndTime}</small></article>`).join('');
       html+=`</div>`;
     }
 
@@ -514,7 +514,7 @@
     $('#reservationEditSubject').value=row.subject;
     $('#reservationEditDate').value=isoDate(new Date(row.starts_at));
     $('#reservationEditTime').value=localTime(row.starts_at);
-    $('#reservationEditBlocks').value=String(calculateBlockCount(row.starts_at,row.ends_at));
+    $('#reservationEditEndTime').value=localTime(row.ends_at);
     $('#reservationEditNotes').value=row.notes||'';
     modal('reservationEditModal',true);
   }
@@ -537,7 +537,9 @@
     if(button?.disabled)return;
     if(button){button.disabled=true;button.textContent='Salvando…';}
     try{
-      const {error}=await sb.rpc('staff_edit_reservation',{p_id:$('#reservationEditId').value,p_server:$('#reservationEditServer').value,p_lab:$('#reservationEditLab').value,p_subject:$('#reservationEditSubject').value.trim(),p_start:localIso($('#reservationEditDate').value,$('#reservationEditTime').value),p_blocks:Number($('#reservationEditBlocks').value),p_notes:$('#reservationEditNotes').value.trim()||null,p_scope:$('#reservationEditScope').value});
+      const date=$('#reservationEditDate').value,start=$('#reservationEditTime').value,end=$('#reservationEditEndTime').value;
+      if(timeMinutes(end)<=timeMinutes(start))throw new Error('O hor\u00e1rio final deve ser posterior ao inicial.');
+      const {error}=await sb.rpc('staff_edit_reservation_range',{p_id:$('#reservationEditId').value,p_server:$('#reservationEditServer').value,p_lab:$('#reservationEditLab').value,p_subject:$('#reservationEditSubject').value.trim(),p_start:localIso(date,start),p_end:localIso(date,end),p_notes:$('#reservationEditNotes').value.trim()||null,p_scope:$('#reservationEditScope').value});
       if(error)throw error;
       modal('reservationEditModal',false);
       toast('Reserva atualizada e servidor notificado.');
@@ -595,7 +597,7 @@
   $('#csvReservationButton')?.addEventListener('click',()=>{if(!$('#csvReservationStart').value)$('#csvReservationStart').value=isoDate(getMonday(new Date()));modal('reservationCsvModal',true)});
   document.querySelectorAll('#reservationModal .modal-close,#reservationCsvModal .modal-close').forEach(button=>button.onclick=()=>modal(button.closest('.modal-backdrop').id,false));
 
-  const selectStaffBlocks=setupChoiceGroup('staffReservationBlocks'),selectStaffRecurrence=setupChoiceGroup('staffReservationRecurrence');
+  const selectStaffRecurrence=setupChoiceGroup('staffReservationRecurrence');
   $('#staffReservationRecurrence')?.addEventListener('change',()=>{const weekly=$('#staffReservationRecurrence').value==='weekly';$('#staffReservationUntilLabel').hidden=!weekly;$('#staffReservationUntil').required=weekly;$('#staffReservationUntil').min=$('#staffReservationDate').value});
 
   $('#staffReservationForm')?.addEventListener('submit',async event=>{
@@ -603,12 +605,13 @@
     const button=event.submitter;
     button.disabled=true;
     try{
-      const recurrence=$('#staffReservationRecurrence').value,{data:created,error}=await sb.rpc('staff_create_reservation',{p_server:$('#staffReservationServer').value,p_lab:$('#staffReservationLab').value,p_subject:$('#staffReservationSubject').value.trim(),p_start:localIso($('#staffReservationDate').value,$('#staffReservationTime').value),p_blocks:Number($('#staffReservationBlocks').value),p_notes:$('#staffReservationNotes').value.trim()||null,p_source:'Equipe',p_recurrence:recurrence,p_until:recurrence==='weekly'?$('#staffReservationUntil').value:null});
+      const recurrence=$('#staffReservationRecurrence').value,date=$('#staffReservationDate').value,start=$('#staffReservationTime').value,end=$('#staffReservationEndTime').value;
+      if(timeMinutes(end)<=timeMinutes(start))throw new Error('O hor\u00e1rio final deve ser posterior ao inicial.');
+      const {data:created,error}=await sb.rpc('staff_create_reservation_range',{p_server:$('#staffReservationServer').value,p_lab:$('#staffReservationLab').value,p_subject:$('#staffReservationSubject').value.trim(),p_start:localIso(date,start),p_end:localIso(date,end),p_notes:$('#staffReservationNotes').value.trim()||null,p_source:'Equipe',p_recurrence:recurrence,p_until:recurrence==='weekly'?$('#staffReservationUntil').value:null});
       if(error)throw error;
       const notification=await sb.rpc('staff_update_reservation',{p_id:created.id,p_start:null,p_lab:null,p_status:'Autorizada',p_reason:null});
       if(notification.error)throw notification.error;
       event.target.reset();
-      selectStaffBlocks('1');
       selectStaffRecurrence('none');
       $('#staffReservationUntilLabel').hidden=true;
       modal('reservationModal',false);
@@ -645,7 +648,9 @@
             untilRaw=get('data fim')||get('fim'),
             until=untilRaw?parseCsvDate(untilRaw):null,
             recurrence=weekday!==undefined||normalize(get('recorrencia'))==='semanal'||!!until?'weekly':'none',
-            timeRaw=get('hora')||get('horario'),
+            startRaw=get('inicio')||get('hora inicio')||get('horario inicio'),
+            endRaw=get('fim')||get('hora fim')||get('horario fim'),
+            timeRaw=get('hora')||get('horario')||(startRaw&&endRaw?`${startRaw} - ${endRaw}`:startRaw),
             range=timeRaw.match(/^(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})$/),
             single=timeRaw.match(/^(\d{1,2}):(\d{2})$/),
             timeMatch=range||single,
@@ -653,7 +658,8 @@
             startM=timeMatch?timeMatch[2].padStart(2,'0'):'',
             time=timeMatch?`${startH}:${startM}`:'',
             endH=range?range[3].padStart(2,'0'):'',
-            endM=range?range[4].padStart(2,'0'):'';
+            endM=range?range[4].padStart(2,'0'):'',
+            endTime=range?`${endH}:${endM}`:(time?calculateSlotEndTime(time,1):'');
 
       let blocks = 1;
       if(range){
@@ -679,8 +685,9 @@
       if(recurrence==='weekly'&&!/^\d{4}-\d{2}-\d{2}$/.test(until||''))errors.push('Data final inválida');
       if(until&&date&&until<date)errors.push('Data final anterior ao início');
       if(!time)errors.push('Horário ausente ou inválido');
+      if(!endTime||timeMinutes(endTime)<=timeMinutes(time))errors.push('Horário final ausente ou inválido');
       if(!subject)errors.push('Disciplina ausente');
-      return {line:index+2,date,dateRaw,until,recurrence,time,timeRaw,blocks,subject,professor,server,errors};
+      return {line:index+2,date,dateRaw,until,recurrence,time,endTime,timeRaw,blocks,subject,professor,server,errors};
     });
   }
   async function previewCsv(){const file=$('#reservationCsvFile').files[0];if(!file)return;csvRows=parseCsv(await file.text());const preview=$('#reservationCsvPreview');preview.classList.remove('csv-preview-empty');preview.innerHTML=`<div class="csv-summary"><strong>${csvRows.filter(row=>!row.errors.length).length} válida(s)</strong><span>${csvRows.filter(row=>row.errors.length).length} com erro</span></div>`+csvRows.slice(0,50).map(row=>`<div class="csv-row ${row.errors.length?'invalid':''}"><span>Linha ${row.line}</span><strong>${safe(row.professor)}</strong><span>${safe(row.dateRaw)} → ${safe(row.date)} • ${safe(row.timeRaw)} • ${safe(row.subject)}</span><small>${safe(row.errors.join(', ')||row.server.email)}</small></div>`).join('');$('#importReservationsCsv').disabled=!csvRows.some(row=>!row.errors.length)}
@@ -706,7 +713,7 @@
         progress.querySelector('i').style.width=percent+'%';
         await new Promise(resolve=>requestAnimationFrame(resolve));
         try{
-          const {error}=await sb.rpc('staff_create_reservation',{p_server:row.server.id,p_lab:lab,p_subject:row.subject,p_start:localIso(row.date,row.time),p_blocks:row.blocks,p_notes:null,p_source:'CSV',p_recurrence:row.recurrence,p_until:row.until});
+          const {error}=await sb.rpc('staff_create_reservation_range',{p_server:row.server.id,p_lab:lab,p_subject:row.subject,p_start:localIso(row.date,row.time),p_end:localIso(row.date,row.endTime),p_notes:null,p_source:'CSV',p_recurrence:row.recurrence,p_until:row.until});
           if(error){failed++;failures.push(`Linha ${row.line}: ${error.message}`)}else imported++;
         }catch(error){failed++;failures.push(`Linha ${row.line}: ${error.message||'falha inesperada'}`)}
       }
