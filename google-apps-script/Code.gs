@@ -168,7 +168,9 @@ function layout_(title, message, data, visual) {
   if (data.feedback_url) data.feedback_url = String(data.feedback_url).replace('https://coeritl.github.io/labinfo/?feedback=', LABINFO.supportUrl + '?feedback=');
   data.portal_url = LABINFO.supportUrl;
   visual = visual || {color:'#07852a',icon:'i',label:'Informação'};
-  const isCompleted = data.status === 'Concluído';
+  // O evento de conclusão sempre carrega feedback_url. Usamos também esse
+  // campo porque versões antigas do payload podem chegar sem o status textual.
+  const isCompleted = data.status === 'Concluído' || Boolean(data.feedback_url);
   const resolution = isCompleted && data.resolution
     ? `<table role="presentation" width="100%" style="margin-top:16px;background:#f5f8f6;border-radius:12px"><tr><td style="padding:16px;font-size:14px;line-height:1.7"><b style="display:block;color:#086c3c;margin-bottom:5px">SOLUÇÃO REGISTRADA PELA EQUIPE</b>${escapar_(data.resolution)}</td></tr></table>`
     : '';
