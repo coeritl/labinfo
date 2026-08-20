@@ -16,6 +16,8 @@
     }
   });
   const $=selector=>document.querySelector(selector),safe=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const siteBase=location.hostname.endsWith('.github.io')?'/labinfo':'';
+  const sitePath=route=>`${siteBase}/${route?String(route).replace(/^\/+|\/+$/g,'')+'/':''}`;
   const localIso=(date,time)=>new Date(`${date}T${time}:00-04:00`).toISOString(),localDate=value=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Cuiaba',dateStyle:'short'}).format(new Date(value)),localTime=value=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Cuiaba',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
   const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
   function setupChoiceGroup(inputId){const input=$('#'+inputId),group=document.querySelector(`[data-choice-for="${inputId}"]`);if(!input||!group)return()=>{};const select=value=>{input.value=value;group.querySelectorAll('.choice-block').forEach(button=>{const active=button.dataset.value===String(value);button.classList.toggle('selected',active);button.setAttribute('aria-pressed',active)});input.dispatchEvent(new Event('change'))};group.querySelectorAll('.choice-block').forEach(button=>button.onclick=()=>select(button.dataset.value));select(input.value);return select}
@@ -87,7 +89,7 @@
     if($('#teacherView'))$('#teacherView').hidden=view!=='support';
     const chatView=$('#chatPublicView');if(chatView)chatView.hidden=view!=='chat';
     if($('#adminView'))$('#adminView').hidden=true;
-    if(push)history.pushState({},'',view==='home'?'/labinfo/':view==='reservations'?'/labinfo/reservas/':view==='chat'?'/labinfo/chat/':'/labinfo/suporte/');
+    if(push)history.pushState({},'',view==='home'?sitePath(''):view==='reservations'?sitePath('reservas'):view==='chat'?sitePath('chat'):sitePath('suporte'));
     window.scrollTo(0,0);
     if(view==='reservations'&&publicLabs.length===0){
       loadPublicLabs();

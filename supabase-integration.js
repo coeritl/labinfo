@@ -5,12 +5,14 @@
     return;
   }
   const sb=window.supabase.createClient(cfg.url,cfg.anonKey), state={profile:null,session:null};tickets.splice(0,tickets.length);selected=null;
+  const siteBase=location.hostname.endsWith('.github.io')?'/labinfo':'';
+  const sitePath=route=>`${siteBase}/${route?String(route).replace(/^\/+|\/+$/g,'')+'/':''}`;
   const routeParam=new URLSearchParams(location.search).get('route'),
         feedbackParam=new URLSearchParams(location.search).get('feedback'),
-        requestedRoute=routeParam||location.pathname.replace(/^\/labinfo\/?/,'').replace(/\/$/,'');
+        requestedRoute=routeParam||location.pathname.slice(siteBase.length).replace(/^\/+|\/+$/g,'');
   const isAdminRoute=requestedRoute==='admin'||requestedRoute==='admin/chamados';
   const isSupportRoute=requestedRoute==='suporte'||Boolean(feedbackParam);
-  if(routeParam&&!feedbackParam)window.addEventListener('load',()=>history.replaceState({},'',`/labinfo/${requestedRoute}/`),{once:true});
+  if(routeParam&&!feedbackParam)window.addEventListener('load',()=>history.replaceState({},'',sitePath(requestedRoute)),{once:true});
   if(isAdminRoute){document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true}
   if(isSupportRoute){$('#homeView').hidden=true;$('#teacherView').hidden=false;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true}
   window.labinfoDb=sb;
@@ -55,7 +57,7 @@
         const protoInput=$('#protocolInput');
         if(protoInput)protoInput.value=protocol;
       }
-      history.replaceState({},'', '/labinfo/suporte/');
+      history.replaceState({},'',sitePath('suporte'));
       setTimeout(()=>document.querySelector('.feedback-confirmation')?.scrollIntoView({behavior:'smooth',block:'center'}),150);
     } catch(err){
       console.error('Erro na confirmação de feedback:',err);
@@ -76,7 +78,7 @@
       $('#reservationsPublicView').hidden=true;
       const cp=$('#chatPublicView');if(cp)cp.hidden=true;
       $('#adminToggle').textContent='Área técnica';
-      history.pushState({},'', '/labinfo/');
+      history.pushState({},'',sitePath(''));
     }
   };
   $('#closeLogin').onclick=()=>closeLogin();
@@ -106,7 +108,7 @@
 
     $('#adminToggle').textContent='Área técnica';
     $('#adminToggle').hidden=false;
-    history.pushState({},'', '/labinfo/');
+    history.pushState({},'',sitePath(''));
     window.scrollTo({top:0,behavior:'smooth'});
     toast('Você saiu do sistema.');
   }
@@ -160,7 +162,7 @@
   mobileAdminBackdrop.onclick=closeMobileAdminMenu;
   document.addEventListener('keydown',event=>{if(event.key==='Escape'&&accountActions.classList.contains('mobile-open'))closeMobileAdminMenu()});
   accountActions.querySelectorAll('[data-admin-nav], #accountLogout').forEach(button=>button.addEventListener('click',()=>{accountActions.querySelectorAll('[data-admin-nav]').forEach(item=>item.classList.remove('active'));button.classList.add('active');closeMobileAdminMenu()}));
-  $('.brand').addEventListener('click',e=>{if(!$('#adminView').hidden){e.preventDefault();closeMobileAdminMenu();history.pushState({},'', '/labinfo/admin/chamados/');showSection('tickets');window.scrollTo(0,0)}});
+  $('.brand').addEventListener('click',e=>{if(!$('#adminView').hidden){e.preventDefault();closeMobileAdminMenu();history.pushState({},'',sitePath('admin/chamados'));showSection('tickets');window.scrollTo(0,0)}});
   $('#supervisorSection').insertAdjacentHTML('afterend','<section id="hoursSection" class="admin-section" hidden><form id="hoursForm" class="card hours-card"><span class="eyebrow">CONFIGURAÇÃO PÚBLICA</span><h2>Horários de atendimento</h2><p>Defina os dias e horários exibidos na página de abertura de chamados.</p><div id="hoursGrid" class="hours-grid"></div><label>Observação pública (opcional)<input id="hoursNote" maxlength="140" placeholder="Ex.: Atendimento reduzido durante o recesso"></label><button class="primary" type="submit">Salvar horários</button></form></section>');
   $('#hoursSection').insertAdjacentHTML('afterend','<section id="maintenanceSection" class="admin-section" hidden><div class="card maintenance-card"><div class="maintenance-head"><div><span class="eyebrow">SAÚDE DAS INTEGRAÇÕES</span><h2>Uso dos serviços gratuitos</h2><p>Métricas reais do banco, armazenamento e processamento de e-mails.</p></div><button id="refreshMaintenance" class="secondary" type="button">Atualizar métricas</button></div><div id="maintenanceMetrics" class="maintenance-grid"><p>Carregando métricas…</p></div><div class="maintenance-note"><strong>Tráfego mensal do Supabase</strong><p>O tráfego consolidado não é exposto com segurança pela API SQL. Consulte o painel Usage do Supabase para esse indicador.</p></div></div></section>');
   $('#maintenanceSection').insertAdjacentHTML('afterend',`
@@ -354,7 +356,7 @@
     startAdminSynchronization();
     window.scrollTo(0,0);
   }
-  $('#adminToggle').onclick=async()=>{if(state.profile&&!$('#adminView').hidden){await performLogout();return}document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;history.pushState({},'', '/labinfo/admin/');await enterAdmin()};
+  $('#adminToggle').onclick=async()=>{if(state.profile&&!$('#adminView').hidden){await performLogout();return}document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true;history.pushState({},'',sitePath('admin'));await enterAdmin()};
 
   const originalDetail=renderDetail;
   renderDetail=function(){if(!selected){$('#ticketDetail').innerHTML='<div class="empty-state-detail"><strong>Nenhum chamado selecionado</strong><p>Os chamados reais aparecerão aqui assim que forem registrados.</p></div>';return}originalDetail();if(!state.profile||state.profile.role==='supervisor')return;const technicianSelect=$('#technician');if(technicianSelect){const label=technicianSelect.closest('label');label.childNodes[0].textContent='Técnicos responsáveis';technicianSelect.hidden=true;technicianSelect.required=false;technicianSelect.insertAdjacentHTML('afterend',`<div id="assigneeChoices" class="multi-assignee"><label class="team-option"><input type="checkbox" value="__all__" ${selected.technician==='Toda a equipe'?'checked':''}>Toda a equipe</label>${data.technicians.filter(x=>x.role==='tecnico'&&x.active!==false).map(x=>`<label><input type="checkbox" value="${x.id}" ${(selected.technicianIds||[]).includes(x.id)?'checked':''}>${x.name}</label>`).join('')}</div>`);const choices=$('#assigneeChoices');choices.onchange=e=>{const all=choices.querySelector('[value="__all__"]'),individuals=[...choices.querySelectorAll('input:not([value="__all__"])')];if(e.target===all&&all.checked)individuals.forEach(x=>x.checked=false);else if(e.target!==all&&e.target.checked)all.checked=false}}const assign=$('#assign'),send=$('#sendReply'),close=$('#closeTicket');if(assign)assign.onclick=async()=>{const checked=[...$('#assigneeChoices').querySelectorAll('input:checked')].map(x=>x.value),collective=checked.includes('__all__'),ids=checked.filter(x=>x!=='__all__');if(!collective&&!ids.length)return toast('Selecione ao menos um técnico ou toda a equipe.');const primary=ids[0]||null,{error}=await sb.from('tickets').update({assigned_to:primary,status:'Em atendimento',started_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',selected.dbId);if(error)return fail(error);const removed=await sb.from('ticket_assignees').delete().eq('ticket_id',selected.dbId);if(removed.error)return fail(removed.error);if(ids.length){const inserted=await sb.from('ticket_assignees').insert(ids.map(id=>({ticket_id:selected.dbId,profile_id:id,assigned_by:state.profile.id})));if(inserted.error)return fail(inserted.error)}const names=collective?'Toda a equipe':data.technicians.filter(x=>ids.includes(x.id)).map(x=>x.name).join(', ');await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:'Atendimento atribuído a '+names,kind:'status'});await loadAdmin();toast('Responsáveis atualizados: '+names)};if(send)send.onclick=async()=>{const msg=$('#reply').value.trim();if(!msg)return toast('Digite uma atualização.');const {error}=await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:msg});if(error)return fail(error);toast('Atualização registrada.')};if(close)close.onclick=async()=>{const msg=$('#reply').value.trim();if(!msg)return toast('Descreva a solução.');if(selected.attachments?.length){const {error:se}=await sb.storage.from('ticket-attachments').remove(selected.attachments.map(x=>x.path));if(se)return fail(se);await sb.from('attachments').delete().eq('ticket_id',selected.dbId)}const {error}=await sb.from('tickets').update({status:'Concluído',resolution:msg,closed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',selected.dbId);if(error)return fail(error);await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:msg,kind:'fechamento'});await loadAdmin();toast('Chamado concluído e anexos removidos.')}};

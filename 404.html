@@ -6,9 +6,10 @@
     <title>LabInfo TL</title>
     <script>
       (function() {
-        var path = location.pathname.replace(/^\/labinfo\/?/, '').replace(/\/$/, '');
+        var base = location.hostname.endsWith('.github.io') ? '/labinfo' : '';
+        var path = location.pathname.slice(base.length).replace(/^\/+|\/+$/g, '');
         var search = location.search ? '&' + location.search.slice(1) : '';
-        var target = '/labinfo/' + (path ? '?route=' + encodeURIComponent(path) + search : (location.search || ''));
+        var target = base + '/' + (path ? '?route=' + encodeURIComponent(path) + search : (location.search || ''));
         location.replace(target);
       })();
     </script>
