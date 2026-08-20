@@ -75,6 +75,31 @@
   overflow:hidden;
 }
 
+/* Supervisor: mesma linguagem analítica dos relatórios e acompanhamento recolhível. */
+.supervisor-report-filters{margin-bottom:18px}
+.supervisor-tracking{margin-top:18px;overflow:hidden}
+.supervisor-tracking>summary{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:20px 22px;cursor:pointer;list-style:none}
+.supervisor-tracking>summary::-webkit-details-marker{display:none}
+.supervisor-tracking>summary span{display:flex;flex-direction:column;gap:4px}
+.supervisor-tracking>summary strong{font-size:18px}
+.supervisor-tracking>summary small{color:var(--muted);font-size:11px;font-weight:500}
+.supervisor-tracking>summary b{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--green-soft);color:var(--green);transition:transform .2s ease}
+.supervisor-tracking[open]>summary b{transform:rotate(180deg)}
+.supervisor-tracking[open]>summary{border-bottom:1px solid var(--line)}
+.supervisor-tracking-toolbar{padding:14px 20px;border-bottom:1px solid var(--line);background:#f8faf9}
+.supervisor-tracking-toolbar input{max-width:520px;margin:0}
+.supervisor-status-cell{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.supervisor-status-cell small{padding:3px 7px;border-radius:99px;background:#eef2ef;color:var(--muted);font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+.supervisor-row.is-archived{background:#f7f8f7;color:#526158}
+.supervisor-row.is-archived .supervisor-status-cell small{background:#e1e7e3;color:#3e5145}
+.deletion-audit{margin-top:18px}
+
+@media(max-width:620px){
+  .supervisor-tracking>summary{padding:17px 16px}
+  .supervisor-tracking>summary strong{font-size:16px}
+  .supervisor-tracking-toolbar{padding:12px}
+}
+
 /* Fluxo público de reservas: ação, escolha do espaço e agenda. */
 .reservations-public-view .reservation-form-toggle{order:3;margin-bottom:14px}
 .public-lab-picker{order:4;padding:24px;margin-bottom:14px}

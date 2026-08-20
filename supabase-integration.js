@@ -523,6 +523,80 @@
   const supervisorVisibleCounts=supervisor;supervisor=function(){supervisorVisibleCounts();const visible=tickets.filter(ticket=>!ticket.deletedAt),hours=Array.from({length:16},(_,i)=>[`${i+7}h`,visible.filter(ticket=>ticket.createdAt&&new Date(ticket.createdAt).getHours()===i+7).length]),max=Math.max(1,...hours.map(item=>item[1]));$('#supTotal').textContent=visible.length;$('#supWaiting').textContent=visible.filter(ticket=>ticket.status==='Recebido').length;$('#supActive').textContent=visible.filter(ticket=>ticket.status==='Em atendimento').length;$('#supDone').textContent=visible.filter(ticket=>ticket.status==='Concluído').length;$('#supHourChart').innerHTML=hours.map(([label,value])=>`<div class="bar-column"><small>${value}</small><i style="height:${value/max*85}%"></i><strong>${label}</strong></div>`).join('');renderRank('#supCategoryChart',grouped(visible,'category'));renderRank('#supLabChart',grouped(visible,'lab'));const people=grouped(visible,'teacher').map(([name,count])=>[name,grouped(visible.filter(ticket=>ticket.teacher===name),'category')[0]?.[0]||'—',count]);$('#supTeacherChart').innerHTML='<div><span>Servidor</span><span>Principal categoria</span><span>Chamados</span></div>'+people.map(item=>`<div><strong>${safe(item[0])}</strong><span>${safe(item[1])}</span><strong>${item[2]}</strong></div>`).join('')+(people.length?'':'<p class="empty">Sem dados registrados.</p>')};
   const filteredTicketsWithoutDeleted=filteredTickets;filteredTickets=function(){return filteredTicketsWithoutDeleted().filter(ticket=>!ticket.deletedAt)};
 
+  // O supervisor usa a mesma leitura analítica dos relatórios técnicos. A lista
+  // operacional é derivada dos chamados carregados do Supabase e fica recolhida
+  // por padrão para não competir visualmente com os indicadores.
+  function ensureSupervisorReportView(){
+    const section=$('#supervisorSection');
+    if(!section||section.dataset.reportView==='true')return;
+    section.dataset.reportView='true';
+    section.innerHTML=`
+      <div class="supervisor-banner card">
+        <div><span class="eyebrow">ACESSO SOMENTE LEITURA</span><h2>Relatórios e acompanhamento</h2><p>Indicadores sincronizados com os mesmos chamados exibidos no painel técnico.</p></div>
+        <span class="readonly-badge">Somente consulta</span>
+      </div>
+      <div class="analytics-filters card supervisor-report-filters">
+        <label>Período<select id="supervisorPeriod"><option value="30">Últimos 30 dias</option><option value="7">Últimos 7 dias</option><option value="1">Hoje</option><option value="all">Todo o período</option></select></label>
+        <label>Laboratório<select id="supervisorLab"><option value="Todos">Todos</option></select></label>
+        <label>Categoria<select id="supervisorCategory"><option value="Todas">Todas</option></select></label>
+        <button id="applySupervisorFilters" class="primary" type="button">Aplicar filtros</button>
+      </div>
+      <div class="metrics analytics-metrics supervisor-metrics">
+        <article><div><small>Total no período</small><strong id="supTotal">0</strong><em>Registros reais</em></div></article>
+        <article><div><small>Taxa de resolução</small><strong id="supResolution">0%</strong><em id="supDone">0 concluído(s)</em></div></article>
+        <article><div><small>Pico de abertura</small><strong id="supPeak">—</strong><em id="supPeakHelp">Sem aberturas</em></div></article>
+        <article><div><small>Laboratório crítico</small><strong id="supCriticalLab">—</strong><em id="supCriticalLabHelp">Sem ocorrências</em></div></article>
+      </div>
+      <div class="charts-grid supervisor-charts">
+        <article class="card chart-card wide"><div class="chart-head"><div><h2>Chamados por horário</h2><p>Volume de aberturas ao longo do dia</p></div><span class="readonly-badge">Leitura</span></div><div id="supHourChart" class="bar-chart"></div></article>
+        <article class="card chart-card"><h2>Por categoria</h2><div id="supCategoryChart"></div></article>
+        <article class="card chart-card"><h2>Por laboratório</h2><div id="supLabChart"></div></article>
+        <article class="card chart-card wide"><h2>Servidores com solicitações</h2><div id="supTeacherChart" class="teacher-table"></div></article>
+      </div>
+      <details id="supervisorTracking" class="card supervisor-tracking">
+        <summary><span><strong>Acompanhamento dos chamados</strong><small id="supervisorTrackingCount">0 registro(s)</small></span><b aria-hidden="true">⌄</b></summary>
+        <div class="supervisor-tracking-toolbar"><input id="supervisorTicketSearch" type="search" autocomplete="off" placeholder="Buscar protocolo, servidor, laboratório ou categoria..." aria-label="Buscar no acompanhamento"></div>
+        <div id="supervisorTable" class="supervisor-table"></div>
+      </details>
+      <section id="deletionAudit" class="card deletion-audit"><div><h2>Auditoria de exclusões</h2><p>Chamados removidos das filas pelos técnicos.</p></div><div id="deletionAuditList"></div></section>`;
+    $('#applySupervisorFilters').onclick=()=>supervisor();
+    $('#supervisorTicketSearch').oninput=()=>renderSupervisorTracking(supervisorFilteredTickets());
+  }
+
+  function supervisorFilteredTickets(){
+    const period=$('#supervisorPeriod')?.value||'30',lab=$('#supervisorLab')?.value||'Todos',category=$('#supervisorCategory')?.value||'Todas',now=new Date();
+    return tickets.filter(ticket=>{
+      if(ticket.deletedAt)return false;
+      if(lab!=='Todos'&&ticket.lab!==lab)return false;
+      if(category!=='Todas'&&ticket.category!==category)return false;
+      if(period==='all')return true;
+      if(!ticket.createdAt)return false;
+      const created=new Date(ticket.createdAt);
+      if(period==='1')return created.toDateString()===now.toDateString();
+      return created>=new Date(now.getTime()-Number(period)*86400000);
+    });
+  }
+
+  function renderSupervisorTracking(rows){
+    const query=normalizeSearch($('#supervisorTicketSearch')?.value),filtered=rows.filter(ticket=>!query||normalizeSearch(Object.values(ticket).join(' ')).includes(query));
+    $('#supervisorTrackingCount').textContent=`${filtered.length} registro(s) • ${filtered.filter(ticket=>ticket.archivedAt).length} arquivado(s)`;
+    $('#supervisorTable').innerHTML='<div class="supervisor-row supervisor-head"><span>Protocolo</span><span>Solicitante</span><span>Laboratório</span><span>Categoria</span><span>Situação</span><span>Técnico</span></div>'+filtered.map(ticket=>`<div class="supervisor-row ${ticket.archivedAt?'is-archived':''}"><strong>${safe(ticket.id)}</strong><span>${safe(ticket.teacher)}</span><span>${safe(ticket.lab)}</span><span>${safe(ticket.category)}</span><span class="supervisor-status-cell">${badge(ticket.status)}${ticket.archivedAt?'<small>Arquivado</small>':'<small>Na fila</small>'}</span><span>${safe(ticket.technician)}</span></div>`).join('')+(filtered.length?'':'<p class="empty">Nenhum chamado encontrado com os filtros selecionados.</p>');
+  }
+
+  supervisor=function(){
+    ensureSupervisorReportView();
+    const labSelect=$('#supervisorLab'),categorySelect=$('#supervisorCategory'),selectedLab=labSelect.value||'Todos',selectedCategory=categorySelect.value||'Todas';
+    labSelect.innerHTML='<option value="Todos">Todos</option>'+data.labs.filter(item=>item.active!==false).map(item=>`<option value="${safe(item.name)}">${safe(item.name)}</option>`).join('');
+    categorySelect.innerHTML='<option value="Todas">Todas</option>'+data.categories.filter(item=>item.active!==false).map(item=>`<option value="${safe(item.name)}">${safe(item.name)}</option>`).join('');
+    if([...labSelect.options].some(option=>option.value===selectedLab))labSelect.value=selectedLab;
+    if([...categorySelect.options].some(option=>option.value===selectedCategory))categorySelect.value=selectedCategory;
+    const rows=supervisorFilteredTickets(),hours=Array.from({length:16},(_,index)=>[`${index+7}h`,rows.filter(ticket=>ticket.createdAt&&new Date(ticket.createdAt).getHours()===index+7).length]),max=Math.max(1,...hours.map(item=>item[1])),categories=grouped(rows,'category'),labs=grouped(rows,'lab'),done=rows.filter(ticket=>ticket.status==='Concluído').length,peak=hours.reduce((current,item)=>item[1]>current[1]?item:current,['—',0]),people=grouped(rows,'teacher').map(([name,count])=>[name,grouped(rows.filter(ticket=>ticket.teacher===name),'category')[0]?.[0]||'—',count]);
+    $('#supTotal').textContent=rows.length;$('#supResolution').textContent=rows.length?`${Math.round(done/rows.length*100)}%`:'0%';$('#supDone').textContent=`${done} concluído(s)`;$('#supPeak').textContent=peak[1]?peak[0]:'—';$('#supPeakHelp').textContent=`${peak[1]} abertura(s)`;$('#supCriticalLab').textContent=labs[0]?.[0]||'—';$('#supCriticalLabHelp').textContent=`${labs[0]?.[1]||0} ocorrência(s)`;
+    $('#supHourChart').innerHTML=hours.map(([label,value])=>`<div class="bar-column"><small>${value}</small><i style="height:${value/max*85}%"></i><strong>${label}</strong></div>`).join('');renderRank('#supCategoryChart',categories);renderRank('#supLabChart',labs);$('#supTeacherChart').innerHTML='<div><span>Servidor</span><span>Principal categoria</span><span>Chamados</span></div>'+people.map(item=>`<div><strong>${safe(item[0])}</strong><span>${safe(item[1])}</span><strong>${item[2]}</strong></div>`).join('')+(people.length?'':'<p class="empty">Sem dados no período.</p>');
+    renderSupervisorTracking(rows);
+    const deleted=tickets.filter(ticket=>ticket.deletedAt);$('#deletionAuditList').innerHTML=deleted.map(ticket=>`<article><strong>${safe(ticket.id)}</strong><span>${safe(ticket.title)}</span><span>Excluído por <b>${safe(ticket.deletedBy||'Técnico não identificado')}</b></span><time>${fmt(ticket.deletedAt)}</time><p>${safe(ticket.deletionReason||'Sem justificativa registrada')}</p></article>`).join('')||'<p class="empty">Nenhuma exclusão registrada.</p>';
+  };
+
   // Renderização única e definitiva da fila. Evita que referências antigas removam
   // cores, alertas ou façam chamados excluídos reaparecerem após interações.
   renderTickets=function(){
