@@ -142,7 +142,25 @@
   $('#passwordForm').onsubmit=async e=>{e.preventDefault();const current=$('#currentPassword').value,next=$('#newPassword').value,confirm=$('#confirmPassword').value,errorBox=$('#passwordError');errorBox.textContent='';if(next!==confirm){errorBox.textContent='A confirmação não corresponde à nova senha.';return}if(next===current){errorBox.textContent='A nova senha deve ser diferente da senha atual.';return}const email=state.session?.user?.email;const {error:authError}=await sb.auth.signInWithPassword({email,password:current});if(authError){errorBox.textContent='A senha atual está incorreta.';return}const {error:updateError}=await sb.auth.updateUser({password:next});if(updateError){errorBox.textContent=updateError.message;return}closePasswordModal();toast('Senha atualizada com sucesso.')};
 
   $('#adminMenuDropdown').querySelector('[data-section="tickets"]')?.remove();$('#adminMenuDropdown').querySelector('[data-section="analytics"]').textContent='Relatórios';$('#adminMenuDropdown').querySelector('[data-section="supervisor"]').textContent='Supervisor';$('#adminMenuDropdown').insertAdjacentHTML('beforeend','<button id="chatMenuButton" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg> Chat ao vivo <span id="chatMenuBadge" class="chat-menu-badge" hidden>0</span></button><button id="hoursMenuButton">Horários</button><button id="maintenanceMenuButton">Manutenção</button><button id="reservationsMenuButton" type="button">Reservas</button>');
-  $('.brand').addEventListener('click',e=>{if(!$('#adminView').hidden){e.preventDefault();history.pushState({},'', '/labinfo/admin/chamados/');showSection('tickets');window.scrollTo(0,0)}});
+  const adminMenuDropdown=$('#adminMenuDropdown'),analyticsMenuButton=adminMenuDropdown.querySelector('[data-section="analytics"]'),registrationsMenuButton=adminMenuDropdown.querySelector('[data-section="registrations"]'),supervisorMenuButton=adminMenuDropdown.querySelector('[data-section="supervisor"]'),reservationsMenuButton=$('#reservationsMenuButton'),chatMenuButton=$('#chatMenuButton');
+  const primaryAdminNav=document.createElement('nav');primaryAdminNav.className='primary-admin-nav';primaryAdminNav.setAttribute('aria-label','Navegação principal do painel');
+  [analyticsMenuButton,reservationsMenuButton,chatMenuButton].forEach(button=>{button.dataset.adminNav='primary';primaryAdminNav.append(button)});
+  [registrationsMenuButton,supervisorMenuButton,$('#hoursMenuButton'),$('#maintenanceMenuButton')].forEach(button=>button.dataset.adminNav='management');
+  $('#adminMenuButton').textContent='Administração ▾';
+  const mobileAdminMenuButton=document.createElement('button');mobileAdminMenuButton.id='mobileAdminMenuButton';mobileAdminMenuButton.className='mobile-admin-menu-button';mobileAdminMenuButton.type='button';mobileAdminMenuButton.setAttribute('aria-label','Abrir menu do painel');mobileAdminMenuButton.setAttribute('aria-expanded','false');mobileAdminMenuButton.innerHTML='<span></span><span></span><span></span>';
+  const mobileAdminBackdrop=document.createElement('button');mobileAdminBackdrop.id='mobileAdminBackdrop';mobileAdminBackdrop.className='mobile-admin-backdrop';mobileAdminBackdrop.type='button';mobileAdminBackdrop.setAttribute('aria-label','Fechar menu do painel');
+  const adminNavShell=document.createElement('div');adminNavShell.className='admin-nav-shell';
+  accountActions.prepend(mobileAdminBackdrop,mobileAdminMenuButton);
+  accountActions.insertBefore(primaryAdminNav,adminMenu);
+  [primaryAdminNav,adminMenu,$('#staffChatToggleWrap'),$('.account-menu')].forEach(element=>adminNavShell.append(element));
+  accountActions.append(adminNavShell);
+  chatMenuButton.append($('#topbarOnlineStaffPill'));
+  const closeMobileAdminMenu=()=>{accountActions.classList.remove('mobile-open');mobileAdminMenuButton.setAttribute('aria-expanded','false');document.body.classList.remove('admin-nav-open')};
+  mobileAdminMenuButton.onclick=()=>{const open=!accountActions.classList.contains('mobile-open');accountActions.classList.toggle('mobile-open',open);mobileAdminMenuButton.setAttribute('aria-expanded',String(open));document.body.classList.toggle('admin-nav-open',open)};
+  mobileAdminBackdrop.onclick=closeMobileAdminMenu;
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&accountActions.classList.contains('mobile-open'))closeMobileAdminMenu()});
+  accountActions.querySelectorAll('[data-admin-nav], #accountLogout').forEach(button=>button.addEventListener('click',()=>{accountActions.querySelectorAll('[data-admin-nav]').forEach(item=>item.classList.remove('active'));button.classList.add('active');closeMobileAdminMenu()}));
+  $('.brand').addEventListener('click',e=>{if(!$('#adminView').hidden){e.preventDefault();closeMobileAdminMenu();history.pushState({},'', '/labinfo/admin/chamados/');showSection('tickets');window.scrollTo(0,0)}});
   $('#supervisorSection').insertAdjacentHTML('afterend','<section id="hoursSection" class="admin-section" hidden><form id="hoursForm" class="card hours-card"><span class="eyebrow">CONFIGURAÇÃO PÚBLICA</span><h2>Horários de atendimento</h2><p>Defina os dias e horários exibidos na página de abertura de chamados.</p><div id="hoursGrid" class="hours-grid"></div><label>Observação pública (opcional)<input id="hoursNote" maxlength="140" placeholder="Ex.: Atendimento reduzido durante o recesso"></label><button class="primary" type="submit">Salvar horários</button></form></section>');
   $('#hoursSection').insertAdjacentHTML('afterend','<section id="maintenanceSection" class="admin-section" hidden><div class="card maintenance-card"><div class="maintenance-head"><div><span class="eyebrow">SAÚDE DAS INTEGRAÇÕES</span><h2>Uso dos serviços gratuitos</h2><p>Métricas reais do banco, armazenamento e processamento de e-mails.</p></div><button id="refreshMaintenance" class="secondary" type="button">Atualizar métricas</button></div><div id="maintenanceMetrics" class="maintenance-grid"><p>Carregando métricas…</p></div><div class="maintenance-note"><strong>Tráfego mensal do Supabase</strong><p>O tráfego consolidado não é exposto com segurança pela API SQL. Consulte o painel Usage do Supabase para esse indicador.</p></div></div></section>');
   $('#maintenanceSection').insertAdjacentHTML('afterend',`
@@ -317,12 +335,13 @@
     $('#reservationsPublicView').hidden=true;
     const cp=$('#chatPublicView');if(cp)cp.hidden=true;
     $('#adminToggle').textContent='Sair';
+    $('#adminToggle').hidden=true;
     $('#accountName').textContent=p.full_name;
     $('#accountMenuName').textContent=p.full_name;
     $('#accountEmail').textContent=p.email;
     $('#accountRole').textContent=p.role==='supervisor'?'Supervisor':'Técnico';
     $('#accountAvatar').textContent=p.full_name.trim().split(/\s+/).slice(0,2).map(x=>x[0]).join('').toUpperCase();
-    const menuButtons=document.querySelectorAll('#adminMenuDropdown button');
+    const menuButtons=document.querySelectorAll('.topbar-admin-actions [data-admin-nav]');
     menuButtons.forEach(b=>b.hidden=false);
     if(p.role==='supervisor'){
       menuButtons.forEach(b=>b.hidden=b.dataset.section!=='supervisor'&&b.id!=='reservationsMenuButton');

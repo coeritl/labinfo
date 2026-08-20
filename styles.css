@@ -955,5 +955,272 @@
   }
 }
 
+/* Navegação técnica compacta: acessos principais, administração e conta. */
+.topbar-admin-actions {
+  min-width: 0;
+  gap: 8px;
+  overflow: visible;
+}
+
+.admin-nav-shell,
+.primary-admin-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.primary-admin-nav button,
+.topbar-admin-actions .admin-menu #adminMenuButton {
+  width: auto;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--green-dark);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.primary-admin-nav button:hover,
+.primary-admin-nav button.active,
+.topbar-admin-actions .admin-menu #adminMenuButton:hover {
+  background: var(--green-soft);
+}
+
+.topbar-admin-actions .admin-menu {
+  position: relative;
+}
+
+.topbar-admin-actions .admin-menu #adminMenuButton {
+  display: inline-flex;
+  align-items: center;
+}
+
+.topbar-admin-actions .admin-menu #adminMenuDropdown,
+.topbar-admin-actions .admin-menu #adminMenuDropdown[hidden] {
+  position: absolute;
+  top: 45px;
+  right: 0;
+  z-index: 12;
+  display: none !important;
+  width: 210px;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.topbar-admin-actions .admin-menu #adminMenuDropdown:not([hidden]) {
+  display: grid !important;
+}
+
+.topbar-admin-actions .admin-menu #adminMenuDropdown button {
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  font-size: 11px;
+}
+
+.topbar-admin-actions #staffChatToggleWrap {
+  padding: 6px 9px;
+}
+
+.topbar-admin-actions #staffChatToggleLabel {
+  display: none;
+}
+
+.primary-admin-nav #chatMenuButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.primary-admin-nav #topbarOnlineStaffPill {
+  padding: 2px 6px !important;
+  border: 0;
+  background: var(--bg);
+  font-size: 9px !important;
+}
+
+.mobile-admin-menu-button,
+.mobile-admin-backdrop {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  body.admin-nav-open {
+    overflow: hidden;
+  }
+
+  .topbar-admin-actions {
+    max-width: none;
+    margin-left: auto;
+    overflow: visible;
+  }
+
+  .mobile-admin-menu-button {
+    display: flex;
+    width: 42px;
+    height: 42px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+    cursor: pointer;
+  }
+
+  .mobile-admin-menu-button span {
+    width: 18px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--green-dark);
+    transition: transform .2s, opacity .2s;
+  }
+
+  .topbar-admin-actions.mobile-open .mobile-admin-menu-button span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+  }
+
+  .topbar-admin-actions.mobile-open .mobile-admin-menu-button span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .topbar-admin-actions.mobile-open .mobile-admin-menu-button span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
+  }
+
+  .mobile-admin-backdrop {
+    position: fixed;
+    inset: 66px 0 0;
+    z-index: 18;
+    border: 0;
+    background: rgba(7, 35, 20, .38);
+  }
+
+  .topbar-admin-actions.mobile-open .mobile-admin-backdrop {
+    display: block;
+  }
+
+  .admin-nav-shell {
+    position: fixed;
+    top: 66px;
+    right: 0;
+    bottom: 0;
+    z-index: 19;
+    width: min(88vw, 340px);
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding: 18px;
+    overflow-y: auto;
+    background: #fff;
+    box-shadow: -18px 0 40px rgba(7, 35, 20, .18);
+    transform: translateX(105%);
+    transition: transform .24s ease;
+  }
+
+  .topbar-admin-actions.mobile-open .admin-nav-shell {
+    transform: translateX(0);
+  }
+
+  .primary-admin-nav {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .primary-admin-nav button,
+  .topbar-admin-actions .admin-menu #adminMenuDropdown button {
+    display: flex;
+    width: 100%;
+    min-height: 45px;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 11px 12px;
+    font-size: 13px;
+    text-align: left;
+  }
+
+  .topbar-admin-actions .admin-menu {
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+
+  .topbar-admin-actions .admin-menu::before {
+    content: 'ADMINISTRAÇÃO';
+    display: block;
+    padding: 0 12px 7px;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 900;
+    letter-spacing: 1px;
+  }
+
+  .topbar-admin-actions .admin-menu #adminMenuButton {
+    display: none;
+  }
+
+  .topbar-admin-actions .admin-menu #adminMenuDropdown,
+  .topbar-admin-actions .admin-menu #adminMenuDropdown[hidden] {
+    position: static;
+    display: grid !important;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .topbar-admin-actions #staffChatToggleWrap {
+    justify-content: space-between;
+    order: 3;
+    padding: 13px 12px;
+    border-radius: 10px;
+    background: var(--green-soft);
+  }
+
+  .topbar-admin-actions #staffChatToggleLabel {
+    display: inline;
+    order: -1;
+    font-size: 12px;
+  }
+
+  .topbar-admin-actions .account-menu {
+    order: 4;
+    margin-top: auto;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+
+  .topbar-admin-actions .account-button {
+    width: 100%;
+    height: 50px;
+  }
+
+  .topbar-admin-actions .account-button > span:nth-child(2) {
+    display: flex;
+    max-width: none;
+  }
+
+  .topbar-admin-actions .account-dropdown {
+    position: static;
+    width: 100%;
+    margin-top: 7px;
+    box-shadow: none;
+  }
+
+  .topbar .brand-logo {
+    width: 122px !important;
+    height: auto !important;
+  }
+}
+
 
 
