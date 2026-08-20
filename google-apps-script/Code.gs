@@ -133,14 +133,14 @@ function montarEmail_(eventType, data) {
     aberto_pelo_tecnico: ['Abrimos um chamado para você', 'A equipe técnica registrou um chamado vinculado ao seu cadastro. Você receberá por e-mail as próximas atualizações do atendimento.', '#07852a', '&#10003;&#65038;', 'Solicitação registrada'],
     em_atendimento: ['Chamado em atendimento', 'A equipe técnica iniciou o atendimento do seu chamado.', '#2167a8', '&#9881;', 'Atendimento em andamento'],
     atualizacao: ['Atualização do chamado', data.message || 'Há uma nova atualização no seu chamado.', '#d66a00', '!', 'Atenção: aguardando sua verificação'],
-    concluido: ['CONFIRME SE O ATENDIMENTO FOI REALIZADO COMO SOLICITADO', 'A equipe técnica concluiu o chamado. Confira a solução registrada e confirme se o atendimento foi realizado de acordo com o que você solicitou.', '#086c3c', '!', 'Sua confirmação é importante']
+    concluido: ['Chamado concluído', 'O atendimento foi concluído pela equipe técnica. Agora, confirme pra gente que deu tudo certo.', '#086c3c', '&#10003;', 'Atendimento resolvido']
     ,novo_chamado_tecnico: ['Novo chamado na fila', 'Um novo chamado foi registrado e está disponível para atribuição.', '#2167a8', '&#128276;', 'Atenção da equipe']
     ,resposta_servidor_tecnico: ['Servidor respondeu ao chamado', data.message || 'Há uma nova resposta aguardando análise da equipe.', '#d66a00', '!', 'Resposta pendente']
   };
   const content = names[eventType] || ['Atualização do LabInfo TL', 'Há uma novidade em seu chamado.', '#07852a', 'i', 'Nova informação'];
   return {
     subject: eventType === 'concluido'
-      ? `[AÇÃO NECESSÁRIA] Confirme o atendimento — ${data.protocol || 'LabInfo TL'}`
+      ? `${data.protocol || 'LabInfo TL'} — Chamado concluído. Confirme pra gente que deu tudo certo!`
       : `${data.protocol || 'LabInfo TL'} — ${content[0]}`,
     html: layout_(content[0], content[1], data, {color:content[2],icon:content[3],label:content[4]})
   };
@@ -173,7 +173,7 @@ function layout_(title, message, data, visual) {
     ? `<table role="presentation" width="100%" style="margin-top:16px;background:#f5f8f6;border-radius:12px"><tr><td style="padding:16px;font-size:14px;line-height:1.7"><b style="display:block;color:#086c3c;margin-bottom:5px">SOLUÇÃO REGISTRADA PELA EQUIPE</b>${escapar_(data.resolution)}</td></tr></table>`
     : '';
   const action = isCompleted && data.feedback_url
-    ? `<table role="presentation" width="100%" style="margin-top:22px;background:#fff7df;border:2px solid #d58a00;border-radius:12px"><tr><td align="center" style="padding:20px"><b style="display:block;color:#6b4800;font-size:17px;margin-bottom:8px">O atendimento foi realizado conforme solicitado?</b><span style="display:block;color:#6b5a31;font-size:14px;line-height:1.5;margin-bottom:16px">Sua confirmação encerra o processo e informa à equipe que a solução foi validada.</span><a href="${escapar_(data.feedback_url)}" style="display:inline-block;background:#086c3c;color:#fff;text-decoration:none;font-weight:bold;font-size:16px;padding:14px 24px;border-radius:10px">SIM, CONFIRMAR ATENDIMENTO</a><span style="display:block;margin-top:12px;color:#6b5a31;font-size:12px">Se ainda houver algum problema, responda a este e-mail descrevendo o que precisa ser revisto.</span></td></tr></table>`
+    ? `<table role="presentation" width="100%" style="margin-top:22px;background:#eaf6ef;border:3px solid #086c3c;border-radius:14px"><tr><td align="center" style="padding:24px 20px"><b style="display:block;color:#064d2b;font-size:20px;line-height:1.3;margin-bottom:9px">Confirme pra gente que deu tudo certo!</b><span style="display:block;color:#355b46;font-size:14px;line-height:1.55;margin-bottom:18px">Sua confirmação informa à equipe que o atendimento foi validado e conclui o processo.</span><a href="${escapar_(data.feedback_url)}" style="display:block;background:#086c3c;color:#ffffff;text-decoration:none;font-weight:900;font-size:17px;line-height:1.2;padding:16px 24px;border-radius:10px;box-shadow:0 5px 14px rgba(8,108,60,.24)">&#10003;&nbsp; CONFIRMAR ATENDIMENTO</a><span style="display:block;margin-top:14px;color:#4d6a5a;font-size:12px">Se ainda houver algum problema, responda a este e-mail e conte o que precisa ser revisto.</span></td></tr></table><p style="margin:16px 0 0;text-align:center"><a href="${LABINFO.supportUrl}" style="color:#086c3c;font-size:13px;font-weight:bold">Consultar minhas solicitações</a></p>`
     : `<p style="margin:24px 0 0"><a href="${LABINFO.supportUrl}" style="display:inline-block;background:${visual.color};color:#fff;text-decoration:none;font-weight:bold;padding:13px 22px;border-radius:10px">Consultar minhas solicitações</a></p>`;
   return `<!doctype html><html><body style="margin:0;background:#f2f6f3;font-family:Arial,sans-serif;color:#10231a">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:28px 12px">

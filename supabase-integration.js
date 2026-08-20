@@ -1780,6 +1780,86 @@
     })
     .subscribe();
 
+  // Permite ao técnico complementar chamados recebidos por e-mail antes de
+  // iniciar o atendimento. A categoria é obrigatória para manter os relatórios
+  // consistentes; o laboratório continua opcional para atendimentos gerais.
+  const renderDetailWithTicketEditor = renderDetail;
+  renderDetail = function () {
+    renderDetailWithTicketEditor();
+    if (!selected || state.profile?.role !== 'tecnico' || selected.status === 'Concluído') return;
+
+    const details = $('#ticketDetail .detail-data');
+    if (!details) return;
+    const missingCategory = !selected.categoryId;
+    const categoryOptions = data.categories.filter(item => item.active !== false).map(item =>
+      `<option value="${safe(item.id)}" ${item.id === selected.categoryId ? 'selected' : ''}>${safe(item.name)}</option>`
+    ).join('');
+    const labOptions = data.labs.filter(item => item.active !== false).map(item =>
+      `<option value="${safe(item.id)}" ${item.id === selected.labId ? 'selected' : ''}>${safe(item.name)}</option>`
+    ).join('');
+
+    details.insertAdjacentHTML('afterend', `
+      <section class="ticket-edit-panel ${missingCategory ? 'is-required' : ''}">
+        <button id="toggleTicketEditor" class="ticket-edit-toggle" type="button" aria-expanded="${missingCategory}">
+          <span><strong>${missingCategory ? 'Complete as informações para iniciar' : 'Editar informações do chamado'}</strong><small>${missingCategory ? 'Selecione ao menos uma categoria.' : 'Título, descrição, categoria e laboratório.'}</small></span>
+          <b>${missingCategory ? '−' : '+'}</b>
+        </button>
+        <form id="ticketEditForm" ${missingCategory ? '' : 'hidden'}>
+          <div class="field-row">
+            <label>Categoria <select id="ticketEditCategory" required><option value="">Selecione</option>${categoryOptions}</select></label>
+            <label>Laboratório <select id="ticketEditLab"><option value="">Não informado</option>${labOptions}</select></label>
+          </div>
+          <label>Título do chamado<input id="ticketEditTitle" maxlength="100" value="${safe(selected.title)}" required></label>
+          <label>Descrição<textarea id="ticketEditDescription" maxlength="2000" rows="4" required>${safe(selected.description || '')}</textarea></label>
+          <div class="ticket-edit-actions"><button id="cancelTicketEdit" class="secondary" type="button">Cancelar</button><button class="primary" type="submit">Salvar informações</button></div>
+        </form>
+      </section>`);
+
+    const panel = $('#ticketDetail .ticket-edit-panel');
+    const form = $('#ticketEditForm');
+    const toggle = $('#toggleTicketEditor');
+    const setExpanded = expanded => {
+      form.hidden = !expanded;
+      toggle.setAttribute('aria-expanded', String(expanded));
+      toggle.querySelector('b').textContent = expanded ? '−' : '+';
+    };
+    toggle.onclick = () => setExpanded(form.hidden);
+    $('#cancelTicketEdit').onclick = () => setExpanded(false);
+    form.onsubmit = async event => {
+      event.preventDefault();
+      const categoryId = $('#ticketEditCategory').value;
+      if (!categoryId) return toast('Selecione uma categoria para o chamado.');
+      const labId = $('#ticketEditLab').value || null;
+      const title = $('#ticketEditTitle').value.trim();
+      const description = $('#ticketEditDescription').value.trim();
+      const save = form.querySelector('.primary');
+      save.disabled = true; save.textContent = 'Salvando…';
+      const now = new Date().toISOString();
+      const result = await sb.from('tickets').update({category_id:categoryId,lab_id:labId,title,description,updated_at:now}).eq('id',selected.dbId);
+      if (result.error) { save.disabled = false; save.textContent = 'Salvar informações'; return fail(result.error, 'Não foi possível atualizar o chamado.'); }
+      const category = data.categories.find(item => item.id === categoryId);
+      const lab = data.labs.find(item => item.id === labId);
+      selected.categoryId = categoryId; selected.category = category?.name || 'Sem categoria';
+      selected.labId = labId; selected.lab = lab?.name || 'Não informado';
+      selected.title = title; selected.description = description;
+      const history = await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:'Informações do chamado atualizadas pela equipe técnica.',kind:'status'});
+      if (history.error) console.error('Chamado atualizado, mas o histórico não foi registrado', history.error);
+      renderTickets(); renderDetail(); toast('Informações do chamado atualizadas.');
+    };
+
+    const assign = $('#assign');
+    if (assign) {
+      const startAssignment = assign.onclick;
+      assign.onclick = event => {
+        if (!selected.categoryId) {
+          setExpanded(true); panel.scrollIntoView({behavior:'smooth',block:'center'}); $('#ticketEditCategory').focus();
+          return toast('Informe a categoria antes de iniciar o atendimento.');
+        }
+        return startAssignment?.call(assign, event);
+      };
+    }
+  };
+
   catalogs();
   loadServiceHours();
   loadChatAvailability();
