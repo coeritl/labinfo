@@ -292,13 +292,25 @@
   function getMonday(value){const date=new Date(value);date.setHours(12,0,0,0);const day=date.getDay()||7;date.setDate(date.getDate()-day+1);return date}
   const isoDate=date=>date.toLocaleDateString('en-CA',{timeZone:'America/Cuiaba'}),addDays=(date,days)=>{const copy=new Date(date);copy.setDate(copy.getDate()+days);return copy};
 
+  async function fetchAllReservations(){
+    const rows=[],pageSize=1000;
+    for(let from=0;;from+=pageSize){
+      const {data,error}=await sb.from('reservations').select('*,servers(full_name,siape,email),labs(name,code)').order('starts_at').range(from,from+pageSize-1);
+      if(error)throw error;
+      rows.push(...(data||[]));
+      if(!data||data.length<pageSize)return rows;
+    }
+  }
+
   async function loadReservationAdmin(){
-    const [{data:r,error},{data:l},{data:s}]=await Promise.all([
-      sb.from('reservations').select('*,servers(full_name,siape,email),labs(name,code)').order('starts_at'),
+    let r=[];
+    const [reservationResult,{data:l},{data:s}]=await Promise.all([
+      fetchAllReservations().then(data=>({data})).catch(error=>({error})),
       sb.from('labs').select('id,name,code').eq('active',true).order('name'),
       sb.from('servers').select('id,full_name,siape,email').eq('active',true).order('full_name')
     ]);
-    if(error)return toast(error.message);
+    if(reservationResult.error)return toast(reservationResult.error.message);
+    r=reservationResult.data;
     reservations=r||[];adminLabs=l||[];adminServers=s||[];
     fillAdminOptions();
     renderReservationAdmin();
