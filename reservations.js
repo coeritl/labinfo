@@ -198,7 +198,7 @@
     let html='<div class="calendar-corner">Horário</div>'+days.map(day=>`<div class="calendar-day"><strong>${day.toLocaleDateString('pt-BR',{weekday:'short'})}</strong><span>${day.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span></div>`).join('');
     
     html+=`<div class="calendar-time-col" style="position:relative;border-right:1px solid var(--line);height:${H}px;background:#fbfcfb;">`;
-    for(let h=7;h<=22;h++) html+=`<div style="position:absolute;top:${(h*60-CAL_START)*PPM}px;right:10px;transform:translateY(-50%);font-size:11px;font-weight:800;color:var(--muted);">${h.toString().padStart(2,'0')}:00</div>`;
+    for(let h=7;h<=22;h++) html+=`<div style="position:absolute;top:${(h*60-CAL_START)*PPM}px;right:10px;transform:${h===7?'translateY(4px)':'translateY(-50%)'};font-size:11px;font-weight:800;color:var(--muted);">${h.toString().padStart(2,'0')}:00</div>`;
     html+=`</div>`;
 
     for(let d=0;d<days.length;d++){
@@ -407,7 +407,7 @@
     let html='<div class="calendar-corner">Hor\u00e1rio</div>'+days.map(day=>`<div class="calendar-day"><strong>${day.toLocaleDateString('pt-BR',{weekday:'short'})}</strong><span>${day.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</span></div>`).join('');
     
     html+=`<div class="calendar-time-col" style="position:relative;border-right:1px solid var(--line);height:${H}px;background:#fbfcfb;">`;
-    for(let h=7;h<=22;h++) html+=`<div style="position:absolute;top:${(h*60-CAL_START)*PPM}px;right:10px;transform:translateY(-50%);font-size:11px;font-weight:800;color:var(--muted);">${h.toString().padStart(2,'0')}:00</div>`;
+    for(let h=7;h<=22;h++) html+=`<div style="position:absolute;top:${(h*60-CAL_START)*PPM}px;right:10px;transform:${h===7?'translateY(4px)':'translateY(-50%)'};font-size:11px;font-weight:800;color:var(--muted);">${h.toString().padStart(2,'0')}:00</div>`;
     html+=`</div>`;
 
     for(let d=0;d<days.length;d++){
