@@ -321,7 +321,15 @@
     updateReservationNoticeFromList(rows||[]);
   }
 
-  let reservations=[],adminLabs=[],adminServers=[],weekStart=getMonday(new Date()),draggedReservation=null,reservationChannel=null;
+  let reservations=[],adminLabs=[],adminServers=[],weekStart=getMonday(new Date()),draggedReservation=null,reservationChannel=null,reservationReloadTimer=null,reservationLoadPromise=null;
+  function scheduleReservationReload(delay=900){
+    clearTimeout(reservationReloadTimer);
+    reservationReloadTimer=setTimeout(()=>{
+      reservationReloadTimer=null;
+      if(reservationLoadPromise)return scheduleReservationReload(500);
+      if(!document.hidden&&!$('#reservationsSection')?.hidden)loadReservationAdmin();
+    },delay);
+  }
   function getMonday(value){const date=new Date(value);date.setHours(12,0,0,0);const day=date.getDay()||7;date.setDate(date.getDate()-day+1);return date}
   const isoDate=date=>date.toLocaleDateString('en-CA',{timeZone:'America/Cuiaba'}),addDays=(date,days)=>{const copy=new Date(date);copy.setDate(copy.getDate()+days);return copy};
 
@@ -336,6 +344,8 @@
   }
 
   async function loadReservationAdmin(){
+    if(reservationLoadPromise)return reservationLoadPromise;
+    reservationLoadPromise=(async()=>{
     let r=[];
     const [reservationResult,{data:l},{data:s}]=await Promise.all([
       fetchAllReservations().then(data=>({data})).catch(error=>({error})),
@@ -348,6 +358,8 @@
     fillAdminOptions();
     renderReservationAdmin();
     updateReservationNoticeFromList(reservations);
+    })();
+    try{return await reservationLoadPromise}finally{reservationLoadPromise=null}
   }
 
   function fillAdminOptions(){
@@ -497,10 +509,16 @@
         const snapMin=Math.round(dropMin/5)*5;
         const h=Math.floor(snapMin/60).toString().padStart(2,'0');
         const m=(snapMin%60).toString().padStart(2,'0');
-        const {error}=await sb.rpc('staff_update_reservation',{p_id:draggedReservation.id,p_start:localIso(cell.dataset.date,`${h}:${m}`),p_lab:labId,p_status:null,p_reason:null});
+        const moved=draggedReservation;
         draggedReservation=null;
+        const notify=await askReservationNotification('edit',false);
+        if(notify===null)return;
+        const duration=new Date(moved.ends_at).getTime()-new Date(moved.starts_at).getTime();
+        const newStart=localIso(cell.dataset.date,`${h}:${m}`);
+        const newEnd=new Date(new Date(newStart).getTime()+duration).toISOString();
+        const {error}=await sb.rpc('staff_edit_reservation_range_notification',{p_id:moved.id,p_server:moved.server_id,p_lab:labId,p_subject:moved.subject,p_start:newStart,p_end:newEnd,p_notes:moved.notes||null,p_scope:'occurrence',p_notify:notify});
         if(error)return toast(error.message);
-        toast('Reserva reagendada e servidor notificado.');
+        toast(`Reserva reagendada${notify?' e servidor notificado.':' sem envio de notificação.'}`);
         await loadReservationAdmin();
       };
     });
@@ -633,7 +651,7 @@
       console.error('Erro ao carregar reservas:',err);
       toast(err.message||'Erro ao carregar reservas.');
     }
-    if(!reservationChannel)reservationChannel=sb.channel('labinfo-reservations').on('postgres_changes',{event:'*',schema:'public',table:'reservations'},()=>loadReservationAdmin()).subscribe();
+    if(!reservationChannel)reservationChannel=sb.channel('labinfo-reservations').on('postgres_changes',{event:'*',schema:'public',table:'reservations'},()=>scheduleReservationReload()).subscribe();
   }
   window.labinfoOpenReservations=openReservationsAdmin;
   window.labinfoLoadReservationAdmin=loadReservationAdmin;
