@@ -69,15 +69,12 @@ set search_path=public as $$ select role from public.profiles where id=auth.uid(
 revoke all on function public.current_role() from public; grant execute on function public.current_role() to anon,authenticated;
 
 create or replace function public.next_protocol(p_lab uuid) returns text language plpgsql security definer set search_path=public as $$
-declare v_code text; v_prefix text; v_next bigint; v_digits int;
+declare v_next bigint;
 begin
-  select code into v_code from public.labs where id=p_lab;
-  v_prefix := case when v_code is null or btrim(v_code)='' then 'LAB' else upper(v_code) end;
-  v_digits := case when v_prefix='LAB' then 5 else 4 end;
-  insert into public.protocol_sequences(prefix,last_value) values(v_prefix,1)
+  insert into public.protocol_sequences(prefix,last_value) values('LAB',1)
   on conflict(prefix) do update set last_value=protocol_sequences.last_value+1
   returning last_value into v_next;
-  return v_prefix||'-'||lpad(v_next::text,v_digits,'0');
+  return 'LAB-'||lpad(v_next::text,5,'0');
 end $$;
 revoke all on function public.next_protocol(uuid) from public;
 grant execute on function public.next_protocol(uuid) to authenticated;
