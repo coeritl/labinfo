@@ -250,7 +250,7 @@
   const admin=$('#adminView');admin.insertAdjacentHTML('beforeend',`<section id="reservationsSection" class="admin-section reservations-admin" hidden>
     <div class="reservation-toolbar card"><div><button id="reservationPrevWeek" class="secondary" type="button">←</button><button id="reservationToday" class="secondary" type="button">Hoje</button><button id="reservationNextWeek" class="secondary" type="button">→</button><strong id="reservationWeekLabel"></strong></div><label>Laboratório<select id="adminReservationLab"></select></label><button id="newReservationButton" class="primary" type="button">+ Nova reserva</button><button id="csvReservationButton" class="secondary" type="button">Importar CSV</button></div>
     <div id="reservationStats" class="reservation-stats"></div><section id="reservationPendingReview" class="card reservation-pending-review" hidden><div class="reservation-pending-head"><div><span class="eyebrow">AGUARDANDO DECISÃO</span><h2>Reservas para avaliar</h2><p>Autorize as solicitações antes de consultar a agenda completa.</p></div><strong id="reservationPendingCount">0</strong></div><div id="reservationPendingList"></div></section><section class="card reservation-calendar-wrap"><div id="reservationCalendar" class="reservation-calendar"></div></section>
-    <section class="card reservation-list-card"><div class="registry-head"><div><h2>Solicitações e reservas</h2><span id="reservationCount"></span></div><input id="reservationAdminSearch" placeholder="Buscar professor, disciplina ou protocolo"></div><div id="reservationAdminList"></div></section>
+    <section class="card reservation-list-card"><div class="registry-head"><div><h2>Solicitações e reservas</h2><span id="reservationCount"></span></div><input id="reservationAdminSearch" placeholder="Buscar professor, disciplina ou protocolo"></div><div id="reservationAdminList"></div><div id="reservationPagination" class="reservation-pagination" hidden><button id="reservationPagePrev" class="secondary" type="button">← Anterior</button><span id="reservationPageLabel"></span><button id="reservationPageNext" class="secondary" type="button">Próxima →</button></div></section>
   </section>
   <div id="reservationModal" class="modal-backdrop" hidden><form id="staffReservationForm" class="modal card"><button class="modal-close" type="button" aria-label="Fechar">×</button><span class="eyebrow">NOVA RESERVA</span><h2>Cadastrar reserva</h2><label>Servidor<select id="staffReservationServer" required></select></label><label>Laboratório<select id="staffReservationLab" required></select></label><label>Disciplina ou atividade<input id="staffReservationSubject" maxlength="160" required></label><div class="field-row reservation-time-row"><label>Data inicial<input id="staffReservationDate" type="date" required></label><label>Início<input id="staffReservationTime" type="time" step="300" required></label><label>Fim<input id="staffReservationEndTime" type="time" step="300" required></label></div><div class="field-row recurrence-row"><fieldset class="choice-field"><legend>Repetição</legend><input id="staffReservationRecurrence" type="hidden" value="none"><div class="choice-blocks recurrence-choices" data-choice-for="staffReservationRecurrence"><button class="choice-block selected" type="button" data-value="none"><strong>Somente nesta data</strong></button><button class="choice-block" type="button" data-value="weekly"><strong>Semanalmente</strong><span>No mesmo dia da semana</span></button></div></fieldset><label id="staffReservationUntilLabel" hidden>Repetir até<input id="staffReservationUntil" type="date"></label></div><label>Observações<textarea id="staffReservationNotes" rows="3"></textarea></label><button class="primary" type="submit">Cadastrar e autorizar</button></form></div>
   <div id="reservationCsvModal" class="modal-backdrop" hidden><section class="modal card csv-reservation-modal" role="dialog" aria-modal="true" aria-labelledby="csvReservationTitle"><header class="csv-modal-head"><div><span class="eyebrow">IMPORTAÇÃO EM LOTE</span><h2 id="csvReservationTitle">Importar reservas por CSV</h2><p>Cadastre a grade recorrente do laboratório sem enviar notificações iniciais.</p></div><button class="modal-close" type="button" aria-label="Fechar">×</button></header><div class="csv-modal-body"><div class="csv-format-help"><strong>Formato esperado</strong><span>Data · Hora · Disciplina · Professor · Data fim · Recorrência</span><small>A data pode ser “Segunda-feira” e o horário “7:00 - 8:30”.</small></div><div class="field-row csv-settings"><label>Laboratório<select id="csvReservationLab" required></select></label><label>Início do semestre/lote<input id="csvReservationStart" type="date" required></label></div><label class="csv-file-field">Arquivo CSV<input id="reservationCsvFile" type="file" accept=".csv,text/csv"><small>Selecione um arquivo .csv para conferir os registros antes de importar.</small></label><div id="reservationCsvPreview" class="csv-preview-empty"><p>Nenhum arquivo selecionado.</p></div></div><footer class="csv-modal-footer"><div id="csvImportProgress" class="csv-import-progress" hidden><span>Preparando importação…</span><div><i></i></div></div><button id="importReservationsCsv" class="primary" type="button" disabled>Importar reservas válidas</button></footer></section></div>`);
@@ -321,7 +321,8 @@
     updateReservationNoticeFromList(rows||[]);
   }
 
-  let reservations=[],adminLabs=[],adminServers=[],weekStart=getMonday(new Date()),draggedReservation=null,reservationChannel=null,reservationReloadTimer=null,reservationLoadPromise=null;
+  let reservations=[],calendarReservations=[],pendingReservations=[],historyReservations=[],reservationStats={pending:0,authorized:0,cancelled:0},historyPage=0,historyTotal=0,historySearch='',adminLabs=[],adminServers=[],weekStart=getMonday(new Date()),draggedReservation=null,reservationChannel=null,reservationReloadTimer=null,reservationLoadPromise=null;
+  const HISTORY_PAGE_SIZE=20;
   function scheduleReservationReload(delay=900){
     clearTimeout(reservationReloadTimer);
     reservationReloadTimer=setTimeout(()=>{
@@ -333,31 +334,58 @@
   function getMonday(value){const date=new Date(value);date.setHours(12,0,0,0);const day=date.getDay()||7;date.setDate(date.getDate()-day+1);return date}
   const isoDate=date=>date.toLocaleDateString('en-CA',{timeZone:'America/Cuiaba'}),addDays=(date,days)=>{const copy=new Date(date);copy.setDate(copy.getDate()+days);return copy};
 
-  async function fetchAllReservations(){
-    const rows=[],pageSize=1000;
-    for(let from=0;;from+=pageSize){
-      const {data,error}=await sb.from('reservations').select('*,servers(full_name,siape,email),labs(name,code)').order('starts_at').range(from,from+pageSize-1);
-      if(error)throw error;
-      rows.push(...(data||[]));
-      if(!data||data.length<pageSize)return rows;
-    }
+  function syncReservationLookup(){
+    const map=new Map();
+    [...calendarReservations,...pendingReservations,...historyReservations].forEach(row=>map.set(row.id,row));
+    reservations=[...map.values()];
   }
 
-  async function loadReservationAdmin(){
+  async function loadCalendarReservations(){
+    const labId=$('#adminReservationLab')?.value||adminLabs[0]?.id;
+    if(!labId){calendarReservations=[];return}
+    const from=isoDate(weekStart),to=isoDate(addDays(weekStart,7));
+    const {data,error}=await sb.from('reservations').select('*,servers(full_name,siape,email),labs(name,code)').eq('lab_id',labId).neq('status','Cancelada').gte('starts_at',`${from}T00:00:00-04:00`).lt('starts_at',`${to}T00:00:00-04:00`).order('starts_at');
+    if(error)throw error;
+    calendarReservations=data||[];
+  }
+
+  async function loadPendingReservations(){
+    const {data,error}=await sb.from('reservations').select('*,servers(full_name,siape,email),labs(name,code)').in('status',['Aguardando confirmação','Aguardando autorização']).order('starts_at');
+    if(error)throw error;
+    pendingReservations=data||[];
+  }
+
+  async function loadReservationHistory(){
+    const {data,error}=await sb.rpc('staff_reservation_history_page',{p_search:historySearch||null,p_offset:historyPage*HISTORY_PAGE_SIZE,p_limit:HISTORY_PAGE_SIZE});
+    if(error)throw error;
+    historyTotal=Number(data?.[0]?.total_count||0);
+    historyReservations=(data||[]).map(row=>({...row,servers:{full_name:row.server_name},labs:{name:row.lab_name},occurrences_count:Number(row.occurrence_count||1)}));
+    if(historyPage>0&&!historyReservations.length&&historyTotal===0){historyPage=0;return loadReservationHistory()}
+  }
+
+  async function loadReservationStats(){
+    const {data,error}=await sb.rpc('staff_reservation_stats');
+    if(error)throw error;
+    const row=data?.[0]||{};
+    reservationStats={pending:Number(row.pending||0),authorized:Number(row.authorized||0),cancelled:Number(row.cancelled||0)};
+  }
+
+  async function loadReservationAdmin(forceLookups=false){
     if(reservationLoadPromise)return reservationLoadPromise;
     reservationLoadPromise=(async()=>{
-    let r=[];
-    const [reservationResult,{data:l},{data:s}]=await Promise.all([
-      fetchAllReservations().then(data=>({data})).catch(error=>({error})),
-      sb.from('labs').select('id,name,code').eq('active',true).eq('reservation_enabled',true).order('name'),
-      sb.from('servers').select('id,full_name,siape,email').eq('active',true).order('full_name')
-    ]);
-    if(reservationResult.error)return toast(reservationResult.error.message);
-    r=reservationResult.data;
-    reservations=r||[];adminLabs=l||[];adminServers=s||[];
-    fillAdminOptions();
+    if(forceLookups||!adminLabs.length||!adminServers.length){
+      const [{data:l,error:labsError},{data:s,error:serversError}]=await Promise.all([
+        sb.from('labs').select('id,name,code').eq('active',true).eq('reservation_enabled',true).order('name'),
+        sb.from('servers').select('id,full_name,siape,email').eq('active',true).order('full_name')
+      ]);
+      if(labsError)throw labsError;if(serversError)throw serversError;
+      adminLabs=l||[];adminServers=s||[];
+      fillAdminOptions();
+    }
+    await Promise.all([loadCalendarReservations(),loadPendingReservations(),loadReservationHistory(),loadReservationStats()]);
+    syncReservationLookup();
     renderReservationAdmin();
-    updateReservationNoticeFromList(reservations);
+    updateReservationNoticeFromList(pendingReservations);
     })();
     try{return await reservationLoadPromise}finally{reservationLoadPromise=null}
   }
@@ -377,10 +405,10 @@
     if($('#staffReservationTime'))$('#staffReservationTime').innerHTML=standardClassSlots.map(s=>`<option value="${s.start}">${s.start} (${s.name})</option>`).join('');
   }
 
-  function groupedReservations(){
+  function groupedReservations(rows=pendingReservations){
     const groups=new Map();
-    for(let i=0;i<reservations.length;i++){
-      const row=reservations[i];
+    for(let i=0;i<rows.length;i++){
+      const row=rows[i];
       const key=row.recurrence_group||row.id;
       if(!groups.has(key)){
         groups.set(key,{...row,occurrences:[],last_at:row.starts_at});
@@ -396,13 +424,12 @@
     renderPendingReview();
     renderCalendar();
     renderReservationList();
-    const groups=groupedReservations(),counts={pending:groups.filter(r=>r.status.includes('Aguardando')).length,authorized:groups.filter(r=>r.status==='Autorizada').length,cancelled:groups.filter(r=>r.status==='Cancelada').length};
     const stats=$('#reservationStats');
-    if(stats)stats.innerHTML=`<article><small>Aguardando</small><strong>${counts.pending}</strong></article><article><small>Autorizadas</small><strong>${counts.authorized}</strong></article><article><small>Canceladas</small><strong>${counts.cancelled}</strong></article>`;
+    if(stats)stats.innerHTML=`<article><small>Aguardando</small><strong>${reservationStats.pending}</strong></article><article><small>Autorizadas</small><strong>${reservationStats.authorized}</strong></article><article><small>Canceladas</small><strong>${reservationStats.cancelled}</strong></article>`;
   }
 
   function renderPendingReview(){
-    const rows=groupedReservations().filter(row=>row.status==='Aguardando confirmação'||row.status==='Aguardando autorização');
+    const rows=groupedReservations(pendingReservations).filter(row=>row.status==='Aguardando confirmação'||row.status==='Aguardando autorização');
     const section=$('#reservationPendingReview');
     if(!section)return;
     section.hidden=!rows.length;
@@ -460,8 +487,8 @@
     const minTime=days[0].getTime(),maxTime=addDays(days[5],1).getTime();
 
     const weekRows=[];
-    for(let i=0;i<reservations.length;i++){
-      const r=reservations[i];
+    for(let i=0;i<calendarReservations.length;i++){
+      const r=calendarReservations[i];
       if(r.lab_id!==labId||r.status==='Cancelada')continue;
       const startTime=new Date(r.starts_at).getTime();
       if(startTime<minTime||startTime>=maxTime)continue;
@@ -496,7 +523,7 @@
     if(!calEl)return;
     calEl.innerHTML=html;
 
-    calEl.querySelectorAll('.calendar-reservation').forEach(card=>card.ondragstart=()=>{draggedReservation=reservations.find(r=>r.id===card.dataset.id)});
+    calEl.querySelectorAll('.calendar-reservation').forEach(card=>card.ondragstart=()=>{draggedReservation=calendarReservations.find(r=>r.id===card.dataset.id)});
     calEl.querySelectorAll('.calendar-cell').forEach(cell=>{
       cell.ondragover=event=>{event.preventDefault();cell.classList.add('drag-over')};
       cell.ondragleave=()=>cell.classList.remove('drag-over');
@@ -525,25 +552,23 @@
   }
 
   function renderReservationList(){
-    const query=normalize($('#reservationAdminSearch')?.value||'');
-    const allGroups=groupedReservations();
-    const historyRows=allGroups.filter(r=>!r.status.includes('Aguardando'));
-    const rows=historyRows.filter(r=>!query||normalize([r.protocol,r.subject,r.servers?.full_name,r.labs?.name,r.status].join(' ')).includes(query));
+    const rows=historyReservations;
 
     const countEl=$('#reservationCount');
-    if(countEl)countEl.textContent=`${rows.length} reserva(s) autorizada(s) ou cancelada(s)`;
+    if(countEl)countEl.textContent=`${historyTotal} série(s) ou reserva(s) no histórico`;
 
     const listEl=$('#reservationAdminList');
     if(!listEl)return;
 
     if(!rows.length){
       listEl.innerHTML='<p class="empty">Nenhuma reserva no histórico.</p>';
+      $('#reservationPagination').hidden=true;
       return;
     }
 
     listEl.innerHTML=rows.map(r=>{
-      const recurring=r.occurrences.length>1;
-      const period=recurring?`${localDate(r.starts_at)} a ${localDate(r.last_at)} • ${r.occurrences.length} semanas`:`${localDate(r.starts_at)}, ${localTime(r.starts_at)}–${localTime(r.ends_at)}`;
+      const recurring=r.occurrences_count>1;
+      const period=recurring?`${localDate(r.starts_at)} a ${localDate(r.last_at)} • ${r.occurrences_count} ocorrências`:`${localDate(r.starts_at)}, ${localTime(r.starts_at)}–${localTime(r.ends_at)}`;
       const statusClass=normalize(r.status).replace(/\s/g,'-');
       const isCancelled=r.status==='Cancelada';
 
@@ -560,6 +585,11 @@
         </div>
       </article>`;
     }).join('');
+    const pages=Math.max(1,Math.ceil(historyTotal/HISTORY_PAGE_SIZE)),pagination=$('#reservationPagination');
+    pagination.hidden=historyTotal<=HISTORY_PAGE_SIZE;
+    $('#reservationPageLabel').textContent=`Página ${historyPage+1} de ${pages}`;
+    $('#reservationPagePrev').disabled=historyPage===0;
+    $('#reservationPageNext').disabled=historyPage+1>=pages;
   }
 
   $('#reservationAdminList')?.addEventListener('click',(e)=>{
@@ -583,12 +613,18 @@
     return true;
   }
 
+  function reservationOccurrenceCount(row){
+    if(!row)return 0;
+    if(row.occurrences_count)return Number(row.occurrences_count);
+    return reservations.filter(item=>item.recurrence_group===row.recurrence_group).length||1;
+  }
+
   function openReservationEditor(id,scope='occurrence'){
     const row=reservations.find(item=>item.id===id);
     if(!row)return;
     $('#reservationEditId').value=row.id;
     $('#reservationEditScope').value=scope;
-    $('#reservationEditScopeText').textContent=scope==='series'&&row.occurrences?.length>1?'As alterações serão aplicadas a toda a série recorrente.':'As alterações serão aplicadas somente a esta ocorrência.';
+    $('#reservationEditScopeText').textContent=scope==='series'&&reservationOccurrenceCount(row)>1?'As alterações serão aplicadas a toda a série recorrente.':'As alterações serão aplicadas somente a esta ocorrência.';
     $('#reservationEditServer').value=row.server_id;
     $('#reservationEditLab').value=row.lab_id;
     $('#reservationEditSubject').value=row.subject;
@@ -600,7 +636,7 @@
   }
 
   async function cancelReservation(id){
-    const row=reservations.find(item=>item.id===id),series=row&&reservations.filter(item=>item.recurrence_group===row.recurrence_group).length>1,reason=await askReservationCancelReason(series);
+    const row=reservations.find(item=>item.id===id),series=reservationOccurrenceCount(row)>1,reason=await askReservationCancelReason(series);
     if(!reason)return;
     const notify=await askReservationNotification('cancel',series);
     if(notify===null)return;
@@ -646,7 +682,7 @@
     $('#adminSubtitle').textContent='Organize a agenda, autorize solicitações e importe reservas em lote.';
     window.scrollTo(0,0);
     try{
-      await loadReservationAdmin();
+      await loadReservationAdmin(true);
     }catch(err){
       console.error('Erro ao carregar reservas:',err);
       toast(err.message||'Erro ao carregar reservas.');
@@ -663,11 +699,20 @@
       openReservationsAdmin();
     }
   });
-  $('#adminReservationLab')?.addEventListener('change',renderCalendar);
-  $('#reservationAdminSearch')?.addEventListener('input',renderReservationList);
-  $('#reservationPrevWeek')?.addEventListener('click',()=>{weekStart=addDays(weekStart,-7);renderCalendar()});
-  $('#reservationNextWeek')?.addEventListener('click',()=>{weekStart=addDays(weekStart,7);renderCalendar()});
-  $('#reservationToday')?.addEventListener('click',()=>{weekStart=getMonday(new Date());renderCalendar()});
+  async function refreshCalendarOnly(){
+    try{await loadCalendarReservations();syncReservationLookup();renderCalendar()}catch(error){toast(error.message)}
+  }
+  $('#adminReservationLab')?.addEventListener('change',refreshCalendarOnly);
+  let reservationSearchTimer=null;
+  $('#reservationAdminSearch')?.addEventListener('input',event=>{
+    clearTimeout(reservationSearchTimer);
+    reservationSearchTimer=setTimeout(async()=>{historySearch=event.target.value.trim();historyPage=0;try{await loadReservationHistory();syncReservationLookup();renderReservationList()}catch(error){toast(error.message)}},450);
+  });
+  $('#reservationPagePrev')?.addEventListener('click',async()=>{if(historyPage===0)return;historyPage--;await loadReservationHistory();syncReservationLookup();renderReservationList()});
+  $('#reservationPageNext')?.addEventListener('click',async()=>{if((historyPage+1)*HISTORY_PAGE_SIZE>=historyTotal)return;historyPage++;await loadReservationHistory();syncReservationLookup();renderReservationList()});
+  $('#reservationPrevWeek')?.addEventListener('click',()=>{weekStart=addDays(weekStart,-7);refreshCalendarOnly()});
+  $('#reservationNextWeek')?.addEventListener('click',()=>{weekStart=addDays(weekStart,7);refreshCalendarOnly()});
+  $('#reservationToday')?.addEventListener('click',()=>{weekStart=getMonday(new Date());refreshCalendarOnly()});
   $('#reviewReservationsButton')?.addEventListener('click',openReservationsAdmin);
 
   sb.auth.onAuthStateChange(event=>{if(event==='SIGNED_IN')setTimeout(refreshReservationNotice,0);if(event==='SIGNED_OUT')if(reservationNotice)reservationNotice.hidden=true});
