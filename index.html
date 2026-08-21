@@ -204,8 +204,8 @@
               <label>E-mail institucional<input id="email" type="email" autocomplete="email" placeholder="nome@ifms.edu.br" required /></label>
             </div>
             <div class="section-title"><span>2</span><div><h2>Como podemos ajudar?</h2><p>Conte o que está acontecendo</p></div></div>
-            <label>Categoria<select id="category" required><option value="">Selecione uma categoria</option><option>Computador não liga</option><option>Internet ou rede</option><option>Projetor ou áudio</option><option>Software ou acesso</option><option>Periféricos</option><option>Outro</option></select></label>
-            <label>Laboratório<select id="lab" required><option value="">Selecione o local</option><option>LabInfo 01</option><option>LabInfo 02</option><option>LabInfo 03</option><option>LabInfo 04</option><option>Outro ambiente</option></select></label>
+            <label>Categoria<select id="category" required disabled><option value="">Carregando categorias…</option></select></label>
+            <label>Laboratório<select id="lab" required disabled><option value="">Carregando laboratórios…</option></select></label>
             <label>Descreva o problema<textarea id="description" rows="5" maxlength="800" placeholder="Ex.: O computador 12 não inicia e apresenta uma tela preta..." required></textarea><small class="counter"><span id="charCount">0</span>/800</small></label>
             <button class="primary" type="submit">Solicitar apoio técnico <span>→</span></button>
             <p class="privacy">Seus dados serão usados somente para identificação e acompanhamento do atendimento.</p>
@@ -427,7 +427,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=20260812-2"></script>
     <script src="app.js?v=20260821-2"></script>
-    <script src="supabase-integration.js?v=20260821-3"></script>
+    <script src="supabase-integration.js?v=20260821-4"></script>
 <script src="reservations.js?v=20260821-3"></script>
   </body>
 </html>
