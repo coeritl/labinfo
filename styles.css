@@ -1279,3 +1279,4 @@ body.detail-open:before{
 
 
 
+.lab-reservation-option{display:flex!important;align-items:flex-start;gap:12px;padding:16px;border:1px solid #c6d8ce;border-radius:12px;background:#f4f9f6;cursor:pointer}.lab-reservation-option input{width:20px;height:20px;margin:2px 0 0;flex:0 0 auto;accent-color:#08783f}.lab-reservation-option span{display:grid;gap:4px}.lab-reservation-option strong{font-size:15px}.lab-reservation-option small{font-weight:400;line-height:1.45;color:#5e6f66}

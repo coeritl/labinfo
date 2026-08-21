@@ -82,6 +82,8 @@
     $('#reservationDate').min = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Cuiaba' });
   }
 
+  let publicServer=null,publicLabs=[],publicScheduleRows=[],publicWeekStart=publicMonday(new Date());
+
   function showPublic(view,push=true){
     document.body.classList.remove('admin-route');
     if($('#homeView'))$('#homeView').hidden=view!=='home';
@@ -119,7 +121,6 @@
   window.addEventListener('popstate',()=>{const path=location.pathname;if(path.includes('/reservas'))showPublic('reservations',false);else if(path.includes('/chat'))showPublic('chat',false);else if(path.includes('/suporte'))showPublic('support',false);else if(!path.includes('/admin'))showPublic('home',false)});
   const initialParams=new URLSearchParams(location.search),initialPublicRoute=initialParams.get('route');if(location.pathname.includes('/reservas')||initialPublicRoute==='reservas'||initialParams.has('confirm_reservation'))showPublic('reservations',false);else if(location.pathname.includes('/chat')||initialPublicRoute==='chat')showPublic('chat',false);else if(location.pathname.includes('/suporte')||initialPublicRoute==='suporte'||initialParams.has('feedback'))showPublic('support',false);
 
-  let publicServer=null,publicLabs=[],publicScheduleRows=[],publicWeekStart=publicMonday(new Date());
   function publicMonday(value){const date=new Date(value);date.setHours(12,0,0,0);const day=date.getDay()||7;date.setDate(date.getDate()-day+1);return date}
   const publicIsoDate=date=>date.toLocaleDateString('en-CA',{timeZone:'America/Cuiaba'}),publicAddDays=(date,days)=>{const copy=new Date(date);copy.setDate(copy.getDate()+days);return copy};
   function renderPublicLabCards(){
@@ -166,7 +167,7 @@
       setTimeout(()=>$('#publicScheduleCard').scrollIntoView({behavior:'smooth',block:'start'}),50);
     });
   }
-  async function loadPublicLabs(){const {data,error}=await sb.from('labs').select('id,name,code,location,computer_count,operating_system').eq('active',true).order('name');if(error)return;publicLabs=data||[];const options=publicLabs.map(lab=>`<option value="${lab.id}">${safe(lab.name)}</option>`).join('');$('#reservationLab').innerHTML='<option value="">Selecione o laboratório</option>'+options;$('#publicScheduleLab').innerHTML='<option value=""></option>'+options;renderPublicLabCards()}
+  async function loadPublicLabs(){const {data,error}=await sb.from('labs').select('id,name,code,location,computer_count,operating_system').eq('active',true).eq('reservation_enabled',true).order('name');if(error)return;publicLabs=data||[];const options=publicLabs.map(lab=>`<option value="${lab.id}">${safe(lab.name)}</option>`).join('');$('#reservationLab').innerHTML='<option value="">Selecione o laboratório</option>'+options;$('#publicScheduleLab').innerHTML='<option value=""></option>'+options;renderPublicLabCards()}
   async function loadPublicSchedule(){
     const lab=$('#publicScheduleLab').value||publicLabs[0]?.id;
     if(!lab)return;
@@ -338,7 +339,7 @@
     let r=[];
     const [reservationResult,{data:l},{data:s}]=await Promise.all([
       fetchAllReservations().then(data=>({data})).catch(error=>({error})),
-      sb.from('labs').select('id,name,code').eq('active',true).order('name'),
+      sb.from('labs').select('id,name,code').eq('active',true).eq('reservation_enabled',true).order('name'),
       sb.from('servers').select('id,full_name,siape,email').eq('active',true).order('full_name')
     ]);
     if(reservationResult.error)return toast(reservationResult.error.message);
