@@ -1,17 +1,4 @@
--- Proteções finais do módulo de reservas para uso em produção.
-create extension if not exists btree_gist with schema extensions;
-
-alter table public.reservations add column if not exists confirmation_expires_at timestamptz;
-update public.reservations set confirmation_expires_at=created_at+interval '72 hours' where confirmation_expires_at is null;
-alter table public.reservations
-  alter column confirmation_expires_at set default (now()+interval '72 hours'),
-  alter column confirmation_expires_at set not null;
-
-alter table public.reservations drop constraint if exists reservations_no_schedule_overlap;
-alter table public.reservations add constraint reservations_no_schedule_overlap
-  exclude using gist (lab_id with =,tstzrange(starts_at,ends_at,'[)') with &&)
-  where (status<>'Cancelada');
-
+-- Qualifica a coluna id nas funções que também retornam um campo chamado id.
 create or replace function public.create_public_reservation_range(
   p_siape text,p_lab uuid,p_subject text,p_start timestamptz,p_end timestamptz,
   p_notes text default null,p_recurrence text default 'none',p_until date default null
@@ -23,7 +10,7 @@ declare
   final_date date:=coalesce(p_until,(p_start at time zone 'America/Cuiaba')::date);
   group_id uuid:=gen_random_uuid();count_items integer:=0;
 begin
-  select * into s from public.servers where siape=btrim(p_siape) and active limit 1;
+  select server.* into s from public.servers server where server.siape=btrim(p_siape) and server.active limit 1;
   if s.id is null then raise exception 'Servidor não localizado ou inativo.';end if;
   if not exists(select 1 from public.labs lab where lab.id=p_lab and lab.active and lab.reservation_enabled) then
     raise exception 'Laboratório indisponível para reservas públicas.';
@@ -56,35 +43,6 @@ exception when exclusion_violation then
   raise exception 'O laboratório já possui reserva neste horário.';
 end $$;
 
-create or replace function public.confirm_reservation(p_token uuid)
-returns table(protocol text,status text,confirmed_at timestamptz)
-language plpgsql security definer set search_path=public as $$
-declare r public.reservations;s public.servers;
-begin
-  select reservation.* into r from public.reservations reservation
-  where reservation.confirmation_token=p_token order by reservation.starts_at limit 1 for update;
-  if r.id is null then raise exception 'Link inválido ou reserva indisponível.';end if;
-  if r.status not in ('Aguardando confirmação','Aguardando autorização') then
-    raise exception 'Esta reserva não está mais aguardando confirmação.';
-  end if;
-  if r.confirmed_at is null and r.confirmation_expires_at<now() then
-    raise exception 'Este link de confirmação expirou. Entre em contato com a equipe técnica.';
-  end if;
-  if r.confirmed_at is null then
-    update public.reservations reservation set status='Aguardando autorização',confirmed_at=now(),updated_at=now()
-    where reservation.recurrence_group=r.recurrence_group and reservation.status='Aguardando confirmação';
-  end if;
-  select reservation.* into r from public.reservations reservation where reservation.id=r.id;
-  select server.* into s from public.servers server where server.id=r.server_id and server.active;
-  if r.confirmed_at is not null and s.id is not null and not exists(
-    select 1 from public.email_outbox outbox where outbox.reservation_id=r.id and outbox.event_type='reserva_confirmada'
-  ) then
-    insert into public.email_outbox(reservation_id,recipient,event_type,payload)
-    values(r.id,lower(s.email),'reserva_confirmada',public.reservation_payload(r));
-  end if;
-  return query select r.protocol,r.status,r.confirmed_at;
-end $$;
-
 create or replace function public.public_reservation_schedule(p_lab uuid,p_from date,p_to date)
 returns table(id uuid,subject text,server_name text,starts_at timestamptz,ends_at timestamptz,status text)
 language plpgsql stable security definer set search_path=public as $$
@@ -103,5 +61,4 @@ begin
 end $$;
 
 grant execute on function public.create_public_reservation_range(text,uuid,text,timestamptz,timestamptz,text,text,date) to anon,authenticated;
-grant execute on function public.confirm_reservation(uuid) to anon,authenticated;
 grant execute on function public.public_reservation_schedule(uuid,date,date) to anon,authenticated;
