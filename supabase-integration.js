@@ -86,6 +86,11 @@
 
   async function performLogout(){
     try {
+      if(state.profile?.role==='tecnico'){
+        staffChatDesiredOnline=false;
+        localStorage.setItem(staffChatPreferenceKey(state.profile.id),'false');
+        await sb.rpc('set_staff_chat_status',{p_online:false});
+      }
       stopStaffHeartbeat();
       stopIncomingCallRingtone();
       await sb.auth.signOut();
@@ -870,6 +875,8 @@
 
   let chatAvailability = { available: false, online_count: 0 };
   let staffHeartbeatTimer = null;
+  let staffChatDesiredOnline = false;
+  let staffChatPresenceListenersBound = false;
   let currentPublicChatSession = null;
   let currentPublicServer = null;
   let publicChatChannel = null;
@@ -1169,19 +1176,25 @@
 
     try {
       const { data: row } = await sb.from('staff_chat_status').select('is_online, last_heartbeat').eq('profile_id', state.profile.id).maybeSingle();
-      const isOnline = row ? row.is_online : false;
+      const savedPreference=localStorage.getItem(staffChatPreferenceKey(state.profile.id));
+      const isOnline=savedPreference===null?Boolean(row?.is_online):savedPreference==='true';
+      staffChatDesiredOnline=isOnline;
       toggle.checked = isOnline;
       label.innerHTML = `Chat: <strong>${isOnline ? 'Online' : 'Offline'}</strong>`;
 
       if (isOnline) {
+        await renewStaffChatPresence();
         startStaffHeartbeat();
       }
+      bindStaffChatPresenceRecovery();
     } catch (e) {
       console.warn('Falha ao carregar status do técnico', e);
     }
 
     toggle.onchange = async () => {
       const nextOnline = toggle.checked;
+      staffChatDesiredOnline=nextOnline;
+      localStorage.setItem(staffChatPreferenceKey(state.profile.id),String(nextOnline));
       label.innerHTML = `Chat: <strong>${nextOnline ? 'Online' : 'Offline'}</strong>`;
       try {
         const { error } = await sb.rpc('set_staff_chat_status', { p_online: nextOnline });
@@ -1196,6 +1209,8 @@
         await loadChatAvailability();
         renderChatAdminDashboard();
       } catch (err) {
+        staffChatDesiredOnline=!nextOnline;
+        localStorage.setItem(staffChatPreferenceKey(state.profile.id),String(!nextOnline));
         toggle.checked = !nextOnline;
         label.innerHTML = `Chat: <strong>${!nextOnline ? 'Online' : 'Offline'}</strong>`;
         fail(err, 'Não foi possível alterar seu status.');
@@ -1203,16 +1218,39 @@
     };
   }
 
+  function staffChatPreferenceKey(profileId){return 'labinfo_staff_chat_online_'+profileId}
+
+  async function renewStaffChatPresence(){
+    if(!state.profile||state.profile.role!=='tecnico'||!staffChatDesiredOnline)return;
+    try{
+      const {error}=await sb.rpc('set_staff_chat_status',{p_online:true});
+      if(error)throw error;
+    }catch(e){
+      console.warn('Falha ao renovar presença do técnico',e);
+    }
+  }
+
+  function bindStaffChatPresenceRecovery(){
+    if(staffChatPresenceListenersBound)return;
+    staffChatPresenceListenersBound=true;
+    const recover=()=>{if(!document.hidden)renewStaffChatPresence()};
+    document.addEventListener('visibilitychange',recover);
+    window.addEventListener('focus',recover);
+    window.addEventListener('online',renewStaffChatPresence);
+    window.addEventListener('storage',event=>{
+      if(!state.profile||event.key!==staffChatPreferenceKey(state.profile.id))return;
+      staffChatDesiredOnline=event.newValue==='true';
+      const toggle=$('#staffChatToggle'),label=$('#staffChatToggleLabel');
+      if(toggle)toggle.checked=staffChatDesiredOnline;
+      if(label)label.innerHTML=`Chat: <strong>${staffChatDesiredOnline?'Online':'Offline'}</strong>`;
+      staffChatDesiredOnline?startStaffHeartbeat():stopStaffHeartbeat();
+    });
+  }
+
   function startStaffHeartbeat() {
     stopStaffHeartbeat();
-    staffHeartbeatTimer = setInterval(async () => {
-      if (!state.profile || document.hidden) return;
-      try {
-        await sb.rpc('staff_chat_heartbeat');
-      } catch (e) {
-        console.warn('Falha no heartbeat do técnico', e);
-      }
-    }, 60000);
+    renewStaffChatPresence();
+    staffHeartbeatTimer=setInterval(renewStaffChatPresence,45000);
   }
 
   function stopStaffHeartbeat() {
