@@ -20,19 +20,11 @@
     <main>
       <section id="homeView" class="home-view">
         <div class="home-hero">
+          <span class="eyebrow">LABORATÓRIOS DE INFORMÁTICA</span>
           <h1>O que você precisa?</h1>
           <p>Escolha uma opção para acessar os serviços do LabInfo TL.</p>
         </div>
         <div class="service-choice-grid">
-          <button id="openReservations" class="service-choice card" type="button">
-            <span class="service-choice-icon" aria-hidden="true">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><circle cx="8" cy="14" r="1"/><circle cx="12" cy="14" r="1"/><circle cx="16" cy="14" r="1"/><circle cx="8" cy="18" r="1"/><circle cx="12" cy="18" r="1"/></svg>
-            </span>
-            <small>LABORATÓRIOS</small>
-            <strong>Ver ou solicitar uma reserva</strong>
-            <p>Consulte a agenda dos laboratórios e solicite horários para suas aulas.</p>
-            <b>Acessar reservas →</b>
-          </button>
           <button id="openSupport" class="service-choice card" type="button">
             <span class="service-choice-icon" aria-hidden="true">
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
@@ -40,7 +32,7 @@
             <small>APOIO TÉCNICO</small>
             <strong>Abrir chamado de suporte</strong>
             <p>Solicite atendimento para computadores, rede, projetores e periféricos.</p>
-            <b>Abrir chamado →</b>
+            <b>Abrir chamado ›</b>
           </button>
           <button id="openLiveChat" class="service-choice card live-chat-choice" type="button">
             <span class="service-choice-icon" aria-hidden="true">
@@ -52,7 +44,18 @@
             </div>
             <strong>Chat ao vivo com técnico</strong>
             <p id="chatAvailabilityDescription">Converse em tempo real com os técnicos de plantão dos laboratórios.</p>
-            <b id="chatAvailabilityAction">Acessar chat ao vivo →</b>
+            <b id="chatAvailabilityAction">Acessar chat ao vivo ›</b>
+          </button>
+          <button id="openReservations" class="service-choice card" type="button" disabled style="opacity: 0.7; cursor: not-allowed; position: relative;">
+            <span class="service-choice-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><circle cx="8" cy="14" r="1"/><circle cx="12" cy="14" r="1"/><circle cx="16" cy="14" r="1"/><circle cx="8" cy="18" r="1"/><circle cx="12" cy="18" r="1"/></svg>
+            </span>
+            <div class="service-choice-head" style="justify-content: space-between; display: flex; width: 100%;">
+              <small>LABORATÓRIOS</small>
+              <span class="badge" style="background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600;">Em breve</span>
+            </div>
+            <strong>Ver ou solicitar uma reserva</strong>
+            <p>Consulte a agenda dos laboratórios e solicite horários para suas aulas.</p>
           </button>
         </div>
       </section>
