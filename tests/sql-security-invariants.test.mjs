@@ -80,6 +80,23 @@ test('nenhuma policy pública de leitura/escrita irrestrita ("using (true)" para
   );
 });
 
+test('upload público em ticket-attachments exige um chamado existente (achado adicional, verificação ao vivo em 26/08/2026)', () => {
+  // A policy original só checava bucket_id + prefixo "tickets/" — qualquer
+  // pessoa com a anon key pública conseguia subir imagens para caminhos
+  // arbitrários, sem nenhum chamado real por trás, consumindo a cota de
+  // armazenamento do plano gratuito sem rate limit. Pega a ÚLTIMA
+  // "create policy storage_public_upload" do corpus (a mais recente vence,
+  // já que a migration faz "drop policy if exists" antes de recriar).
+  const matches = [...corpus.matchAll(/create policy storage_public_upload on storage\.objects[\s\S]*?;/gi)];
+  assert.ok(matches.length > 0, 'Nenhuma definição de storage_public_upload encontrada.');
+  const latest = matches[matches.length - 1][0];
+  assert.match(
+    latest, /exists\s*\(\s*select[\s\S]*?public\.tickets[\s\S]*?\(storage\.foldername\(name\)\)\[2\]/i,
+    'A policy storage_public_upload mais recente não exige mais que o segundo segmento do caminho corresponda a um chamado existente — ' +
+    'isto reabriria o vetor de abuso de cota de armazenamento (uploads não vinculados a nenhum chamado real).'
+  );
+});
+
 test('policies de leitura restantes em chat_sessions/chat_messages exigem authenticated + role técnico/supervisor', () => {
   const policies = resolvePolicies(corpus);
   const readPolicies = policies.filter((policy) =>
