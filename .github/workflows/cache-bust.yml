@@ -1,0 +1,50 @@
+name: Atualizar cache-busting do index.html
+
+# Achado P2 3.3 da auditoria de 26/08/2026: antes disso o "?v=" dos scripts
+# em index.html era atualizado manualmente a cada deploy. Este workflow roda
+# scripts/bump-cache-version.mjs automaticamente sempre que um dos arquivos
+# estáticos referenciados muda em um push para main, e faz commit da
+# atualização de volta na própria branch — sem precisar de nenhum passo de
+# build no GitHub Pages, que continua publicando os arquivos estáticos como
+# estão.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'styles.css'
+      - 'app.js'
+      - 'supabase-integration.js'
+      - 'reservations.js'
+      - 'supabase-config.js'
+      - 'scripts/bump-cache-version.mjs'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cache-bust-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Atualizar hashes de cache em index.html
+        run: node scripts/bump-cache-version.mjs
+
+      - name: Commit se houver mudança
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "index.html já estava atualizado, nada para commitar."
+            exit 0
+          fi
+          git config user.name "labinfo-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "chore: atualiza cache-busting de assets estáticos [skip ci]"
+          git push

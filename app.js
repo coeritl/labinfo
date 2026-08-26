@@ -1,3 +1,27 @@
+// ============================================================================
+// app.js — MODO DEMONSTRAÇÃO / FALLBACK (não é o caminho de produção)
+// ============================================================================
+// Este arquivo implementa a UI inteira usando dados fixos em memória e
+// localStorage (veja `defaults`, `tickets` e `load`/`save` logo abaixo). Ele
+// existe para a interface funcionar de forma independente, sem Supabase
+// configurado — útil para prévia visual e desenvolvimento offline.
+//
+// Em produção, `supabase-config.js` é carregado antes deste arquivo e
+// `supabase-integration.js` é carregado depois. Como os três arquivos são
+// `<script>` simples compartilhando o mesmo escopo global (sem módulos, sem
+// build step — ver `index.html`), `supabase-integration.js` REDEFINE por cima
+// diversas funções e handlers definidos aqui (ex.: renderização de chamados,
+// submissão de formulários, painel técnico) para usar o Supabase como fonte
+// real de dados. Ou seja: quando o Supabase está configurado e acessível, o
+// comportamento visível ao usuário final vem de `supabase-integration.js`,
+// não deste arquivo — as funções daqui só permanecem ativas nos pontos que
+// `supabase-integration.js` não sobrescreve, e ficam totalmente ativas apenas
+// se o Supabase estiver indisponível ou mal configurado (fallback).
+//
+// Ao alterar comportamento de produção, procure primeiro em
+// `supabase-integration.js`; uma mudança feita só aqui pode não ter efeito
+// nenhum no site publicado.
+// ============================================================================
 const defaults={teachers:[{siape:'1234567',name:'Mariana Lopes',email:'mariana.lopes@ifms.edu.br'},{siape:'2345678',name:'Carlos Henrique',email:'carlos.henrique@ifms.edu.br'},{siape:'3456789',name:'Patrícia Alves',email:'patricia.alves@ifms.edu.br'},{siape:'4567890',name:'João Mendes',email:'joao.mendes@ifms.edu.br'}],technicians:[{siape:'9012345',name:'Ana Costa',email:'ana.costa@ifms.edu.br'},{siape:'9123456',name:'Rafael Souza',email:'rafael.souza@ifms.edu.br'},{siape:'9234567',name:'Paulo Lima',email:'paulo.lima@ifms.edu.br'}],categories:[{name:'Computador não liga'},{name:'Internet ou rede'},{name:'Projetor ou áudio'},{name:'Software ou acesso'},{name:'Periféricos'},{name:'Outro'}],labs:[{name:'LabInfo 01',location:'Bloco A'},{name:'LabInfo 02',location:'Bloco A'},{name:'LabInfo 03',location:'Bloco B'},{name:'LabInfo 04',location:'Bloco B'},{name:'Outro ambiente',location:'Campus'}]};
 const load=k=>JSON.parse(localStorage.getItem('labinfo_'+k)||'null')||defaults[k],save=(k,v)=>localStorage.setItem('labinfo_'+k,JSON.stringify(v));
 const data={teachers:load('teachers'),technicians:load('technicians'),categories:load('categories'),labs:load('labs')};

@@ -1,0 +1,9 @@
+{
+  "name": "labinfo-tl",
+  "private": true,
+  "description": "LabInfo TL - site estático (sem build step) + testes básicos e utilitário de cache-busting.",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "bump-cache-version": "node scripts/bump-cache-version.mjs"
+  }
+}

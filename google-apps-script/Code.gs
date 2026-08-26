@@ -23,7 +23,15 @@ function configurarIntegracao() {
 
 function processarEntradaProgramada() {
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(1000)) return;
+  if (!lock.tryLock(1000)) {
+    // Achado P1 2.3 da auditoria de 26/08/2026: antes disso a execução era
+    // simplesmente pulada em silêncio quando o lock estava ocupado (ex.: a
+    // execução anterior ainda rodando por ter demorado mais que o intervalo
+    // do trigger). Sem log, uma falha recorrente de lock passava despercebida
+    // e o e-mail parava de ser processado sem ninguém perceber.
+    console.warn('processarEntradaProgramada: lock ocupado, execução pulada nesta chamada agendada.');
+    return;
+  }
   try {
     processarChamadosRecebidos_();
     // Envia imediatamente a confirmação dos chamados encontrados nesta consulta.
@@ -36,7 +44,11 @@ function processarEntradaProgramada() {
 
 function processarSaidaProgramada() {
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(1000)) return;
+  if (!lock.tryLock(1000)) {
+    // Ver comentário equivalente em processarEntradaProgramada().
+    console.warn('processarSaidaProgramada: lock ocupado, execução pulada nesta chamada agendada.');
+    return;
+  }
   try {
     const sent = enviarNotificacoesPendentes_();
     registrarMetricas_('outbox', sent);
