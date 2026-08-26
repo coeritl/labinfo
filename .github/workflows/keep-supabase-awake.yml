@@ -1,0 +1,67 @@
+name: Manter o projeto Supabase ativo
+
+# Achado P1 2.2 da auditoria de 26/08/2026, endereçado após confirmação da
+# equipe de que o projeto está no plano gratuito do Supabase e não tinha
+# nenhum mecanismo anti-pausa: projetos gratuitos do Supabase pausam
+# automaticamente após um período consecutivo sem nenhuma requisição (o
+# painel do Supabase mostra a regra vigente, historicamente ~7 dias). Um
+# projeto pausado deixa o site, a abertura de chamados e o Apps Script fora
+# do ar até alguém reativar manualmente pelo painel.
+#
+# Este workflow roda uma vez por dia (bem mais frequente que o necessário,
+# de propósito, para tolerar execuções puladas) e faz uma única leitura
+# pública e sem efeitos colaterais (GET em /rest/v1/labs, a mesma consulta
+# que o próprio site público já faz para listar laboratórios) só para
+# manter o projeto com atividade recente.
+#
+# Importante: isto é redundante por design com o fato de o Google Apps
+# Script já chamar o Supabase a cada 1-10 minutos (ver Code.gs) — mas
+# depende de uma conta Google única (ver seção "Riscos operacionais" do
+# README). Este workflow roda inteiramente na infraestrutura do GitHub,
+# então continua funcionando mesmo que o Apps Script pare por causa de um
+# problema com aquela conta, evitando que os dois pontos únicos de falha
+# (conta do Google + pausa do Supabase por inatividade) se combinem.
+#
+# Não usa nenhum secret: a anonKey do Supabase é a chave pública do
+# projeto, já publicada em supabase-config.js por design (é a chave
+# apropriada para uso no navegador; a segurança real vem das políticas de
+# RLS, não do sigilo desta chave).
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ler URL e chave pública de supabase-config.js
+        id: config
+        run: |
+          url=$(grep -oP '(?<=url:\s")[^"]+' supabase-config.js)
+          key=$(grep -oP '(?<=anonKey:\s")[^"]+' supabase-config.js)
+          if [ -z "$url" ] || [ -z "$key" ]; then
+            echo "Não consegui extrair url/anonKey de supabase-config.js" >&2
+            exit 1
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          # A chave é pública por design, mas ainda assim mascarada no log
+          # por padrão de higiene (evita aparecer solta na saída do Actions).
+          echo "::add-mask::$key"
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+
+      - name: Ping de leitura pública (mantém o projeto ativo)
+        run: |
+          status=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            "${{ steps.config.outputs.url }}/rest/v1/labs?select=id&limit=1" \
+            -H "apikey: ${{ steps.config.outputs.key }}" \
+            -H "Authorization: Bearer ${{ steps.config.outputs.key }}")
+          echo "HTTP $status"
+          cat /tmp/response.json
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "Resposta inesperada do Supabase (HTTP $status) — projeto pode estar pausado ou com problema." >&2
+            exit 1
+          fi

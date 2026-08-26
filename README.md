@@ -19,7 +19,12 @@ Conectar a interface a um Google Apps Script para persistência em Planilhas Goo
 
 O site é estático e pode ser publicado diretamente pelo GitHub Pages a partir da raiz da branch `main`.
 
-O cache-busting (`?v=...`) de `styles.css`, `app.js`, `supabase-integration.js` e `reservations.js` em `index.html` é atualizado automaticamente por `.github/workflows/cache-bust.yml` sempre que um desses arquivos muda em um push para `main` — não é mais necessário editar a query string manualmente. Para rodar a mesma atualização localmente antes de um deploy, use `node scripts/bump-cache-version.mjs` (não requer dependências).
+`.github/workflows/cache-bust.yml` roda automaticamente sempre que `styles.css`, `app.js`, `supabase-integration.js` ou `reservations.js` mudam em um push para `main` e faz duas coisas, nessa ordem:
+
+1. Gera `app.min.js`, `supabase-integration.min.js`, `reservations.min.js` e `styles.min.css` (`scripts/minify.mjs`) — é isso que `index.html` referencia em produção. Só remove espaços/comentários (nenhum identificador é renomeado, de propósito — o motivo está comentado no topo do script: os três arquivos JS compartilham escopo global entre si e renomear quebraria esse acoplamento).
+2. Atualiza o `?v=...` (hash do conteúdo) de cada arquivo em `index.html` (`scripts/bump-cache-version.mjs`).
+
+Desenvolvimento continua sendo feito editando os arquivos-fonte normalmente (`app.js`, `supabase-integration.js`, `reservations.js`, `styles.css`); os `.min.` nunca são editados à mão. Para rodar o mesmo processo localmente antes de um deploy manual: `npm install` (só na primeira vez, baixa o `esbuild` usado para minificar) e depois `npm run build`.
 
 ## Testes
 
@@ -32,8 +37,9 @@ O sistema depende de dois serviços de terceiros no plano gratuito/individual, o
 ### Supabase — plano gratuito
 
 - Projetos gratuitos do Supabase entram em pausa automática após um período sem nenhuma requisição (histórico do produto: cerca de 7 dias consecutivos de inatividade). Um projeto pausado deixa o site, a abertura de chamados e o Apps Script fora do ar até alguém reativá-lo manualmente pelo painel do Supabase.
-- Na prática, o próprio Apps Script já faz uma requisição ao banco a cada 1 minuto (fila de saída) e a cada 10 minutos (entrada de e-mail), o que mantém o projeto ativo continuamente enquanto os gatilhos estiverem rodando. Ou seja, o risco de pausa por inatividade hoje é baixo, mas é uma dependência implícita e frágil: se os gatilhos do Apps Script pararem de rodar (ver seção abaixo) por tempo suficiente, o Supabase também pode pausar, agravando o problema.
-- Recomendações:
+- **Confirmado em 26/08/2026:** o projeto está no plano gratuito e não tinha nenhum mecanismo anti-pausa próprio (só dependia, incidentalmente, do Apps Script chamar o banco a cada 1–10 minutos — o que por si só já mantinha o projeto ativo, mas ficava exposto ao mesmo ponto único de falha da conta do Google descrito abaixo).
+- **Mitigação implementada:** `.github/workflows/keep-supabase-awake.yml` roda uma vez por dia e faz uma única leitura pública sem efeitos colaterais (a mesma consulta de laboratórios que o próprio site público já faz) só para manter o projeto com atividade recente. Roda inteiramente na infraestrutura do GitHub Actions, então continua funcionando mesmo que o Apps Script pare por causa de um problema com a conta do Google — os dois pontos únicos de falha deixam de estar acoplados.
+- Recomendações que continuam valendo (a automação acima reduz o risco de pausa por inatividade, mas não substitui):
   - Cadastrar um lembrete recorrente (ex.: mensal) para verificar no painel do Supabase se o projeto segue ativo e dentro dos limites gratuitos de banco de dados, armazenamento e requisições.
   - Considerar migrar para um plano pago caso o uso real (chamados, reservas, anexos) se aproxime dos limites do plano gratuito — o painel do Supabase mostra o consumo atual.
   - Manter um backup periódico do banco (o Supabase permite exportar via `pg_dump`/painel) para o caso de perda de acesso ao projeto gratuito.

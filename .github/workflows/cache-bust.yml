@@ -1,12 +1,27 @@
-name: Atualizar cache-busting do index.html
+name: Build de assets estáticos (minificação + cache-busting)
 
-# Achado P2 3.3 da auditoria de 26/08/2026: antes disso o "?v=" dos scripts
-# em index.html era atualizado manualmente a cada deploy. Este workflow roda
-# scripts/bump-cache-version.mjs automaticamente sempre que um dos arquivos
-# estáticos referenciados muda em um push para main, e faz commit da
-# atualização de volta na própria branch — sem precisar de nenhum passo de
-# build no GitHub Pages, que continua publicando os arquivos estáticos como
-# estão.
+# Achado P2 3.3 da auditoria de 26/08/2026 (cache-busting automatizado, feito
+# em 26/08/2026; minificação, item de baixa prioridade do mesmo achado,
+# endereçada a pedido em 26/08/2026). Antes disso o "?v=" dos scripts em
+# index.html era atualizado manualmente a cada deploy, e os arquivos eram
+# servidos sem minificação.
+#
+# Este workflow roda sempre que um dos arquivos-fonte muda em um push para
+# main:
+#   1. scripts/minify.mjs gera app.min.js, supabase-integration.min.js,
+#      reservations.min.js e styles.min.css (só remove espaços/comentários —
+#      ver comentário no topo do script sobre por que não renomeia
+#      identificadores).
+#   2. scripts/bump-cache-version.mjs atualiza o "?v=" desses arquivos em
+#      index.html com um hash do conteúdo.
+# e faz commit do resultado de volta na própria branch. O GitHub Pages
+# continua publicando os arquivos estáticos como estão, sem nenhum passo de
+# build do lado dele — o "build" acontece aqui e o resultado já commitado é
+# o que é servido.
+#
+# Desenvolvimento continua sendo feito editando os arquivos-fonte
+# (app.js, supabase-integration.js, reservations.js, styles.css) — os
+# `.min.` são sempre gerados, nunca editados à mão.
 
 on:
   push:
@@ -18,6 +33,7 @@ on:
       - 'reservations.js'
       - 'supabase-config.js'
       - 'scripts/bump-cache-version.mjs'
+      - 'scripts/minify.mjs'
 
 permissions:
   contents: write
@@ -27,24 +43,34 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  bump:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar esbuild (só usado neste build, não vai para o site)
+        run: npm ci
+
+      - name: Gerar arquivos minificados
+        run: node scripts/minify.mjs
+
       - name: Atualizar hashes de cache em index.html
         run: node scripts/bump-cache-version.mjs
 
       - name: Commit se houver mudança
         run: |
-          if git diff --quiet -- index.html; then
-            echo "index.html já estava atualizado, nada para commitar."
+          if git diff --quiet -- index.html app.min.js supabase-integration.min.js reservations.min.js styles.min.css; then
+            echo "Nada mudou, nada para commitar."
             exit 0
           fi
           git config user.name "labinfo-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add index.html
-          git commit -m "chore: atualiza cache-busting de assets estáticos [skip ci]"
+          git add index.html app.min.js supabase-integration.min.js reservations.min.js styles.min.css
+          git commit -m "chore: atualiza build (minificação + cache-busting) [skip ci]"
           git push
