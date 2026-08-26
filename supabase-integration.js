@@ -324,7 +324,7 @@
     e.target.reset();
     identify();
   };
-  $('#protocolButton').onclick=async()=>{const siape=$('#protocolInput').value.trim(),result=$('#protocolResult');result.innerHTML='<p class="my-tickets-empty">Buscando chamados…</p>';const [{data:who},{data:rows,error}]=await Promise.all([sb.rpc('identify_server',{p_siape:siape}),sb.rpc('my_tickets',{p_siape:siape})]);if(error||(!who?.length&&!rows?.length)){result.innerHTML='<p class="my-tickets-empty error-text">Nenhum chamado encontrado para este SIAPE.</p>';return}const owner=who?.[0]?.full_name||`SIAPE ${siape} — cadastro pendente`;result.innerHTML=`<div class="my-tickets-owner"><div class="owner-avatar">${owner.charAt(0)}</div><div><span>CHAMADOS DE</span><strong>${owner}</strong></div><em>${rows.length} chamado(s)</em></div>`+(rows.length?`<div class="my-tickets-list">${rows.map(t=>{const events=t.timeline||[],last=events[events.length-1];return `<article class="my-ticket-card"><header><strong>${t.protocol}</strong>${badge(t.status)}</header><h3>${t.title}</h3><div class="my-ticket-meta"><span><i>Local</i>${t.lab||'Não informado'}</span><span><i>Categoria</i>${t.category||'Sem categoria'}</span><span><i>Abertura</i>${fmt(t.created_at)}</span></div><div class="ticket-latest-event"><span>Último andamento</span><strong>${last?.label||'Chamado aberto'}</strong><time>${fmt(last?.at||t.updated_at)}</time></div><button class="ticket-details-toggle" type="button" aria-expanded="false">Ver detalhes</button><div class="public-ticket-timeline" hidden>${events.map(e=>`<div><i></i><span><strong>${safe(e.label)}</strong><time>${fmt(e.at)}</time></span></div>`).join('')}</div></article>`}).join('')}</div>`:'<div class="my-tickets-empty"><strong>Nenhum chamado encontrado</strong></div>');result.querySelectorAll('.ticket-details-toggle').forEach(button=>button.onclick=()=>{const timeline=button.nextElementSibling,open=timeline.hidden;timeline.hidden=!open;button.textContent=open?'Ocultar detalhes':'Ver detalhes';button.setAttribute('aria-expanded',open)})};
+  $('#protocolButton').onclick=async()=>{const siape=$('#protocolInput').value.trim(),result=$('#protocolResult');result.innerHTML='<p class="my-tickets-empty">Buscando chamados…</p>';const [{data:who},{data:rows,error}]=await Promise.all([sb.rpc('identify_server',{p_siape:siape}),sb.rpc('my_tickets',{p_siape:siape})]);if(error||(!who?.length&&!rows?.length)){result.innerHTML='<p class="my-tickets-empty error-text">Nenhum chamado encontrado para este SIAPE.</p>';return}const owner=who?.[0]?.full_name||`SIAPE ${safe(siape)} — cadastro pendente`;result.innerHTML=`<div class="my-tickets-owner"><div class="owner-avatar">${safe(owner.charAt(0))}</div><div><span>CHAMADOS DE</span><strong>${safe(owner)}</strong></div><em>${rows.length} chamado(s)</em></div>`+(rows.length?`<div class="my-tickets-list">${rows.map(t=>{const events=t.timeline||[],last=events[events.length-1];return `<article class="my-ticket-card"><header><strong>${safe(t.protocol)}</strong>${badge(t.status)}</header><h3>${safe(t.title)}</h3><div class="my-ticket-meta"><span><i>Local</i>${safe(t.lab||'Não informado')}</span><span><i>Categoria</i>${safe(t.category||'Sem categoria')}</span><span><i>Abertura</i>${fmt(t.created_at)}</span></div><div class="ticket-latest-event"><span>Último andamento</span><strong>${last?.label||'Chamado aberto'}</strong><time>${fmt(last?.at||t.updated_at)}</time></div><button class="ticket-details-toggle" type="button" aria-expanded="false">Ver detalhes</button><div class="public-ticket-timeline" hidden>${events.map(e=>`<div><i></i><span><strong>${safe(e.label)}</strong><time>${fmt(e.at)}</time></span></div>`).join('')}</div></article>`}).join('')}</div>`:'<div class="my-tickets-empty"><strong>Nenhum chamado encontrado</strong></div>');result.querySelectorAll('.ticket-details-toggle').forEach(button=>button.onclick=()=>{const timeline=button.nextElementSibling,open=timeline.hidden;timeline.hidden=!open;button.textContent=open?'Ocultar detalhes':'Ver detalhes';button.setAttribute('aria-expanded',open)})};
 
   async function getProfile(){const {data:{session}}=await sb.auth.getSession();if(!session)return null;state.session=session;const {data:p,error}=await sb.from('profiles').select('*').eq('id',session.user.id).single();if(error||!p?.active)return null;state.profile=p;return p}
   async function loadAdmin(){
@@ -344,7 +344,7 @@
   const queueCreate=$('#adminOpenTicket'),queueActions=document.createElement('div');queueActions.className='queue-actions';queueCreate.before(queueActions);queueActions.append(queueCreate);queueActions.insertAdjacentHTML('beforeend','<button id="archiveTickets" class="primary archive-tickets" type="button" disabled>Arquivar selecionados</button>');
   function updateArchiveButton(){const button=$('#archiveTickets');if(!button)return;button.disabled=!selectedForArchive.size;button.textContent=selectedForArchive.size?`Arquivar selecionados (${selectedForArchive.size})`:'Arquivar selecionados'}
   $('#archiveTickets').onclick=async()=>{const ids=[...selectedForArchive];if(!ids.length)return;const files=tickets.filter(t=>ids.includes(t.dbId)).flatMap(t=>t.attachments||[]);if(files.length){const {error:storageError}=await sb.storage.from('ticket-attachments').remove(files.map(x=>x.path));if(storageError)return fail(storageError);const {error:attachmentError}=await sb.from('attachments').delete().in('ticket_id',ids);if(attachmentError)return fail(attachmentError)}const {error}=await sb.from('tickets').update({archived_at:new Date().toISOString(),updated_at:new Date().toISOString()}).in('id',ids);if(error)return fail(error);selectedForArchive.clear();if(selected&&ids.includes(selected.dbId)){selected=null;$('#ticketDetail').classList.remove('detail-expanded');document.body.classList.remove('detail-open')}await loadAdmin();toast(ids.length+' chamado(s) arquivado(s) e anexos removidos.')};
-  renderTickets=function(){const q=$('#ticketSearch').value.toLowerCase(),f=$('#statusFilter').value,rows=tickets.filter(t=>!t.archivedAt&&(f==='Todos os status'||t.status===f)&&Object.values(t).join(' ').toLowerCase().includes(q));$('.queue-head>div:first-child span').textContent=rows.length+' chamado(s) encontrado(s)';$('#ticketList').innerHTML=rows.map(t=>`<article class="ticket-row ${selected?.id===t.id?'active':''}" data-id="${t.id}"><input class="ticket-select" type="checkbox" aria-label="Selecionar ${t.id}" ${selectedForArchive.has(t.dbId)?'checked':''}><div><span class="ticket-id">${t.id}</span><h3>${t.title}</h3><div class="ticket-meta"><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ${t.teacher}</span><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg> ${t.lab}</span><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${t.time}</span><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><circle cx="7" cy="7" r="1"/></svg> ${t.category}</span></div></div>${badge(t.status)}</article>`).join('')||'<p class="empty">Nenhum chamado na fila.</p>';document.querySelectorAll('.ticket-row').forEach(r=>{r.onclick=e=>{if(e.target.classList.contains('ticket-select'))return;selected=tickets.find(t=>t.id===r.dataset.id);renderTickets();renderDetail();if(innerWidth>900){$('#ticketDetail').classList.add('detail-expanded');document.body.classList.add('detail-open')}};r.querySelector('.ticket-select').onchange=e=>{const ticket=tickets.find(t=>t.id===r.dataset.id);e.target.checked?selectedForArchive.add(ticket.dbId):selectedForArchive.delete(ticket.dbId);updateArchiveButton()}});updateArchiveButton()};
+  renderTickets=function(){const q=$('#ticketSearch').value.toLowerCase(),f=$('#statusFilter').value,rows=tickets.filter(t=>!t.archivedAt&&(f==='Todos os status'||t.status===f)&&Object.values(t).join(' ').toLowerCase().includes(q));$('.queue-head>div:first-child span').textContent=rows.length+' chamado(s) encontrado(s)';$('#ticketList').innerHTML=rows.map(t=>`<article class="ticket-row ${selected?.id===t.id?'active':''}" data-id="${t.id}"><input class="ticket-select" type="checkbox" aria-label="Selecionar ${t.id}" ${selectedForArchive.has(t.dbId)?'checked':''}><div><span class="ticket-id">${t.id}</span><h3>${safe(t.title)}</h3><div class="ticket-meta"><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ${safe(t.teacher)}</span><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg> ${safe(t.lab)}</span><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${t.time}</span><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><circle cx="7" cy="7" r="1"/></svg> ${safe(t.category)}</span></div></div>${badge(t.status)}</article>`).join('')||'<p class="empty">Nenhum chamado na fila.</p>';document.querySelectorAll('.ticket-row').forEach(r=>{r.onclick=e=>{if(e.target.classList.contains('ticket-select'))return;selected=tickets.find(t=>t.id===r.dataset.id);renderTickets();renderDetail();if(innerWidth>900){$('#ticketDetail').classList.add('detail-expanded');document.body.classList.add('detail-open')}};r.querySelector('.ticket-select').onchange=e=>{const ticket=tickets.find(t=>t.id===r.dataset.id);e.target.checked?selectedForArchive.add(ticket.dbId):selectedForArchive.delete(ticket.dbId);updateArchiveButton()}});updateArchiveButton()};
   function refreshMetrics(){const visible=tickets.filter(x=>!x.deletedAt),queue=visible.filter(x=>!x.archivedAt),waiting=queue.filter(x=>x.status==='Recebido').length,active=queue.filter(x=>x.status==='Em atendimento').length,done=visible.filter(x=>x.status==='Concluído').length,closed=visible.filter(x=>x.createdAt&&x.closedAtRaw),avg=closed.length?Math.round(closed.reduce((s,x)=>s+(new Date(x.closedAtRaw)-new Date(x.createdAt))/60000,0)/closed.length):0,articles=document.querySelectorAll('#ticketsSection .metrics article');const values=[[waiting,waiting+' aguardando atribuição na fila'],[active,active+' chamado(s) ativo(s) na fila'],[done,'Em todo o período do sistema'],[closed.length?avg+' min':'—',closed.length?'Média de '+closed.length+' concluído(s)':'Sem chamados concluídos']];articles.forEach((a,i)=>{a.querySelector('strong').textContent=values[i][0];a.querySelector('em').textContent=values[i][1]})}
   function filteredTickets(){const period=$('#analyticsSection .analytics-filters select')?.value||'Últimos 30 dias',days=period==='Hoje'?0:period==='Últimos 7 dias'?7:30,cut=new Date();cut.setHours(0,0,0,0);if(days)cut.setDate(cut.getDate()-days+1);const lab=$('#analyticsLab').value,cat=$('#analyticsCategory').value;return tickets.filter(t=>(!t.createdAt||new Date(t.createdAt)>=cut)&&(lab==='Todos'||t.lab===lab)&&(cat==='Todas'||t.category===cat))}
   const grouped=(rows,key)=>Object.entries(rows.reduce((a,x)=>(a[x[key]||'Não informado']=(a[x[key]||'Não informado']||0)+1,a),{})).sort((a,b)=>b[1]-a[1]);
@@ -1745,20 +1745,11 @@
             $('#chatEndedCard').hidden = false;
             stopPublicChatPolling();
           }
-        } else {
-          const { data: rawSess } = await sb.from('chat_sessions').select('id, status, technician_id').eq('id', sessionId).maybeSingle();
-          if (rawSess) {
-            if (rawSess.status === 'active' && !$('#chatWaitingCard').hidden) {
-              $('#chatWaitingCard').hidden = true;
-              $('#chatActiveCard').hidden = false;
-              playChatNotificationSound();
-            } else if (rawSess.status === 'closed') {
-              $('#chatActiveCard').hidden = true;
-              $('#chatWaitingCard').hidden = true;
-              $('#chatEndedCard').hidden = false;
-              stopPublicChatPolling();
-            }
-          }
+        } else if (rpcErr) {
+          // get_public_chat_session é o único caminho de leitura pública da sessão
+          // (chat_sessions não aceita mais SELECT direto de anon). Sem resposta da
+          // RPC, apenas registra e tenta de novo no próximo ciclo de polling.
+          console.warn('Falha ao consultar sessão pública de chat:', rpcErr);
         }
 
         await loadPublicChatMessages(sessionId);
@@ -1769,37 +1760,17 @@
   }
 
   function subscribePublicChatSession(sessionId) {
+    // O lado público não tem mais leitura direta de chat_sessions/chat_messages
+    // (endurecimento de RLS de 26/08/2026 — antes a policy era "using(true)" e
+    // expunha todas as conversas a qualquer visitante). Sem SELECT direto,
+    // postgres_changes não entrega eventos para o papel anon, então o
+    // acompanhamento público passa a depender só do polling a cada 1,5s em
+    // startPublicChatPolling, que já usa exclusivamente as RPCs públicas
+    // (get_public_chat_session / get_public_chat_messages).
     if (publicChatChannel) {
       sb.removeChannel(publicChatChannel);
       publicChatChannel = null;
     }
-
-    publicChatChannel = sb.channel('public-chat-room-' + sessionId)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_sessions', filter: `id=eq.${sessionId}` }, async (payload) => {
-        if (payload.new.status === 'active') {
-          $('#chatWaitingCard').hidden = true;
-          $('#chatActiveCard').hidden = false;
-          loadPublicChatMessages(sessionId);
-          playChatNotificationSound();
-        } else if (payload.new.status === 'closed') {
-          $('#chatActiveCard').hidden = true;
-          $('#chatWaitingCard').hidden = true;
-          $('#chatEndedCard').hidden = false;
-          stopPublicChatPolling();
-        }
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `session_id=eq.${sessionId}` }, (payload) => {
-        if (!publicChatMessages.some(m => m.id === payload.new.id)) {
-          publicChatMessages.push(payload.new);
-          renderPublicChatMessages();
-          if (payload.new.sender_type === 'technician' || (payload.new.sender_type === 'system' && payload.new.message.includes('entrou na sala'))) {
-            $('#chatWaitingCard').hidden = true;
-            $('#chatActiveCard').hidden = false;
-            playChatNotificationSound();
-          }
-        }
-      })
-      .subscribe();
 
     loadPublicChatMessages(sessionId);
     startPublicChatPolling(sessionId);
@@ -1807,7 +1778,7 @@
 
   async function loadPublicChatMessages(sessionId) {
     try {
-      const { data: msgs } = await sb.from('chat_messages').select('*').eq('session_id', sessionId).order('created_at', { ascending: true });
+      const { data: msgs } = await sb.rpc('get_public_chat_messages', { p_session_id: sessionId });
       if (msgs) {
         const hasNew = msgs.length !== publicChatMessages.length || (msgs.length > 0 && msgs[msgs.length - 1].id !== publicChatMessages[publicChatMessages.length - 1]?.id);
         publicChatMessages = msgs;
