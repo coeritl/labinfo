@@ -670,7 +670,8 @@
   // cores, alertas ou façam chamados excluídos reaparecerem após interações.
   renderTickets=function(){
     const query=normalizeSearch($('#ticketSearch')?.value),status=$('#statusFilter')?.value||'Todos os status';
-    const rows=tickets.filter(ticket=>!ticket.archivedAt&&!ticket.deletedAt&&(status==='Todos os status'||ticket.status===status)&&(!query||normalizeSearch(Object.values(ticket).join(' ')).includes(query)));
+    const priority={'Recebido':0,'Em atendimento':1,'Concluído':2};
+    const rows=tickets.filter(ticket=>!ticket.archivedAt&&!ticket.deletedAt&&(status==='Todos os status'||ticket.status===status)&&(!query||normalizeSearch(Object.values(ticket).join(' ')).includes(query))).sort((a,b)=>(priority[a.status]??9)-(priority[b.status]??9)||new Date(b.created_at||0)-new Date(a.created_at||0));
     $('.queue-head>div:first-child span').textContent=rows.length+' chamado(s) encontrado(s)';
     $('#ticketList').innerHTML=rows.map(ticket=>{
       const replyAttention=ticket.status!=='Concluído'&&ticket.serverReplyPending;
