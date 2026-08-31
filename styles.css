@@ -1287,7 +1287,7 @@ body.detail-open:before{
 .home-brand-logo{display:block;width:min(260px,70vw);height:auto;max-height:58px;object-fit:contain;margin:0 auto 18px}
 @media(max-width:620px){.home-brand-logo{width:min(220px,68vw);margin-bottom:12px}.home-hero{margin-bottom:22px}.service-choice-grid{gap:12px}.service-choice{padding:18px 16px}}
 /* Home pública: cabeçalho compacto em fundo verde */
-body:has(#homeView:not([hidden])){background:var(--green)}
-body:has(#homeView:not([hidden])) .topbar{height:92px;justify-content:center;background:var(--green);border-bottom:0}
+body:has(#homeView:not([hidden])){background:var(--bg)}
+body:has(#homeView:not([hidden])) .topbar{height:92px;justify-content:center;background:var(--bg);border-bottom:1px solid var(--line)}
 body:has(#homeView:not([hidden])) .topbar .brand{display:none}
 body:has(#homeView:not([hidden])) .topbar .admin-link{background:#fff;color:var(--green-dark);border-color:#fff;padding:12px 24px;font-size:16px}
