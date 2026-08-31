@@ -16,12 +16,13 @@ Sempre que `Code.gs` for alterado, salve a nova versão no projeto do Apps Scrip
 
 ## Abertura por e-mail
 
-- O remetente deve ser um e-mail `@ifms.edu.br` vinculado a um servidor ativo.
+- Qualquer endereço de e-mail válido pode abrir um chamado diretamente pela caixa `labinfo.tl@ifms.edu.br`.
+- O formulário público do portal continua exigindo um servidor cadastrado e SIAPE válido.
 - Não é necessário usar prefixo ou palavra-chave no assunto.
 - Para associar um laboratório automaticamente, inclua seu código no assunto.
 - Exemplo: `LAB01 - Projetor sem imagem`.
 - O corpo do e-mail será a descrição do chamado.
 
-Somente remetentes que correspondam ao e-mail de um servidor ativo no painel geram chamados. Outros remetentes são ignorados. Mensagens processadas recebem o marcador `LabInfo-Processado`; o controle definitivo de duplicidade é feito no Supabase pelo ID individual da mensagem. Se uma importação falhar, a conversa não é marcada como concluída e será tentada novamente.
+Quando o remetente corresponde a um servidor ativo, o chamado é vinculado ao seu cadastro. Os demais são registrados pelo endereço de e-mail informado e também recebem as notificações do atendimento. Mensagens processadas recebem o marcador `LabInfo-Processado`; o controle definitivo de duplicidade é feito no Supabase pelo ID individual da mensagem. Se uma importação falhar, a conversa não é marcada como concluída e será tentada novamente.
 
 Respostas que contenham um protocolo no assunto são adicionadas ao histórico. Se o atendimento já estava concluído, ele volta para **Em atendimento** e a equipe recebe um aviso. Os textos citados de mensagens anteriores são removidos sempre que o formato do Gmail puder ser identificado.

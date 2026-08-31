@@ -5,9 +5,9 @@ const LABINFO = {
   processedLabel: 'LabInfo-Processado',
   maxThreads: 30,
   accountEmail: 'labinfo.tl@ifms.edu.br',
-  logoUrl: 'https://coeritl.github.io/labinfo/assets/labinfo-logo.png',
-  portalUrl: 'https://coeritl.github.io/labinfo/',
-  supportUrl: 'https://coeritl.github.io/labinfo/suporte/'
+  logoUrl: 'https://labinfo.tl.ifms.edu.br/assets/labinfo-logo.png',
+  portalUrl: 'https://labinfo.tl.ifms.edu.br/',
+  supportUrl: 'https://labinfo.tl.ifms.edu.br/suporte/'
 };
 
 function configurarIntegracao() {
@@ -71,7 +71,8 @@ function processarChamadosRecebidos_() {
           p_subject: message.getSubject(), p_body: textoMensagem_(message)
         });
         if (result && result.accepted) importarImagens_(message, result);
-        // Remetentes não cadastrados são apenas ignorados; nenhum chamado é criado.
+        // Todo remetente com endereço válido pode abrir chamado por e-mail.
+        // A exigência de SIAPE permanece apenas no formulário público do portal.
       } catch (error) {
         console.error('Falha ao importar ' + message.getId() + ': ' + error.message);
         threadOk = false;
@@ -95,8 +96,8 @@ function importarImagens_(message, ticket) {
     const safeName = original.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 160);
     const path = `tickets/${ticket.ticket_id}/${Utilities.getUuid()}-${safeName}`;
     uploadStorage_(path, file);
-    rpc_('register_public_attachment', {
-      p_ticket: ticket.ticket_id, p_siape: ticket.siape, p_path: path,
+    rpc_('apps_script_register_attachment', {
+      p_secret: segredo_(), p_ticket: ticket.ticket_id, p_path: path,
       p_name: original.slice(0, 180), p_type: file.getContentType(), p_size: file.getBytes().length
     });
   });
