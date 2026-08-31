@@ -1293,3 +1293,6 @@ body:has(#homeView:not([hidden])) .topbar{height:92px;justify-content:center;bac
 body:has(#homeView:not([hidden])) .topbar .brand{display:none}
 body:has(#homeView:not([hidden])) .topbar .admin-link{background:#fff;color:var(--green-dark);border-color:#fff;padding:12px 24px;font-size:16px}
 body:has(#homeView:not([hidden])) .home-hero{text-align:center}
+body:has(#homeView:not([hidden])) .topbar{height:64px}
+body:has(#homeView:not([hidden])) .home-view{padding-top:34px}
+body:has(#homeView:not([hidden])) .home-hero{margin-bottom:22px}
