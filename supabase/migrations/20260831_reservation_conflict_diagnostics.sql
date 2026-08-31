@@ -55,7 +55,7 @@ declare
   requested_duration interval:=p_end-p_start;
   final_date date:=coalesce(p_until,(p_start at time zone 'America/Cuiaba')::date);
   group_id uuid:=gen_random_uuid();
-  has_conflict boolean;
+  conflict_info text;
   skipped_dates text[];
 begin
   if public.current_role() not in ('tecnico','supervisor') then raise exception 'Acesso negado.'; end if;
@@ -68,15 +68,18 @@ begin
   loop
     if extract(isodow from occurrence at time zone 'America/Cuiaba') between 1 and 6 then
       finish:=occurrence+requested_duration;
-      -- Verifica conflito sem abortar
-      has_conflict := exists(
-        select 1 from public.reservations
-        where lab_id=p_lab and status<>'Cancelada'
-          and starts_at<finish and ends_at>occurrence
-      );
-      if has_conflict then
+      -- Verifica conflito sem abortar, incluindo detalhes
+      select r.subject || ' (' || s.full_name || ', ' || r.status || ')'
+        into conflict_info
+        from public.reservations r
+        join public.servers s on s.id = r.server_id
+       where r.lab_id=p_lab and r.status<>'Cancelada'
+         and r.starts_at<finish and r.ends_at>occurrence
+       limit 1;
+      if conflict_info is not null then
         skipped_dates := array_append(skipped_dates,
-          to_char(occurrence at time zone 'America/Cuiaba', 'DD/MM/YYYY'));
+          to_char(occurrence at time zone 'America/Cuiaba', 'DD/MM') || ': ' || conflict_info);
+        conflict_info := null;
       else
         perform public.validate_reservation_slot(occurrence, finish);
         insert into public.reservations(
@@ -96,15 +99,11 @@ begin
   end loop;
   if first_r.id is null then
     if skipped_dates is not null and array_length(skipped_dates, 1) > 0 then
-      raise exception 'Todas as datas da série possuem conflito: %. Nenhuma reserva foi criada.',
-        array_to_string(skipped_dates, ', ');
+      raise exception 'Todas as datas possuem conflito: %. Nenhuma reserva foi criada.',
+        array_to_string(skipped_dates, ' | ');
     else
       raise exception 'A série não possui nenhuma data válida.';
     end if;
-  end if;
-  -- Notifica sobre datas puladas (via notice, aparece no log)
-  if skipped_dates is not null and array_length(skipped_dates, 1) > 0 then
-    raise notice 'Datas com conflito (não cadastradas): %', array_to_string(skipped_dates, ', ');
   end if;
   return first_r;
 end $$;
