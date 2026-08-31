@@ -1296,3 +1296,4 @@ body:has(#homeView:not([hidden])) .home-hero{text-align:center}
 body:has(#homeView:not([hidden])) .topbar{height:64px}
 body:has(#homeView:not([hidden])) .home-view{padding-top:34px}
 body:has(#homeView:not([hidden])) .home-hero{margin-bottom:22px}
+.reservation-history-actions{display:flex;align-items:center;gap:10px}.reservation-history-actions input{min-width:280px}.danger-button{border:1px solid #e6b4b4;background:#fff;color:#b3262d;border-radius:9px;padding:11px 14px;font-weight:800;cursor:pointer}.danger-button:hover{background:#fff1f1}.danger-button:disabled{opacity:.6;cursor:wait}@media(max-width:620px){.reservation-history-actions{width:100%;flex-direction:column;align-items:stretch}.reservation-history-actions input{min-width:0}.registry-head{gap:10px}}
