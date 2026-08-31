@@ -675,7 +675,7 @@
     $('.queue-head>div:first-child span').textContent=rows.length+' chamado(s) encontrado(s)';
     $('#ticketList').innerHTML=rows.map(ticket=>{
       const replyAttention=ticket.status!=='Concluído'&&ticket.serverReplyPending;
-      const openedAt=new Date(ticket.created_at||ticket.opened_at||ticket.createdAt||0),staleUnassigned=ticket.status==='Recebido'&&!ticket.assigned_to&&openedAt.getTime()>0&&(Date.now()-openedAt.getTime()>=7*24*60*60*1000);
+      const openedAt=new Date(ticket.createdAt||0),today=new Date();openedAt.setHours(0,0,0,0);today.setHours(0,0,0,0);const staleUnassigned=ticket.status==='Recebido'&&openedAt.getTime()>0&&(today-openedAt>=7*24*60*60*1000);
       const stateClass=ticket.status==='Concluído'?'ticket-completed':ticket.status==='Em atendimento'?'ticket-progress':'ticket-received';
       const replyLabel=ticket.serverReplyPending?'! Nova resposta do servidor':(staleUnassigned?'⚠ Mais de 7 dias sem atribuição':'');
       return `<article class="ticket-row ${stateClass} ${replyAttention?'ticket-waiting-reply has-server-reply':''} ${selected?.id===ticket.id?'active':''}" data-id="${safe(ticket.id)}"><input class="ticket-select" type="checkbox" aria-label="Selecionar ${safe(ticket.id)}" ${selectedForArchive.has(ticket.dbId)?'checked':''}><div>${replyLabel?`<span class="server-reply-badge">${replyLabel}</span>`:''}${ticket.feedbackConfirmedAt?'<span class="feedback-confirmed-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg> Atendimento confirmado pelo servidor</span>':''}<span class="ticket-id">${safe(ticket.id)}</span><h3>${safe(ticket.title)}</h3><div class="ticket-meta"><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ${safe(ticket.teacher)}</span><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg> ${safe(ticket.lab)}</span><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${safe(ticket.time)}</span><span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><circle cx="7" cy="7" r="1"/></svg> ${safe(ticket.category)}</span></div></div>${badge(ticket.status)}</article>`;
@@ -2017,12 +2017,9 @@
     if(regType!=='teachers') return registrationSubmit(event);
     event.preventDefault();setProcessing(true,'Salvando cadastro…');
     try{const entry=Object.fromEntries(new FormData(event.target)),siape=String(entry.siape||'').trim(),email=String(entry.email||'').trim().toLowerCase();
-      const lookup=await sb.from('servers').select('id,active').eq('siape',siape).maybeSingle();
-      if(lookup.error && lookup.error.code!=='PGRST116') return fail(lookup.error);
-      if(lookup.data?.active) return fail(new Error('Este SIAPE já está cadastrado.'));
-      const result=await sb.from('servers').upsert({siape,full_name:entry.name,email,active:true},{onConflict:'siape'});
+      const result=await sb.rpc('staff_upsert_server',{p_siape:siape,p_full_name:entry.name,p_email:email});
       if(result.error)return fail(result.error);
-      event.target.reset();await loadAdmin();registration();toast(lookup.data?'Servidor reativado e atualizado.':'Cadastro salvo.');
+      event.target.reset();await loadAdmin();registration();toast(result.data?.reactivated?'Servidor reativado e atualizado.':'Cadastro salvo.');
     }finally{setProcessing(false)}
   };
   catalogs();
