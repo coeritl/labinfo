@@ -1,4 +1,4 @@
-﻿(()=>{
+(()=>{
   const getDb=()=>window.labinfoDb||window.supabaseClient;
   const sb=new Proxy({},{
     get(target,prop){
@@ -751,13 +751,11 @@
       if(timeMinutes(end)<=timeMinutes(start))throw new Error('O hor\u00e1rio final deve ser posterior ao inicial.');
       const {data:created,error}=await sb.rpc('staff_create_reservation_range',{p_server:$('#staffReservationServer').value,p_lab:$('#staffReservationLab').value,p_subject:$('#staffReservationSubject').value.trim(),p_start:localIso(date,start),p_end:localIso(date,end),p_notes:$('#staffReservationNotes').value.trim()||null,p_source:'Equipe',p_recurrence:recurrence,p_until:recurrence==='weekly'?$('#staffReservationUntil').value:null});
       if(error)throw error;
-      const notification=await sb.rpc('staff_update_reservation',{p_id:created.id,p_start:null,p_lab:null,p_status:'Autorizada',p_reason:null});
-      if(notification.error)throw notification.error;
       event.target.reset();
       selectStaffRecurrence('none');
       $('#staffReservationUntilLabel').hidden=true;
       modal('reservationModal',false);
-      toast('Reserva cadastrada, autorizada e servidor notificado.');
+      toast('Reserva cadastrada e autorizada.');
       await loadReservationAdmin();
     }catch(error){
       toast(error.message);
