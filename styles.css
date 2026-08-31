@@ -1286,6 +1286,7 @@ body.detail-open:before{
 .ticket-list{max-height:720px;overflow-y:auto;overflow-x:hidden}
 .home-brand-logo{display:block;width:min(260px,70vw);height:auto;max-height:58px;object-fit:contain;margin:0 auto 18px}
 @media(max-width:620px){.home-brand-logo{width:min(220px,68vw);margin-bottom:12px}.home-hero{margin-bottom:22px}.service-choice-grid{gap:12px}.service-choice{padding:18px 16px}}
+@media(max-width:620px){body:has(#homeView:not([hidden])) .topbar{height:64px}.home-view{padding-top:24px}.home-brand-logo{margin-bottom:8px}.home-hero h1{margin-top:8px}.service-choice-grid{display:flex;flex-direction:column;gap:10px}#openReservations{order:-1}}
 /* Home pública: cabeçalho compacto em fundo verde */
 body:has(#homeView:not([hidden])){background:var(--bg)}
 body:has(#homeView:not([hidden])) .topbar{height:92px;justify-content:center;background:var(--bg);border-bottom:1px solid var(--line)}
