@@ -484,14 +484,11 @@
     if(labId&&$('#adminReservationLab')&&!$('#adminReservationLab').value)$('#adminReservationLab').value=labId;
     const days=Array.from({length:6},(_,index)=>addDays(weekStart,index));
     const dayIsoStrings=days.map(isoDate);
-    const minTime=days[0].getTime(),maxTime=addDays(days[5],1).getTime();
 
     const weekRows=[];
     for(let i=0;i<calendarReservations.length;i++){
       const r=calendarReservations[i];
       if(r.lab_id!==labId||r.status==='Cancelada')continue;
-      const startTime=new Date(r.starts_at).getTime();
-      if(startTime<minTime||startTime>=maxTime)continue;
 
       const rDate=isoDate(new Date(r.starts_at));
       const rTime=localTime(r.starts_at);
