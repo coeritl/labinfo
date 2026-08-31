@@ -118,8 +118,8 @@
     }
   });
 
-  window.addEventListener('popstate',()=>{const path=location.pathname;if(path.includes('/reservas'))showPublic('reservations',false);else if(path.includes('/chat'))showPublic('chat',false);else if(path.includes('/suporte'))showPublic('support',false);else if(!path.includes('/admin'))showPublic('home',false)});
-  const initialParams=new URLSearchParams(location.search),initialPublicRoute=initialParams.get('route');if(location.pathname.includes('/reservas')||initialPublicRoute==='reservas'||initialParams.has('confirm_reservation'))showPublic('reservations',false);else if(location.pathname.includes('/chat')||initialPublicRoute==='chat')showPublic('chat',false);else if(location.pathname.includes('/suporte')||initialPublicRoute==='suporte'||initialParams.has('feedback'))showPublic('support',false);
+  window.addEventListener('popstate',()=>{const path=location.pathname,isAdmin=path.includes('/admin');if(!isAdmin&&path.includes('/reservas'))showPublic('reservations',false);else if(!isAdmin&&path.includes('/chat'))showPublic('chat',false);else if(!isAdmin&&path.includes('/suporte'))showPublic('support',false);else if(!isAdmin)showPublic('home',false)});
+  const initialParams=new URLSearchParams(location.search),initialPublicRoute=initialParams.get('route'),initialIsAdmin=initialPublicRoute?.startsWith('admin')||location.pathname.includes('/admin');if(!initialIsAdmin&&(location.pathname.includes('/reservas')||initialPublicRoute==='reservas'||initialParams.has('confirm_reservation')))showPublic('reservations',false);else if(!initialIsAdmin&&(location.pathname.includes('/chat')||initialPublicRoute==='chat'))showPublic('chat',false);else if(!initialIsAdmin&&(location.pathname.includes('/suporte')||initialPublicRoute==='suporte'||initialParams.has('feedback')))showPublic('support',false);
 
   function publicMonday(value){const date=new Date(value);date.setHours(12,0,0,0);const day=date.getDay()||7;date.setDate(date.getDate()-day+1);return date}
   const publicIsoDate=date=>date.toLocaleDateString('en-CA',{timeZone:'America/Cuiaba'}),publicAddDays=(date,days)=>{const copy=new Date(date);copy.setDate(copy.getDate()+days);return copy};

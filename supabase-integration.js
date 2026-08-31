@@ -10,7 +10,9 @@
   const routeParam=new URLSearchParams(location.search).get('route'),
         feedbackParam=new URLSearchParams(location.search).get('feedback'),
         requestedRoute=routeParam||location.pathname.slice(siteBase.length).replace(/^\/+|\/+$/g,'');
-  const isAdminRoute=requestedRoute==='admin'||requestedRoute==='admin/chamados';
+  const adminRouteSlug=requestedRoute==='admin'?'chamados':requestedRoute.startsWith('admin/')?requestedRoute.slice(6):'';
+  const validAdminRouteSlugs=new Set(['chamados','relatorios','reservas','chat','cadastros','supervisor','horarios','manutencao']);
+  const isAdminRoute=validAdminRouteSlugs.has(adminRouteSlug);
   const isSupportRoute=requestedRoute==='suporte'||Boolean(feedbackParam);
   if(routeParam&&!feedbackParam)window.addEventListener('load',()=>history.replaceState({},'',sitePath(requestedRoute)),{once:true});
   if(isAdminRoute){document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true}
@@ -259,6 +261,37 @@
   $('#maintenanceMenuButton').onclick=()=>{document.querySelectorAll('.admin-section').forEach(x=>x.hidden=true);$('#maintenanceSection').hidden=false;$('#adminTitle').textContent='Manutenção';$('#adminSubtitle').textContent='Acompanhe limites, integrações e filas do sistema.';$('#adminMenuDropdown').hidden=true;clearInterval(maintenanceTimer);renderMaintenance();maintenanceTimer=setInterval(()=>{if(!$('#maintenanceSection').hidden)renderMaintenance()},60000)};$('#refreshMaintenance').onclick=renderMaintenance;
   $('#chatMenuButton').onclick=()=>{document.querySelectorAll('.admin-section').forEach(x=>x.hidden=true);$('#chatAdminSection').hidden=false;$('#adminTitle').textContent='Chat ao vivo';$('#adminSubtitle').textContent='Gerencie atendimentos em tempo real e conversas com os servidores.';$('#adminMenuDropdown').hidden=true;renderChatAdminDashboard()};
   $('#reservationsMenuButton').onclick=()=>{if(window.labinfoOpenReservations){window.labinfoOpenReservations()}else{document.querySelectorAll('.admin-section').forEach(x=>x.hidden=true);$('#reservationsSection').hidden=false;$('#adminTitle').textContent='Reservas dos laboratórios';$('#adminSubtitle').textContent='Organize a agenda, autorize solicitações e importe reservas em lote.';$('#adminMenuDropdown').hidden=true}};
+  const adminRouteByTarget={
+    analytics:'relatorios',registrations:'cadastros',supervisor:'supervisor',
+    reservationsMenuButton:'reservas',chatMenuButton:'chat',hoursMenuButton:'horarios',maintenanceMenuButton:'manutencao'
+  };
+  function openAdminRoute(slug,{push=false}={}){
+    const route=validAdminRouteSlugs.has(slug)?slug:'chamados';
+    if(push&&location.pathname!==sitePath('admin/'+route))history.pushState({},'',sitePath('admin/'+route));
+    if(route==='chamados')showSection('tickets');
+    else if(route==='relatorios')showSection('analytics');
+    else if(route==='cadastros')showSection('registrations');
+    else if(route==='supervisor')showSection('supervisor');
+    else if(route==='reservas')$('#reservationsMenuButton').onclick();
+    else if(route==='chat')$('#chatMenuButton').onclick();
+    else if(route==='horarios')$('#hoursMenuButton').onclick();
+    else if(route==='manutencao')$('#maintenanceMenuButton').onclick();
+    accountActions.querySelectorAll('[data-admin-nav]').forEach(item=>item.classList.toggle('active',(item.dataset.section&&adminRouteByTarget[item.dataset.section]===route)||adminRouteByTarget[item.id]===route));
+    closeMobileAdminMenu();
+    window.scrollTo(0,0);
+  }
+  window.labinfoOpenAdminRoute=openAdminRoute;
+  accountActions.addEventListener('click',event=>{
+    const target=event.target.closest('[data-section], #reservationsMenuButton, #chatMenuButton, #hoursMenuButton, #maintenanceMenuButton');
+    if(!target)return;
+    const slug=target.dataset.section?adminRouteByTarget[target.dataset.section]:adminRouteByTarget[target.id];
+    if(slug&&location.pathname!==sitePath('admin/'+slug))history.pushState({},'',sitePath('admin/'+slug));
+  });
+  window.addEventListener('popstate',()=>{
+    const route=location.pathname.slice(siteBase.length).replace(/^\/+|\/+$/g,'');
+    const slug=route==='admin'?'chamados':route.startsWith('admin/')?route.slice(6):'';
+    if(state.profile&&validAdminRouteSlugs.has(slug))openAdminRoute(slug);
+  });
   $('#refreshChatDashboard')?.addEventListener('click', renderChatAdminDashboard);
   $('#clearChatHistory')?.addEventListener('click',async()=>{if(!confirm('Excluir permanentemente todo o histórico de chats encerrados? Chats ativos e aguardando atendimento serão preservados.'))return;const button=$('#clearChatHistory');button.disabled=true;button.textContent='Limpando…';const {data,error}=await sb.rpc('clear_closed_chat_history');button.disabled=false;button.textContent='Limpar histórico';if(error)return fail(error,'Não foi possível limpar o histórico.');toast(`${Number(data||0)} atendimento(s) removido(s) do histórico.`);await renderChatAdminDashboard()});
   $('#chatAdminToggleStatusBtn')?.addEventListener('click', ()=>{const toggle=$('#staffChatToggle');if(toggle){toggle.checked=!toggle.checked;toggle.dispatchEvent(new Event('change'))}});
@@ -371,9 +404,9 @@
     menuButtons.forEach(b=>b.hidden=false);
     if(p.role==='supervisor'){
       menuButtons.forEach(b=>b.hidden=b.dataset.section!=='supervisor'&&b.id!=='reservationsMenuButton');
-      showSection('supervisor');
+      openAdminRoute(adminRouteSlug==='reservas'?'reservas':'supervisor');
     }else{
-      showSection('tickets');
+      openAdminRoute(adminRouteSlug||'chamados');
     }
     await initStaffChatStatus();
     listenIncomingChats();
