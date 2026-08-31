@@ -2018,9 +2018,9 @@
     event.preventDefault();setProcessing(true,'Salvando cadastro…');
     try{const entry=Object.fromEntries(new FormData(event.target)),siape=String(entry.siape||'').trim(),email=String(entry.email||'').trim().toLowerCase();
       const lookup=await sb.from('servers').select('id,active').eq('siape',siape).maybeSingle();
-      if(lookup.error) return fail(lookup.error);
+      if(lookup.error && lookup.error.code!=='PGRST116') return fail(lookup.error);
       if(lookup.data?.active) return fail(new Error('Este SIAPE já está cadastrado.'));
-      const result=lookup.data?await sb.from('servers').update({full_name:entry.name,email,active:true}).eq('id',lookup.data.id):await sb.from('servers').insert({siape,full_name:entry.name,email});
+      const result=await sb.from('servers').upsert({siape,full_name:entry.name,email,active:true},{onConflict:'siape'});
       if(result.error)return fail(result.error);
       event.target.reset();await loadAdmin();registration();toast(lookup.data?'Servidor reativado e atualizado.':'Cadastro salvo.');
     }finally{setProcessing(false)}
