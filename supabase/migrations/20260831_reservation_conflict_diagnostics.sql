@@ -1,7 +1,17 @@
--- Melhora diagnóstico de conflitos em reservas:
--- 1. assert_reservation_available agora informa a DATA e o HORÁRIO conflitante
--- 2. staff_create_reservation_range pula datas conflitantes e retorna a série parcial
--- 3. create_public_reservation_range informa a data conflitante na mensagem de erro
+-- Corrige bug: reservas canceladas bloqueando horários + melhora diagnósticos
+-- 1. Recria a exclusion constraint com filtro WHERE para ignorar canceladas
+-- 2. assert_reservation_available agora informa a DATA e o HORÁRIO conflitante
+-- 3. staff_create_reservation_range pula datas conflitantes em vez de abortar a série
+-- 4. create_public_reservation_range informa a data conflitante na mensagem de erro
+
+-- Garante extensão necessária para exclusion constraint com GiST
+create extension if not exists btree_gist with schema extensions;
+
+-- CORREÇÃO PRINCIPAL: recria a constraint filtrando reservas canceladas
+alter table public.reservations drop constraint if exists reservations_no_schedule_overlap;
+alter table public.reservations add constraint reservations_no_schedule_overlap
+  exclude using gist (lab_id with =, tstzrange(starts_at, ends_at, '[)') with &&)
+  where (status <> 'Cancelada');
 
 -- Atualiza assert_reservation_available para informar a data conflitante
 create or replace function public.assert_reservation_available(
