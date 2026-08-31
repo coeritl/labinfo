@@ -623,10 +623,10 @@
   function reservationOccurrenceCount(row){
     if(!row)return 0;
     if(row.occurrences_count)return Number(row.occurrences_count);
-    return reservations.filter(item=>item.recurrence_group===row.recurrence_group).length||1;
+    return (row.recurrence_group && row.recurrence !== 'none') ? 2 : 1;
   }
 
-  function openReservationEditor(id,scope='occurrence'){
+  function openReservationEditor(id,scope){
     const row=reservations.find(item=>item.id===id);
     if(!row)return;
     $('#reservationEditId').value=row.id;
@@ -642,13 +642,33 @@
     modal('reservationEditModal',true);
   }
 
-  async function cancelReservation(id){
-    const row=reservations.find(item=>item.id===id),series=reservationOccurrenceCount(row)>1,reason=await askReservationCancelReason(series);
+  window.openReservationAdmin=function(){modal('reservationAdminModal',true)};
+  window.editReservationAdmin=function(id){
+    const row=reservations.find(r=>r.id===id);
+    if(row)openReservationEditor(id,reservationOccurrenceCount(row)>1?'series':'occurrence');
+  };
+  window.cancelReservationAdmin=function(id){
+    const row=reservations.find(r=>r.id===id);
+    if(row)cancelReservation(id,reservationOccurrenceCount(row)>1);
+  };
+  window.updateReservationAdmin=async function(id,status){
+    const reason=status==='Cancelada'?await askReservationCancelReason():null;
+    if(status==='Cancelada'&&!reason)return false;
+    const {error}=await sb.rpc('staff_update_reservation',{p_id:id,p_start:null,p_lab:null,p_status:status,p_reason:reason});
+    if(error){toast(error.message);return false}
+    toast(status==='Autorizada'?'Reserva autorizada e servidor notificado.':'Reserva cancelada e servidor notificado.');
+    await loadReservationAdmin();
+    return true;
+  }
+
+  async function cancelReservation(id,series){
+    const reason=await askReservationCancelReason(series);
     if(!reason)return;
     const notify=await askReservationNotification('cancel',series);
     if(notify===null)return;
-    const {error}=await sb.rpc('staff_cancel_reservation_notification',{p_id:id,p_reason:reason,p_notify:notify});
+    const {error}=await sb.rpc('staff_cancel_reservation_notification',{p_id:id,p_reason:reason,p_notify:notify,p_scope:series?'series':'occurrence'});
     if(error)return toast(error.message);
+    const row = reservations.find(item=>item.id===id);
     calendarReservations=calendarReservations.filter(item=>series&&row?.recurrence_group?item.recurrence_group!==row.recurrence_group:item.id!==id);renderCalendar();
     toast(`${series?'Série cancelada':'Reserva cancelada'}${notify?' e servidor notificado.':' sem envio de notificação.'}`);
     await loadReservationAdmin();
