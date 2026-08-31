@@ -224,7 +224,7 @@
         <div class="chat-admin-history">
           <div class="chat-history-heading">
             <h3>Histórico Recente de Atendimentos por Chat</h3>
-            <button id="refreshChatDashboard" class="secondary" type="button">Atualizar lista</button>
+            <div class="chat-history-actions"><button id="refreshChatDashboard" class="secondary" type="button">Atualizar lista</button><button id="clearChatHistory" class="danger-button" type="button">Limpar histórico</button></div>
           </div>
           <div id="chatHistoryList" class="chat-history-table">
             <p class="empty">Carregando histórico...</p>
@@ -260,6 +260,7 @@
   $('#chatMenuButton').onclick=()=>{document.querySelectorAll('.admin-section').forEach(x=>x.hidden=true);$('#chatAdminSection').hidden=false;$('#adminTitle').textContent='Chat ao vivo';$('#adminSubtitle').textContent='Gerencie atendimentos em tempo real e conversas com os servidores.';$('#adminMenuDropdown').hidden=true;renderChatAdminDashboard()};
   $('#reservationsMenuButton').onclick=()=>{if(window.labinfoOpenReservations){window.labinfoOpenReservations()}else{document.querySelectorAll('.admin-section').forEach(x=>x.hidden=true);$('#reservationsSection').hidden=false;$('#adminTitle').textContent='Reservas dos laboratórios';$('#adminSubtitle').textContent='Organize a agenda, autorize solicitações e importe reservas em lote.';$('#adminMenuDropdown').hidden=true}};
   $('#refreshChatDashboard')?.addEventListener('click', renderChatAdminDashboard);
+  $('#clearChatHistory')?.addEventListener('click',async()=>{if(!confirm('Excluir permanentemente todo o histórico de chats encerrados? Chats ativos e aguardando atendimento serão preservados.'))return;const button=$('#clearChatHistory');button.disabled=true;button.textContent='Limpando…';const {data,error}=await sb.rpc('clear_closed_chat_history');button.disabled=false;button.textContent='Limpar histórico';if(error)return fail(error,'Não foi possível limpar o histórico.');toast(`${Number(data||0)} atendimento(s) removido(s) do histórico.`);await renderChatAdminDashboard()});
   $('#chatAdminToggleStatusBtn')?.addEventListener('click', ()=>{const toggle=$('#staffChatToggle');if(toggle){toggle.checked=!toggle.checked;toggle.dispatchEvent(new Event('change'))}});
   $('#clearChatQueueBtn')?.addEventListener('click', async () => {
     if (!confirm('Deseja limpar e encerrar todas as solicitações pendentes da fila de espera?')) return;
