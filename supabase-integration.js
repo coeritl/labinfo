@@ -2011,17 +2011,17 @@
     }
   };
 
-  // Trata SIAPEs já existentes (inclusive inativos) sem expor erro de chave duplicada.
-  const registrationSubmit=$('#registrationForm')?.onsubmit;
-  if(registrationSubmit) $('#registrationForm').onsubmit=async event=>{
-    if(regType!=='teachers') return registrationSubmit(event);
+  // Trata SIAPEs já existentes (inclusive inativos) sempre que o formulário é recriado.
+  function installSafeServerRegistration(){const form=$('#registrationForm'),registrationSubmit=form?.onsubmit;if(!form||!registrationSubmit)return;form.onsubmit=async event=>{
+    if(regType!=='teachers')return registrationSubmit(event);
     event.preventDefault();setProcessing(true,'Salvando cadastro…');
-    try{const entry=Object.fromEntries(new FormData(event.target)),siape=String(entry.siape||'').trim(),email=String(entry.email||'').trim().toLowerCase();
-      const result=await sb.rpc('staff_upsert_server',{p_siape:siape,p_full_name:entry.name,p_email:email});
+    try{const entry=Object.fromEntries(new FormData(event.target)),siape=String(entry.siape||'').trim(),email=String(entry.email||'').trim().toLowerCase(),result=await sb.rpc('staff_upsert_server',{p_siape:siape,p_full_name:entry.name,p_email:email});
       if(result.error)return fail(result.error);
       event.target.reset();await loadAdmin();registration();toast(result.data?.reactivated?'Servidor reativado e atualizado.':'Cadastro salvo.');
     }finally{setProcessing(false)}
-  };
+  }}
+  const registrationRenderBase=registration;registration=function(){registrationRenderBase();installSafeServerRegistration()};
+  installSafeServerRegistration();
   catalogs();
   loadServiceHours();
   loadChatAvailability();
