@@ -69,12 +69,12 @@ begin
     if extract(isodow from occurrence at time zone 'America/Cuiaba') between 1 and 6 then
       finish:=occurrence+requested_duration;
       -- Verifica conflito sem abortar, incluindo detalhes
-      select r.subject || ' (' || s.full_name || ', ' || r.status || ')'
+      select res.subject || ' (' || s.full_name || ', ' || res.status || ')'
         into conflict_info
-        from public.reservations r
-        join public.servers s on s.id = r.server_id
-       where r.lab_id=p_lab and r.status<>'Cancelada'
-         and r.starts_at<finish and r.ends_at>occurrence
+        from public.reservations res
+        join public.servers s on s.id = res.server_id
+       where res.lab_id=p_lab and res.status<>'Cancelada'
+         and res.starts_at<finish and res.ends_at>occurrence
        limit 1;
       if conflict_info is not null then
         skipped_dates := array_append(skipped_dates,
