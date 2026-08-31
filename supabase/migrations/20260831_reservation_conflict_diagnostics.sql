@@ -109,7 +109,7 @@ begin
   return first_r;
 end $$;
 
--- Public: informa a data conflitante na mensagem de erro
+-- Public: informa a data conflitante na mensagem de erro (preserva rate limit da 20260827)
 create or replace function public.create_public_reservation_range(
   p_siape text,p_lab uuid,p_subject text,p_start timestamptz,p_end timestamptz,
   p_notes text default null,p_recurrence text default 'none',p_until date default null
@@ -121,7 +121,8 @@ declare
   final_date date:=coalesce(p_until,(p_start at time zone 'America/Cuiaba')::date);
   group_id uuid:=gen_random_uuid();count_items integer:=0;
 begin
-  select * into s from public.servers where siape=btrim(p_siape) and active limit 1;
+  perform public.enforce_rate_limit('create_public_reservation_range', public.request_ip(), 20, interval '1 hour');
+  select server.* into s from public.servers server where server.siape=btrim(p_siape) and server.active limit 1;
   if s.id is null then raise exception 'Servidor não localizado ou inativo.';end if;
   if not exists(select 1 from public.labs lab where lab.id=p_lab and lab.active and lab.reservation_enabled) then
     raise exception 'Laboratório indisponível para reservas públicas.';
@@ -136,7 +137,6 @@ begin
   loop
     if extract(isodow from occurrence at time zone 'America/Cuiaba') between 1 and 6 then
       finish:=occurrence+requested_duration;
-      -- Usa assert que agora informa a data conflitante
       perform public.assert_reservation_available(p_lab,occurrence,finish,null);
       insert into public.reservations(protocol,server_id,lab_id,subject,notes,starts_at,ends_at,recurrence_group,recurrence)
       values(public.next_reservation_protocol(),s.id,p_lab,btrim(p_subject),nullif(btrim(p_notes),''),occurrence,finish,group_id,p_recurrence)
@@ -157,5 +157,7 @@ exception when exclusion_violation then
 end $$;
 
 -- Grants
+revoke all on function public.create_public_reservation_range(text,uuid,text,timestamptz,timestamptz,text,text,date) from public;
 grant execute on function public.staff_create_reservation_range(uuid,uuid,text,timestamptz,timestamptz,text,text,text,date) to authenticated;
 grant execute on function public.create_public_reservation_range(text,uuid,text,timestamptz,timestamptz,text,text,date) to anon,authenticated;
+
