@@ -379,7 +379,7 @@
     if(!sessionData?.session){if(reservationNotice)reservationNotice.hidden=true;return}
     const [{data:rows,error},{data:cancellations,error:cancelError}]=await Promise.all([
       sb.from('reservations').select('id,recurrence_group,status').in('status',['Aguardando confirmação','Aguardando autorização']),
-      sb.from('cancellation_requests_view').select('id')
+      sb.from('reservation_cancellation_requests').select('id').eq('status','pending')
     ]);
     if(error||cancelError){console.error('Não foi possível atualizar o aviso de reservas',error||cancelError);return}
     updateReservationNoticeFromList(rows||[],cancellations||[]);
