@@ -2045,6 +2045,46 @@
     }
   };
 
+  // Chamados simples podem ser encerrados ainda no estado "Recebido". A RPC
+  // registra o técnico e o histórico na mesma transação; o gatilho de e-mail
+  // observa apenas Recebido -> Concluído e, portanto, não envia "Em atendimento".
+  const renderDetailWithDirectCompletion = renderDetail;
+  renderDetail = function () {
+    renderDetailWithDirectCompletion();
+    if (!selected || selected.status !== 'Recebido' || state.profile?.role !== 'tecnico') return;
+    const actions = $('#ticketDetail .detail-actions');
+    const reply = $('#reply');
+    if (!actions || !reply || $('#completeTicketDirectly')) return;
+    const button = document.createElement('button');
+    button.id = 'completeTicketDirectly';
+    button.className = 'secondary direct-completion-button';
+    button.type = 'button';
+    button.textContent = 'Concluir diretamente';
+    actions.append(button);
+    button.onclick = async () => {
+      if (!selected.categoryId) {
+        const editor=$('#ticketEditForm'),toggle=$('#toggleTicketEditor');if(editor)editor.hidden=false;if(toggle){toggle.setAttribute('aria-expanded','true');const marker=toggle.querySelector('b');if(marker)marker.textContent='−'}
+        $('#ticketEditCategory')?.focus();
+        return toast('Informe a categoria antes de concluir o chamado.');
+      }
+      const resolution = reply.value.trim();
+      if (resolution.length < 5) {
+        reply.closest('label').childNodes[0].textContent = 'Solução realizada (será enviada ao servidor)';
+        reply.placeholder = 'Descreva objetivamente o que foi realizado e testado...';
+        reply.focus();
+        return toast('Descreva a solução antes de concluir diretamente.');
+      }
+      button.disabled = true; button.textContent = 'Concluindo…';
+      const ticket = selected;
+      const result = await sb.rpc('staff_complete_ticket',{p_ticket:ticket.dbId,p_resolution:resolution,p_direct:true});
+      if (result.error) { button.disabled=false; button.textContent='Concluir diretamente'; return fail(result.error,'Não foi possível concluir o chamado.'); }
+      let cleanupFailed=false;
+      if(ticket.attachments?.length){const storageResult=await sb.storage.from('ticket-attachments').remove(ticket.attachments.map(item=>item.path));if(storageResult.error){cleanupFailed=true;console.error(storageResult.error)}else{const attachmentResult=await sb.from('attachments').delete().eq('ticket_id',ticket.dbId);if(attachmentResult.error){cleanupFailed=true;console.error(attachmentResult.error)}}}
+      await loadAdmin();selected=null;$('#ticketDetail').classList.remove('detail-expanded');document.body.classList.remove('detail-open');renderDetail();
+      toast(cleanupFailed?'Chamado concluído diretamente e servidor notificado. Alguns anexos exigem limpeza manual.':'Chamado concluído diretamente. Somente o e-mail de conclusão será enviado.');
+    };
+  };
+
   // Trata SIAPEs já existentes (inclusive inativos) sempre que o formulário é recriado.
   function installSafeServerRegistration(){const form=$('#registrationForm'),registrationSubmit=form?.onsubmit;if(!form||!registrationSubmit)return;form.onsubmit=async event=>{
     if(regType!=='teachers')return registrationSubmit(event);
