@@ -220,6 +220,18 @@
 
   $('#publicScheduleLab').onchange=loadPublicSchedule;$('#publicSchedulePrev').onclick=()=>{publicWeekStart=publicAddDays(publicWeekStart,-7);loadPublicSchedule()};$('#publicScheduleNext').onclick=()=>{publicWeekStart=publicAddDays(publicWeekStart,7);loadPublicSchedule()};
   const publicReservationForm=$('#publicReservationForm'),publicReservationToggle=$('#togglePublicReservationForm');function togglePublicReservationForm(open){publicReservationForm.hidden=!open;publicReservationToggle.setAttribute('aria-expanded',open);publicReservationToggle.querySelector('i').textContent=open?'−':'+';publicReservationToggle.querySelector('b').textContent=open?'Recolher ↑':'Expandir ↓';if(open)setTimeout(()=>publicReservationForm.scrollIntoView({behavior:'smooth',block:'start'}),50)}publicReservationToggle.onclick=()=>togglePublicReservationForm(publicReservationForm.hidden);
+  
+  const myReservationsSide=$('#myReservationsSide'),myReservationsToggle=$('#toggleMyReservationsForm');
+  function toggleMyReservationsForm(open){
+    myReservationsSide.hidden=!open;
+    myReservationsToggle.setAttribute('aria-expanded',open);
+    const svgIcon = '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
+    myReservationsToggle.querySelector('i').innerHTML=open?'−':svgIcon;
+    myReservationsToggle.querySelector('b').textContent=open?'Recolher ↑':'Expandir ↓';
+    if(open)setTimeout(()=>myReservationsSide.scrollIntoView({behavior:'smooth',block:'start'}),50);
+  }
+  myReservationsToggle.onclick=()=>toggleMyReservationsForm(myReservationsSide.hidden);
+
   const publicNotice=$('#publicReservationNotice');
   function closePublicReservationNotice(){modal('publicReservationNotice',false)}
   function showPublicReservationNotice({type='info',eyebrow='ATENÇÃO',title,message,protocol=''}){
