@@ -350,21 +350,24 @@
   reservationNotice.id='reservationReviewNotice';
   reservationNotice.className='reservation-review-notice card';
   reservationNotice.hidden=true;
-  reservationNotice.innerHTML=`<div class="reservation-review-heading"><span class="reservation-review-icon" aria-hidden="true">▣</span><div><span class="eyebrow">RESERVAS A AVALIAR</span><h2>Solicitações de reserva pendentes</h2><p>Acompanhe a confirmação por e-mail antes de autorizar o uso do laboratório.</p></div></div><div class="reservation-review-statuses"><div class="reservation-review-status confirmed"><span>Confirmada pelo servidor</span><strong id="confirmedReservationCount">0</strong><small>Pronta para avaliação</small></div><div class="reservation-review-status unconfirmed"><span>Não confirmada pelo servidor</span><strong id="unconfirmedReservationCount">0</strong><small>Aguardando confirmação por e-mail</small></div><button id="reviewReservationsButton" class="primary" type="button">Ver reservas <span>→</span></button></div>`;
-  const ticketMetrics=$('#ticketsSection .metrics');
-  if(ticketMetrics)ticketMetrics.insertAdjacentElement('afterend',reservationNotice);
+  reservationNotice.innerHTML=`<div class="reservation-review-heading"><span class="reservation-review-icon" aria-hidden="true">⏳</span><div><span class="eyebrow">RESERVAS A AVALIAR</span><h2>Solicitações pendentes</h2><p>Acompanhe e autorize novos pedidos ou pedidos de cancelamento.</p></div></div><div class="reservation-review-statuses"><div class="reservation-review-status confirmed"><span>Aguardando autorização</span><strong id="confirmedReservationCount">0</strong><small>Prontas para avaliação</small></div><div class="reservation-review-status unconfirmed"><span>Aguardando confirmação</span><strong id="unconfirmedReservationCount">0</strong><small>Pendentes no e-mail</small></div><div class="reservation-review-status cancellations"><span>Pedidos de cancelamento</span><strong id="cancellationRequestCount">0</strong><small>Solicitados pelo servidor</small></div><button id="reviewReservationsButton" class="primary" type="button">Ver reservas <span>→</span></button></div>`;
+  const adminMetrics=$('#adminView .metrics');
+  if(adminMetrics)adminMetrics.insertAdjacentElement('afterend',reservationNotice);
 
   function countReservationRequests(rows){
     const groups=new Map();
     rows.forEach(row=>{const key=row.recurrence_group||row.id;if(!groups.has(key))groups.set(key,row.status)});
     return {confirmed:[...groups.values()].filter(status=>status==='Aguardando autorização').length,unconfirmed:[...groups.values()].filter(status=>status==='Aguardando confirmação').length};
   }
-  function updateReservationNoticeFromList(rows){
-    const counts=countReservationRequests(rows||reservations||[]),total=counts.confirmed+counts.unconfirmed;
+  function updateReservationNoticeFromList(rows,cancellationsList){
+    const counts=countReservationRequests(rows||reservations||[]), totalCancellations=(cancellationsList||window.cancellationRequests||[]).length;
+    const total=counts.confirmed+counts.unconfirmed+totalCancellations;
     const confEl=$('#confirmedReservationCount');
     const unconfEl=$('#unconfirmedReservationCount');
+    const cancEl=$('#cancellationRequestCount');
     if(confEl)confEl.textContent=counts.confirmed;
     if(unconfEl)unconfEl.textContent=counts.unconfirmed;
+    if(cancEl)cancEl.textContent=totalCancellations;
     if(reservationNotice)reservationNotice.hidden=!total;
     if(reservationsMenuButton){
       reservationsMenuButton.classList.toggle('has-pending-reservations',total>0);
@@ -374,9 +377,12 @@
   async function refreshReservationNotice(){
     const {data:sessionData}=await sb.auth.getSession();
     if(!sessionData?.session){if(reservationNotice)reservationNotice.hidden=true;return}
-    const {data:rows,error}=await sb.from('reservations').select('id,recurrence_group,status').in('status',['Aguardando confirmação','Aguardando autorização']);
-    if(error){console.error('Não foi possível atualizar o aviso de reservas',error);return}
-    updateReservationNoticeFromList(rows||[]);
+    const [{data:rows,error},{data:cancellations,error:cancelError}]=await Promise.all([
+      sb.from('reservations').select('id,recurrence_group,status').in('status',['Aguardando confirmação','Aguardando autorização']),
+      sb.from('cancellation_requests_view').select('id')
+    ]);
+    if(error||cancelError){console.error('Não foi possível atualizar o aviso de reservas',error||cancelError);return}
+    updateReservationNoticeFromList(rows||[],cancellations||[]);
   }
 
   let reservations=[],calendarReservations=[],pendingReservations=[],historyReservations=[],cancellationRequests=[],reservationStats={pending:0,authorized:0,cancelled:0},historyPage=0,historyTotal=0,historySearch='',adminLabs=[],adminServers=[],weekStart=getMonday(new Date()),draggedReservation=null,reservationChannel=null,reservationReloadTimer=null,reservationLoadPromise=null;
