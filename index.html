@@ -164,7 +164,20 @@
         <button id="togglePublicReservationForm" class="card reservation-form-toggle" type="button" aria-expanded="false"><span><i>+</i><span><strong>Fazer uma reserva</strong><small>Informe o laboratório, a data e o horário desejados</small></span></span><b>Expandir ↓</b></button>
         <button id="toggleMyReservationsForm" class="card reservation-form-toggle" type="button" aria-expanded="false" style="margin-top: 10px;"><span><i><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></i><span><strong>Minhas reservas</strong><small>Consulte o status ou solicite um cancelamento</small></span></span><b>Expandir ↓</b></button>
         
-        <aside id="myReservationsSide" class="reservation-side" style="margin-bottom: 14px; order: 3;" hidden><section class="card my-reservations"><h2>Minhas reservas</h2><ol class="reservation-steps-list" style="padding-left: 18px; margin: 12px 0 16px; color: var(--ink); font-size: 13.5px; line-height: 1.5;"><li>Informe seu <strong>SIAPE</strong> abaixo e clique em Enviar.</li><li>Acesse seu <strong>e-mail institucional</strong> e abra a mensagem enviada.</li><li>Clique no link seguro para <strong>ver suas reservas</strong> e cancelar se necessário.</li></ol><div class="protocol-search"><input id="reservationSearchSiape" inputmode="numeric" autocomplete="off" placeholder="Digite seu SIAPE"><button id="searchReservations" type="button">Enviar link</button></div><div id="myReservationsResult"></div></section></aside>
+        <aside id="myReservationsSide" class="reservation-side" style="margin-bottom: 14px; order: 3;" hidden>
+          <section class="card my-reservations highlight-box">
+            <span class="eyebrow" style="color: #087d3e; margin-bottom: 4px; display: block;">GERENCIAR OU CANCELAR</span>
+            <h2 style="margin: 0 0 8px;">Minhas reservas</h2>
+            <p style="margin: 0 0 16px; font-size: 13.5px; line-height: 1.5; color: var(--muted);">Para liberar horários que você não vai mais usar ou apenas consultar sua agenda, solicite o link de acesso seguro:</p>
+            <ol class="reservation-steps-list" style="padding-left: 0; margin: 0 0 20px; color: var(--ink); font-size: 13.5px; line-height: 1.5; list-style: none; display: flex; flex-direction: column; gap: 10px;">
+              <li style="display: flex; gap: 10px; align-items: flex-start;"><b style="display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #087d3e; color: #fff; font-size: 11px; flex-shrink: 0;">1</b> <span>Informe seu <strong>SIAPE</strong> abaixo e clique em Enviar.</span></li>
+              <li style="display: flex; gap: 10px; align-items: flex-start;"><b style="display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #087d3e; color: #fff; font-size: 11px; flex-shrink: 0;">2</b> <span>Acesse seu <strong>e-mail institucional</strong> e abra a mensagem enviada.</span></li>
+              <li style="display: flex; gap: 10px; align-items: flex-start;"><b style="display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #087d3e; color: #fff; font-size: 11px; flex-shrink: 0;">3</b> <span>Clique no link seguro para <strong>ver e cancelar</strong> suas reservas.</span></li>
+            </ol>
+            <div class="protocol-search"><input id="reservationSearchSiape" inputmode="numeric" autocomplete="off" placeholder="Digite seu SIAPE"><button id="searchReservations" type="button">Enviar link</button></div>
+            <div id="myReservationsResult"></div>
+          </section>
+        </aside>
 
         <section class="card public-lab-picker"><div class="public-lab-picker-head"><div><span class="eyebrow">ESCOLHA O ESPAÇO</span><h2>Laboratórios disponíveis</h2><p>Selecione um laboratório para consultar sua agenda e utilizá-lo na solicitação.</p></div></div><div id="publicLabCards" class="public-lab-cards"></div></section>
         <div class="reservation-public-grid">
