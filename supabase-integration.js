@@ -968,6 +968,7 @@
   let staffHeartbeatTimer = null;
   let staffChatDesiredOnline = false;
   let staffChatPresenceListenersBound = false;
+  let staffOnlinePromptTimer = null;
   let currentPublicChatSession = null;
   let currentPublicServer = null;
   let publicChatChannel = null;
@@ -1278,6 +1279,7 @@
         startStaffHeartbeat();
       }
       bindStaffChatPresenceRecovery();
+      scheduleStaffOnlinePrompt();
     } catch (e) {
       console.warn('Falha ao carregar status do técnico', e);
     }
@@ -1292,9 +1294,11 @@
         if (error) throw error;
         if (nextOnline) {
           startStaffHeartbeat();
+          stopStaffOnlinePrompt();
           toast('Você está ONLINE para atendimento via chat.');
         } else {
           stopStaffHeartbeat();
+          scheduleStaffOnlinePrompt();
           toast('Você está OFFLINE para atendimento via chat.');
         }
         await loadChatAvailability();
@@ -1310,6 +1314,74 @@
   }
 
   function staffChatPreferenceKey(profileId){return 'labinfo_staff_chat_online_'+profileId}
+
+  function staffOnlinePromptKey(profileId){
+    return `labinfo_staff_online_prompt_${profileId}_${new Date().toLocaleDateString('sv-SE')}`;
+  }
+
+  function stopStaffOnlinePrompt(){
+    if(staffOnlinePromptTimer){
+      clearTimeout(staffOnlinePromptTimer);
+      staffOnlinePromptTimer=null;
+    }
+    const modal=$('#staffOnlinePrompt');
+    if(modal){
+      modal.hidden=true;
+      if(!document.querySelector('.modal-backdrop:not([hidden])'))document.body.classList.remove('modal-open');
+    }
+  }
+
+  function scheduleStaffOnlinePrompt(delay=12000){
+    if(!state.profile||state.profile.role!=='tecnico'||staffChatDesiredOnline)return;
+    if(staffOnlinePromptTimer)clearTimeout(staffOnlinePromptTimer);
+    staffOnlinePromptTimer=setTimeout(showStaffOnlinePrompt,delay);
+  }
+
+  function showStaffOnlinePrompt(){
+    staffOnlinePromptTimer=null;
+    if(!state.profile||state.profile.role!=='tecnico'||staffChatDesiredOnline||document.hidden)return;
+    const key=staffOnlinePromptKey(state.profile.id);
+    let stateForDay={count:0,lastDismissedAt:0};
+    try{stateForDay={...stateForDay,...JSON.parse(localStorage.getItem(key)||'{}')}}catch(_){/* preferência inválida */}
+    const now=Date.now();
+    // No máximo três lembretes no dia, espaçados por duas horas após cada recusa.
+    if(stateForDay.count>=3 || (stateForDay.lastDismissedAt && now-stateForDay.lastDismissedAt<2*60*60*1000)){
+      const remaining=Math.max(0,2*60*60*1000-(now-(stateForDay.lastDismissedAt||now)));
+      if(stateForDay.count<3)scheduleStaffOnlinePrompt(remaining||2*60*60*1000);
+      return;
+    }
+    let modal=$('#staffOnlinePrompt');
+    if(!modal){
+      document.body.insertAdjacentHTML('beforeend',`<div id="staffOnlinePrompt" class="modal-backdrop staff-online-prompt-backdrop" hidden><div class="card staff-online-prompt-card" role="dialog" aria-modal="true" aria-labelledby="staffOnlinePromptTitle"><span class="eyebrow">CHAT AO VIVO</span><h2 id="staffOnlinePromptTitle">Quer ficar online?</h2><p>Há servidores que podem precisar de atendimento imediato. Você precisa confirmar sua disponibilidade para aparecer no chat ao vivo.</p><div class="modal-actions"><button id="staffOnlinePromptNo" class="secondary" type="button">Agora não</button><button id="staffOnlinePromptYes" class="primary" type="button">Sim, ficar online</button></div></div></div>`);
+      modal=$('#staffOnlinePrompt');
+      $('#staffOnlinePromptNo').onclick=()=>dismissStaffOnlinePrompt(false);
+      $('#staffOnlinePromptYes').onclick=()=>dismissStaffOnlinePrompt(true);
+    }
+    modal.hidden=false;
+    document.body.classList.add('modal-open');
+  }
+
+  function dismissStaffOnlinePrompt(goOnline){
+    if(!state.profile)return;
+    const key=staffOnlinePromptKey(state.profile.id);
+    let stateForDay={count:0,lastDismissedAt:0};
+    try{stateForDay={...stateForDay,...JSON.parse(localStorage.getItem(key)||'{}')}}catch(_){/* preferência inválida */}
+    stateForDay.count=Math.min(3,(Number(stateForDay.count)||0)+1);
+    stateForDay.lastDismissedAt=Date.now();
+    localStorage.setItem(key,JSON.stringify(stateForDay));
+    const modal=$('#staffOnlinePrompt');
+    if(modal)modal.hidden=true;
+    document.body.classList.remove('modal-open');
+    if(goOnline){
+      const toggle=$('#staffChatToggle');
+      if(toggle&&!toggle.checked){
+        toggle.checked=true;
+        toggle.dispatchEvent(new Event('change'));
+      }
+      return;
+    }
+    if(stateForDay.count<3)scheduleStaffOnlinePrompt(2*60*60*1000);
+  }
 
   async function renewStaffChatPresence(){
     if(!state.profile||state.profile.role!=='tecnico'||!staffChatDesiredOnline)return;

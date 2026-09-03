@@ -149,11 +149,14 @@ function montarEmail_(eventType, data) {
     concluido: ['Chamado concluído', 'O atendimento foi concluído pela equipe técnica. Agora, confirme pra gente que deu tudo certo.', '#086c3c', '&#10003;', 'Atendimento resolvido']
     ,novo_chamado_tecnico: ['Novo chamado na fila', 'Um novo chamado foi registrado e está disponível para atribuição.', '#2167a8', '&#128276;', 'Atenção da equipe']
     ,resposta_servidor_tecnico: ['Servidor respondeu ao chamado', data.message || 'Há uma nova resposta aguardando análise da equipe.', '#d66a00', '!', 'Resposta pendente']
+    ,chat_aguardando_tecnico: ['Alguém esperando no chat!', 'Um servidor entrou no chat ao vivo e está aguardando atendimento da equipe.', '#2167a8', '&#128172;', 'Atendimento imediato']
   };
   const content = names[eventType] || ['Atualização do LabInfo TL', 'Há uma novidade em seu chamado.', '#07852a', 'i', 'Nova informação'];
   return {
     subject: eventType === 'concluido'
       ? `${data.protocol || 'LabInfo TL'} — Chamado concluído. Confirme pra gente que deu tudo certo!`
+      : eventType === 'chat_aguardando_tecnico'
+        ? `Alguém esperando no chat! — ${data.protocol || 'LabInfo TL'}`
       : `${data.protocol || 'LabInfo TL'} — ${content[0]}`,
     html: layout_(content[0], content[1], data, {color:content[2],icon:content[3],label:content[4],completed:eventType==='concluido'})
   };
