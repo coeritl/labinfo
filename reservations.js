@@ -21,7 +21,7 @@
   // deste módulo terminar de avaliar as declarações posteriores. Todo o estado
   // administrativo fica disponível desde o início para não haver zona temporal
   // morta em acessos diretos ou na restauração de sessão.
-  var reservations=[],calendarReservations=[],pendingReservations=[],historyReservations=[],cancellationRequests=[],reservationStats={pending:0,authorized:0,cancelled:0},historyPage=0,historyTotal=0,historySearch='',adminLabs=[],adminServers=[],weekStart=getMonday(new Date()),draggedReservation=null,reservationChannel=null,reservationReloadTimer=null,reservationLoadPromise=null;
+  var reservations=[],calendarReservations=[],pendingReservations=[],historyReservations=[],cancellationRequests=[],reservationStats={pending:0,authorized:0,cancelled:0},historyPage=0,historyTotal=0,historySearch='',adminLabs=[],adminServers=[],weekStart=getMonday(new Date()),draggedReservation=null,reservationChannel=null,reservationReloadTimer=null,reservationLoadPromise=null,reservationNotice=null,reservationsMenuButton=null;
   const siteBase=location.hostname.endsWith('.github.io')?'/labinfo':'';
   const sitePath=route=>`${siteBase}/${route?String(route).replace(/^\/+|\/+$/g,'')+'/':''}`;
   function localIso(date,time){return new Date(`${date}T${time}:00-04:00`).toISOString()}
@@ -351,10 +351,10 @@
   $('#cancelReservationReason').onclick=()=>finishCancelReason(null);
   $('#reservationCancelForm').onsubmit=event=>{event.preventDefault();const reason=$('#reservationCancelReason').value.trim();if(!reason)return;finishCancelReason(reason)};
 
-  const reservationsMenuButton=$('#reservationsMenuButton');
+  reservationsMenuButton=$('#reservationsMenuButton');
   if(reservationsMenuButton){reservationsMenuButton.disabled=false;reservationsMenuButton.classList.remove('future-menu-button');reservationsMenuButton.removeAttribute('title');}
 
-  const reservationNotice=document.createElement('section');
+  reservationNotice=document.createElement('section');
   reservationNotice.id='reservationReviewNotice';
   reservationNotice.className='reservation-review-notice card';
   reservationNotice.hidden=true;
