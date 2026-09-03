@@ -17,9 +17,10 @@
   });
   const $=selector=>document.querySelector(selector),safe=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   // A rota /admin/reservas pode ser aberta pela inicialização do painel antes
-  // deste módulo terminar de avaliar todos os seus `let`. Como o carregamento
-  // é compartilhado entre essas chamadas, não pode ficar em zona temporal morta.
-  var reservationLoadPromise=null;
+  // deste módulo terminar de avaliar as declarações posteriores. Todo o estado
+  // administrativo fica disponível desde o início para não haver zona temporal
+  // morta em acessos diretos ou na restauração de sessão.
+  var reservations=[],calendarReservations=[],pendingReservations=[],historyReservations=[],cancellationRequests=[],reservationStats={pending:0,authorized:0,cancelled:0},historyPage=0,historyTotal=0,historySearch='',adminLabs=[],adminServers=[],weekStart=getMonday(new Date()),draggedReservation=null,reservationChannel=null,reservationReloadTimer=null,reservationLoadPromise=null;
   const siteBase=location.hostname.endsWith('.github.io')?'/labinfo':'';
   const sitePath=route=>`${siteBase}/${route?String(route).replace(/^\/+|\/+$/g,'')+'/':''}`;
   const localIso=(date,time)=>new Date(`${date}T${time}:00-04:00`).toISOString(),localDate=value=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Cuiaba',dateStyle:'short'}).format(new Date(value)),localTime=value=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Cuiaba',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
@@ -389,7 +390,6 @@
     updateReservationNoticeFromList(rows||[],cancellations||[]);
   }
 
-  let reservations=[],calendarReservations=[],pendingReservations=[],historyReservations=[],cancellationRequests=[],reservationStats={pending:0,authorized:0,cancelled:0},historyPage=0,historyTotal=0,historySearch='',adminLabs=[],adminServers=[],weekStart=getMonday(new Date()),draggedReservation=null,reservationChannel=null,reservationReloadTimer=null;
   const HISTORY_PAGE_SIZE=20;
   function scheduleReservationReload(delay=900){
     clearTimeout(reservationReloadTimer);
