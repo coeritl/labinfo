@@ -1346,6 +1346,12 @@
     staffOnlinePromptTimer=setTimeout(showStaffOnlinePrompt,delay);
   }
 
+  document.addEventListener('visibilitychange', () => {
+    if(!document.hidden && !staffOnlinePromptTimer && !staffChatDesiredOnline) {
+      scheduleStaffOnlinePrompt(2000); // 2 seconds after focusing
+    }
+  });
+
   function showStaffOnlinePrompt(){
     staffOnlinePromptTimer=null;
     if(!state.profile||state.profile.role!=='tecnico'||staffChatDesiredOnline||document.hidden)return;
