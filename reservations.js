@@ -22,6 +22,10 @@
   // administrativo fica disponível desde o início para não haver zona temporal
   // morta em acessos diretos ou na restauração de sessão.
   var reservations=[],calendarReservations=[],pendingReservations=[],historyReservations=[],cancellationRequests=[],reservationStats={pending:0,authorized:0,cancelled:0},historyPage=0,historyTotal=0,historySearch='',adminLabs=[],adminServers=[],weekStart=getMonday(new Date()),draggedReservation=null,reservationChannel=null,reservationReloadTimer=null,reservationLoadPromise=null,reservationNotice=null,reservationsMenuButton=null;
+  // O roteador administrativo pode ser restaurado antes deste arquivo terminar.
+  // Expor uma promessa impede que ele tente abrir uma seção que ainda não existe.
+  var resolveReservationsModuleReady=null;
+  window.labinfoReservationsReady=new Promise(resolve=>{resolveReservationsModuleReady=resolve});
   const siteBase=location.hostname.endsWith('.github.io')?'/labinfo':'';
   const sitePath=route=>`${siteBase}/${route?String(route).replace(/^\/+|\/+$/g,'')+'/':''}`;
   function localIso(date,time){return new Date(`${date}T${time}:00-04:00`).toISOString()}
@@ -828,6 +832,7 @@
   }
   window.labinfoOpenReservations=openReservationsAdmin;
   window.labinfoLoadReservationAdmin=loadReservationAdmin;
+  resolveReservationsModuleReady?.();
 
   if(reservationsMenuButton)reservationsMenuButton.onclick=openReservationsAdmin;
   document.addEventListener('click',e=>{

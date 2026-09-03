@@ -260,7 +260,16 @@
   }
   $('#maintenanceMenuButton').onclick=()=>{document.querySelectorAll('.admin-section').forEach(x=>x.hidden=true);$('#maintenanceSection').hidden=false;$('#adminTitle').textContent='Manutenção';$('#adminSubtitle').textContent='Acompanhe limites, integrações e filas do sistema.';$('#adminMenuDropdown').hidden=true;clearInterval(maintenanceTimer);renderMaintenance();maintenanceTimer=setInterval(()=>{if(!$('#maintenanceSection').hidden)renderMaintenance()},60000)};$('#refreshMaintenance').onclick=renderMaintenance;
   $('#chatMenuButton').onclick=()=>{document.querySelectorAll('.admin-section').forEach(x=>x.hidden=true);$('#chatAdminSection').hidden=false;$('#adminTitle').textContent='Chat ao vivo';$('#adminSubtitle').textContent='Gerencie atendimentos em tempo real e conversas com os servidores.';$('#adminMenuDropdown').hidden=true;renderChatAdminDashboard()};
-  $('#reservationsMenuButton').onclick=()=>{if(window.labinfoOpenReservations){window.labinfoOpenReservations()}else{document.querySelectorAll('.admin-section').forEach(x=>x.hidden=true);$('#reservationsSection').hidden=false;$('#adminTitle').textContent='Reservas dos laboratórios';$('#adminSubtitle').textContent='Organize a agenda, autorize solicitações e importe reservas em lote.';$('#adminMenuDropdown').hidden=true}};
+  async function openReservationsWhenReady(attempt=0){
+    const ready=window.labinfoReservationsReady;
+    if(ready?.then)await ready;
+    if(window.labinfoOpenReservations)return window.labinfoOpenReservations();
+    // Em uma restauração de sessão muito rápida, o arquivo pode ainda não ter
+    // começado a avaliar. Aguarde brevemente em vez de manipular um DOM ausente.
+    if(attempt<20)return new Promise(resolve=>setTimeout(resolve,25)).then(()=>openReservationsWhenReady(attempt+1));
+    toast('A agenda ainda está sendo preparada. Tente abrir Reservas novamente.');
+  }
+  $('#reservationsMenuButton').onclick=()=>{void openReservationsWhenReady()};
   const adminRouteByTarget={
     analytics:'relatorios',registrations:'cadastros',supervisor:'supervisor',
     reservationsMenuButton:'reservas',chatMenuButton:'chat',hoursMenuButton:'horarios',maintenanceMenuButton:'manutencao'
@@ -272,7 +281,7 @@
     else if(route==='relatorios')showSection('analytics');
     else if(route==='cadastros')showSection('registrations');
     else if(route==='supervisor')showSection('supervisor');
-    else if(route==='reservas')$('#reservationsMenuButton').onclick();
+    else if(route==='reservas')void openReservationsWhenReady();
     else if(route==='chat')$('#chatMenuButton').onclick();
     else if(route==='horarios')$('#hoursMenuButton').onclick();
     else if(route==='manutencao')$('#maintenanceMenuButton').onclick();
