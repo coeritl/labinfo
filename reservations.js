@@ -23,8 +23,10 @@
   var reservations=[],calendarReservations=[],pendingReservations=[],historyReservations=[],cancellationRequests=[],reservationStats={pending:0,authorized:0,cancelled:0},historyPage=0,historyTotal=0,historySearch='',adminLabs=[],adminServers=[],weekStart=getMonday(new Date()),draggedReservation=null,reservationChannel=null,reservationReloadTimer=null,reservationLoadPromise=null;
   const siteBase=location.hostname.endsWith('.github.io')?'/labinfo':'';
   const sitePath=route=>`${siteBase}/${route?String(route).replace(/^\/+|\/+$/g,'')+'/':''}`;
-  const localIso=(date,time)=>new Date(`${date}T${time}:00-04:00`).toISOString(),localDate=value=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Cuiaba',dateStyle:'short'}).format(new Date(value)),localTime=value=>new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Cuiaba',hour:'2-digit',minute:'2-digit'}).format(new Date(value));
-  const normalize=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase();
+  function localIso(date,time){return new Date(`${date}T${time}:00-04:00`).toISOString()}
+  function localDate(value){return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Cuiaba',dateStyle:'short'}).format(new Date(value))}
+  function localTime(value){return new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Cuiaba',hour:'2-digit',minute:'2-digit'}).format(new Date(value))}
+  function normalize(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase()}
   function setupChoiceGroup(inputId){const input=$('#'+inputId),group=document.querySelector(`[data-choice-for="${inputId}"]`);if(!input||!group)return()=>{};const select=value=>{input.value=value;group.querySelectorAll('.choice-block').forEach(button=>{const active=button.dataset.value===String(value);button.classList.toggle('selected',active);button.setAttribute('aria-pressed',active)});input.dispatchEvent(new Event('change'))};group.querySelectorAll('.choice-block').forEach(button=>button.onclick=()=>select(button.dataset.value));select(input.value);return select}
   const standardClassSlots = [
     // Matutino (07:00 - 12:35) • Intervalo: 09:15 - 09:35
@@ -51,7 +53,7 @@
     { start: '22:05', end: '22:50', name: '5ª Aula', period: 'noturno' }
   ];
   const times = standardClassSlots.map(s => s.start);
-  const timeMinutes = value => { const [hour, minute] = String(value || '').split(':').map(Number); return (hour || 0) * 60 + (minute || 0); };
+  function timeMinutes(value){const [hour,minute]=String(value||'').split(':').map(Number);return (hour||0)*60+(minute||0)}
 
   function calculateSlotEndTime(startStr, blocks = 1) {
     const idx = standardClassSlots.findIndex(s => s.start === startStr);
@@ -390,7 +392,7 @@
     updateReservationNoticeFromList(rows||[],cancellations||[]);
   }
 
-  const HISTORY_PAGE_SIZE=20;
+  var HISTORY_PAGE_SIZE=20;
   function scheduleReservationReload(delay=900){
     clearTimeout(reservationReloadTimer);
     reservationReloadTimer=setTimeout(()=>{
@@ -400,7 +402,8 @@
     },delay);
   }
   function getMonday(value){const date=new Date(value);date.setHours(12,0,0,0);const day=date.getDay()||7;date.setDate(date.getDate()-day+1);return date}
-  const isoDate=date=>date.toLocaleDateString('en-CA',{timeZone:'America/Cuiaba'}),addDays=(date,days)=>{const copy=new Date(date);copy.setDate(copy.getDate()+days);return copy};
+  function isoDate(date){return date.toLocaleDateString('en-CA',{timeZone:'America/Cuiaba'})}
+  function addDays(date,days){const copy=new Date(date);copy.setDate(copy.getDate()+days);return copy}
 
   function syncReservationLookup(){
     const map=new Map();
