@@ -16,6 +16,7 @@
     }
   });
   const $=selector=>document.querySelector(selector),safe=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const setText=(selector,value)=>{const element=$(selector);if(element)element.textContent=value;return element};
   // A rota /admin/reservas pode ser aberta pela inicialização do painel antes
   // deste módulo terminar de avaliar as declarações posteriores. Todo o estado
   // administrativo fica disponível desde o início para não haver zona temporal
@@ -536,11 +537,11 @@
 
   function renderPendingReview(){
     const rows=groupedReservations(pendingReservations).filter(row=>row.status==='Aguardando confirmação'||row.status==='Aguardando autorização');
-    const section=$('#reservationPendingReview');
-    if(!section)return;
+    const section=$('#reservationPendingReview'),count=$('#reservationPendingCount'),list=$('#reservationPendingList');
+    if(!section||!count||!list)return;
     section.hidden=!rows.length;
-    $('#reservationPendingCount').textContent=rows.length;
-    $('#reservationPendingList').innerHTML=rows.map(row=>{
+    count.textContent=rows.length;
+    list.innerHTML=rows.map(row=>{
       const unconfirmed=row.status==='Aguardando confirmação';
       const period=row.occurrences.length>1?`${localDate(row.starts_at)} a ${localDate(row.last_at)} • ${row.occurrences.length} semanas`:`${localDate(row.starts_at)}, ${localTime(row.starts_at)}–${localTime(row.ends_at)}`;
       const statusClass=normalize(row.status).replace(/\s/g,'-');
@@ -586,6 +587,8 @@
   });
 
   function renderCalendar(){
+    const calEl=$('#reservationCalendar');
+    if(!calEl)return;
     const labId=$('#adminReservationLab')?.value||adminLabs[0]?.id;
     if(labId&&$('#adminReservationLab')&&!$('#adminReservationLab').value)$('#adminReservationLab').value=labId;
     const days=Array.from({length:6},(_,index)=>addDays(weekStart,index));
@@ -604,7 +607,7 @@
       weekRows.push({...r,rDate,rTime,rEndTime,startMin,endMin});
     }
 
-    $('#reservationWeekLabel').textContent=`${localDate(days[0])} a ${localDate(days[5])}`;
+    setText('#reservationWeekLabel',`${localDate(days[0])} a ${localDate(days[5])}`);
 
     const CAL_START=420,CAL_END=1380,PPM=1.3;
     const H=(CAL_END-CAL_START)*PPM;
@@ -622,8 +625,6 @@
       html+=`</div>`;
     }
 
-    const calEl=$('#reservationCalendar');
-    if(!calEl)return;
     calEl.innerHTML=html;
 
     calEl.querySelectorAll('.calendar-reservation').forEach(card=>card.ondragstart=()=>{draggedReservation=calendarReservations.find(r=>r.id===card.dataset.id)});
@@ -814,8 +815,8 @@
     document.querySelectorAll('.admin-section').forEach(section=>section.hidden=true);
     const sec=$('#reservationsSection');
     if(sec)sec.hidden=false;
-    $('#adminTitle').textContent='Reservas dos laboratórios';
-    $('#adminSubtitle').textContent='Organize a agenda, autorize solicitações e importe reservas em lote.';
+    setText('#adminTitle','Reservas dos laboratórios');
+    setText('#adminSubtitle','Organize a agenda, autorize solicitações e importe reservas em lote.');
     window.scrollTo(0,0);
     try{
       await loadReservationAdmin(true);
