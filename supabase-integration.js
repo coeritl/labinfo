@@ -1159,7 +1159,7 @@
         if (s.status === 'waiting' && s.created_at) {
           const ageMin = (nowMs - new Date(s.created_at).getTime()) / 60000;
           if (ageMin > 20) {
-            sb.rpc('close_chat_session', { p_session_id: s.id, p_notes: 'Expirado por inatividade na fila' }).catch(() => {});
+            Promise.resolve(sb.rpc('close_chat_session', { p_session_id: s.id, p_notes: 'Expirado por inatividade na fila' })).catch(() => {});
             return false;
           }
         }

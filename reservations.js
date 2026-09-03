@@ -235,14 +235,22 @@
   
   const myReservationsSide=$('#myReservationsSide'),myReservationsToggle=$('#toggleMyReservationsForm');
   function toggleMyReservationsForm(open){
+    // O layout atual exibe "Minhas reservas" diretamente na lateral e não
+    // possui mais o botão expansível antigo. Preserve compatibilidade com os
+    // dois layouts sem interromper a inicialização do módulo.
+    if(!myReservationsSide){
+      if(open)setTimeout(()=>$('.my-reservations')?.scrollIntoView({behavior:'smooth',block:'start'}),50);
+      return;
+    }
     myReservationsSide.hidden=!open;
+    if(!myReservationsToggle)return;
     myReservationsToggle.setAttribute('aria-expanded',open);
     const svgIcon = '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
     myReservationsToggle.querySelector('i').innerHTML=open?'−':svgIcon;
     myReservationsToggle.querySelector('b').textContent=open?'Recolher ↑':'Expandir ↓';
     if(open)setTimeout(()=>myReservationsSide.scrollIntoView({behavior:'smooth',block:'start'}),50);
   }
-  myReservationsToggle.onclick=()=>toggleMyReservationsForm(myReservationsSide.hidden);
+  if(myReservationsToggle&&myReservationsSide)myReservationsToggle.onclick=()=>toggleMyReservationsForm(myReservationsSide.hidden);
 
   const publicNotice=$('#publicReservationNotice');
   function closePublicReservationNotice(){modal('publicReservationNotice',false)}
