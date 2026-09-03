@@ -297,7 +297,7 @@
     if(siape.length<5)return box.innerHTML='<p class="error-text">Informe seu SIAPE.</p>';
     box.innerHTML='<p class="empty">Preparando acesso seguro…</p>';
     const {error}=await sb.rpc('request_reservation_access',{p_siape:siape});
-    box.innerHTML=error?`<p class="error-text">${safe(error.message)}</p>`:'<p class="reservation-access-sent"><strong>Verifique seu e-mail institucional.</strong><br>Se o SIAPE estiver ativo, o link de acesso seguro chegará em <strong>até 1 minuto</strong> e será válido por 30 minutos.</p>';
+    box.innerHTML=error?`<p class="error-text">${safe(error.message)}</p>`:'<div class="reservation-access-sent"><h3>Verifique seu e-mail institucional</h3><p>Se o SIAPE estiver ativo, enviamos um link seguro de acesso.</p><p style="margin-top: 6px; font-weight: 500;">Pode levar até 1 minuto para chegar na sua caixa de entrada.</p></div>';
   }
   $('#searchReservations').onclick=searchMyReservations;$('#reservationSearchSiape').onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();searchMyReservations()}};
 
