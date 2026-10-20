@@ -25,13 +25,13 @@
         <p id="softwareRequestIdentity" class="field-hint">Digite seu SIAPE para validação.</p>
         <div class="section-title"><span>2</span><div><h2>Turma e laboratório</h2></div></div>
         <div class="field-row"><label>Laboratório<select id="softwareRequestLab" required><option value="">Selecione</option></select></label><label>Disciplina, curso ou atividade<input id="softwareRequestSubject" maxlength="160" required placeholder="Ex.: Programação Web — ADS 3º semestre"></label></div>
-        <details id="softwareInstalledPanel" class="software-installed-panel" hidden>
-          <summary><span><strong>Consultar softwares já instalados</strong><small id="softwareInstalledHint">Selecione um laboratório para conferir o inventário.</small></span><b id="softwareInstalledCount">0</b></summary>
+        <section id="softwareInstalledPanel" class="software-installed-panel">
+          <div class="software-installed-head"><span><strong>Softwares instalados neste laboratório</strong><small id="softwareInstalledHint">Selecione um laboratório para conferir o inventário.</small></span><b id="softwareInstalledCount">0</b></div>
           <div class="software-installed-content">
             <label class="software-installed-search">Buscar na lista<input id="softwareInstalledSearch" type="search" autocomplete="off" placeholder="Digite o nome do software"></label>
-            <div id="softwareInstalledList" class="software-installed-list" aria-live="polite"></div>
+            <div id="softwareInstalledList" class="software-installed-list" aria-live="polite"><p class="empty">Selecione um laboratório para visualizar os softwares cadastrados.</p></div>
           </div>
-        </details>
+        </section>
         <fieldset class="software-scope"><legend>Onde o software deve estar disponível?</legend><label><input type="radio" name="softwareScope" value="all" checked> Todos os computadores do laboratório</label><label><input type="radio" name="softwareScope" value="specific"> Somente computadores específicos</label></fieldset>
         <label id="softwareMachinesLabel" hidden>Computadores ou bancadas<input id="softwareRequestMachines" maxlength="500" placeholder="Ex.: PC-01 a PC-12, bancada do professor"></label>
         <div class="section-title"><span>3</span><div><h2>Softwares solicitados</h2><p>Informe nome, versão desejada e fonte oficial sempre que possível</p></div></div>
@@ -85,9 +85,14 @@
     const panel=$('#softwareInstalledPanel'),select=$('#softwareRequestLab'),search=$('#softwareInstalledSearch');
     if(!panel||!select)return;
     const lab=publicLabs.find(item=>String(item.id)===select.value);
-    if(!lab){panel.hidden=true;panel.open=false;if(search)search.value='';return}
-    panel.hidden=false;
-    if(!search?.value)panel.open=true;
+    if(!lab){
+      if(search){search.value='';search.disabled=true}
+      $('#softwareInstalledCount').textContent='0';
+      $('#softwareInstalledHint').textContent='Selecione um laboratório para conferir o inventário.';
+      $('#softwareInstalledList').innerHTML='<p class="empty">Selecione um laboratório para visualizar os softwares cadastrados.</p>';
+      return;
+    }
+    if(search)search.disabled=false;
     const inventory=Array.isArray(lab.software_inventory)?lab.software_inventory.filter(item=>item&&String(item.name||'').trim()):[];
     const term=String(search?.value||'').trim().toLocaleLowerCase('pt-BR');
     const visible=term?inventory.filter(item=>`${item.name||''} ${item.version||''}`.toLocaleLowerCase('pt-BR').includes(term)):inventory;
