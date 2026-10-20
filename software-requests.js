@@ -87,6 +87,7 @@
     const lab=publicLabs.find(item=>String(item.id)===select.value);
     if(!lab){panel.hidden=true;panel.open=false;if(search)search.value='';return}
     panel.hidden=false;
+    if(!search?.value)panel.open=true;
     const inventory=Array.isArray(lab.software_inventory)?lab.software_inventory.filter(item=>item&&String(item.name||'').trim()):[];
     const term=String(search?.value||'').trim().toLocaleLowerCase('pt-BR');
     const visible=term?inventory.filter(item=>`${item.name||''} ${item.version||''}`.toLocaleLowerCase('pt-BR').includes(term)):inventory;
