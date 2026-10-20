@@ -15,7 +15,7 @@
     return `<section id="softwareRequestCampaign" class="card software-campaign" hidden>
       <div class="software-campaign-head">
         <div><span class="eyebrow">PREPARAÇÃO DO PRÓXIMO SEMESTRE</span><h2 id="softwareCampaignTitle">Solicitar instalação ou atualização</h2><p id="softwareCampaignDeadline"></p></div>
-        <button id="toggleSoftwareRequestForm" class="primary" type="button" aria-expanded="false">Fazer solicitação</button>
+        <button id="toggleSoftwareRequestForm" class="primary software-campaign-toggle" type="button" aria-expanded="false">Fazer solicitação</button>
       </div>
       <p id="softwareCampaignInstructions" class="software-campaign-instructions"></p>
       <div id="softwareRequestResult" class="software-request-result" hidden aria-live="polite"></div>
@@ -138,11 +138,12 @@
 
   async function submitRequest(event){
     event.preventDefault();
+    const form=event.currentTarget;
     if(!activeCycle)return notify('O período de solicitações foi encerrado.');
     if(!identifiedServer)return notify('Valide um SIAPE ativo antes de enviar.');
     const items=collectItems();if(items.some(item=>item.name.length<2))return notify('Informe o nome de todos os softwares.');
     const scope=document.querySelector('input[name="softwareScope"]:checked').value;
-    const button=event.currentTarget.querySelector('button[type="submit"]'),result=$('#softwareRequestResult');
+    const button=form.querySelector('button[type="submit"]'),result=$('#softwareRequestResult');
     button.disabled=true;button.textContent='Enviando…';result.hidden=true;result.className='software-request-result';
     try{
       const request=db().rpc('submit_software_request',{
@@ -153,7 +154,7 @@
       const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('O servidor demorou para responder. Verifique sua conexão e tente novamente.')),20000));
       const {error}=await Promise.race([request,timeout]);
       if(error)throw error;
-      event.currentTarget.reset();identifiedServer=null;$('#softwareRequestIdentity').textContent='Digite seu SIAPE para validação.';$('#softwareRequestItems').innerHTML='';addItem();renderInstalledSoftware();
+      form.reset();identifiedServer=null;$('#softwareRequestIdentity').textContent='Digite seu SIAPE para validação.';$('#softwareRequestItems').innerHTML='';addItem();renderInstalledSoftware();
       result.classList.add('success');result.hidden=false;result.innerHTML='<strong>✓ Verifique seu e-mail institucional</strong><p>Enviamos os botões para confirmar ou cancelar a solicitação. O chamado só será criado depois da confirmação.</p>';
       result.scrollIntoView({behavior:'smooth',block:'center'});
     }catch(error){
