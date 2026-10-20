@@ -135,10 +135,16 @@
 
   function publicMonday(value){const date=new Date(value);date.setHours(12,0,0,0);const day=date.getDay()||7;date.setDate(date.getDate()-day+1);return date}
   const publicIsoDate=date=>date.toLocaleDateString('en-CA',{timeZone:'America/Cuiaba'}),publicAddDays=(date,days)=>{const copy=new Date(date);copy.setDate(copy.getDate()+days);return copy};
+  function renderPublicSoftwareInventory(lab){
+    const items=Array.isArray(lab?.software_inventory)?lab.software_inventory:[],box=$('#publicScheduleSoftware'),count=$('#publicScheduleSoftwareCount'),list=$('#publicScheduleSoftwareList');
+    if(!box||!count||!list)return;
+    box.hidden=!items.length;count.textContent=`${items.length} ${items.length===1?'item':'itens'}`;
+    list.innerHTML=items.map(item=>`<span><strong>${safe(item?.name||'Software')}</strong><small>${safe(item?.version||'Versão não informada')}</small></span>`).join('');
+  }
   function renderPublicLabCards(){
     const selected=$('#publicScheduleLab').value;
     $('#publicLabCards').innerHTML=publicLabs.map(lab=>{
-      const isSel=selected===lab.id,count=Number(lab.computer_count)||0,os=lab.operating_system?safe(lab.operating_system):'';
+      const isSel=selected===lab.id,count=Number(lab.computer_count)||0,os=lab.operating_system?safe(lab.operating_system):'',softwareCount=Array.isArray(lab.software_inventory)?lab.software_inventory.length:0;
       return `<button class="public-lab-card ${isSel?'selected':''}" type="button" data-lab="${lab.id}" aria-pressed="${isSel}">
         <div class="lab-card-header">
           <div class="public-lab-icon" aria-hidden="true">
@@ -158,6 +164,10 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
             ${os}
           </span>`:''}
+          ${softwareCount?`<span class="lab-spec-chip lab-spec-software" title="${softwareCount} software(s) cadastrado(s)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+            ${softwareCount} software${softwareCount===1?'':'s'}
+          </span>`:''}
         </div>
         <div class="lab-card-footer">
           <span class="lab-card-status-badge ${isSel?'active':'available'}">${isSel?'● Aberto':'● Disponível'}</span>
@@ -170,20 +180,23 @@
       if(!lab)return;
       $('#publicScheduleLab').value=lab.id;
       $('#reservationLab').value=lab.id;
-      $('#reservationSelectedLab').innerHTML=`<strong>${safe(lab.name)}</strong><span>${safe(lab.location||'Localização não informada')} • ${Number(lab.computer_count)||0} computador(es)${lab.operating_system ? ' • SO: ' + safe(lab.operating_system) : ''}</span>`;
+      const softwareCount=Array.isArray(lab.software_inventory)?lab.software_inventory.length:0;
+      $('#reservationSelectedLab').innerHTML=`<strong>${safe(lab.name)}</strong><span>${safe(lab.location||'Localização não informada')} • ${Number(lab.computer_count)||0} computador(es)${lab.operating_system ? ' • SO: ' + safe(lab.operating_system) : ''}${softwareCount?' • '+softwareCount+' software(s) cadastrado(s)':''}</span>`;
       $('#publicScheduleTitle').textContent=lab.name;
       $('#publicScheduleDescription').textContent=`${lab.location||'Localização não informada'} • ${Number(lab.computer_count)||0} computador(es) disponíveis${lab.operating_system ? ' • SO: ' + lab.operating_system : ''}`;
+      renderPublicSoftwareInventory(lab);
       $('#publicScheduleCard').hidden=false;
       renderPublicLabCards();
       await loadPublicSchedule();
       setTimeout(()=>$('#publicScheduleCard').scrollIntoView({behavior:'smooth',block:'start'}),50);
     });
   }
-  async function loadPublicLabs(){const {data,error}=await sb.from('labs').select('id,name,code,location,computer_count,operating_system').eq('active',true).eq('reservation_enabled',true).order('name');if(error)return;publicLabs=data||[];const options=publicLabs.map(lab=>`<option value="${lab.id}">${safe(lab.name)}</option>`).join('');$('#reservationLab').innerHTML='<option value="">Selecione o laboratório</option>'+options;$('#publicScheduleLab').innerHTML='<option value=""></option>'+options;renderPublicLabCards()}
+  async function loadPublicLabs(){const {data,error}=await sb.from('labs').select('id,name,code,location,computer_count,operating_system,software_inventory').eq('active',true).eq('reservation_enabled',true).order('name');if(error)return;publicLabs=data||[];const options=publicLabs.map(lab=>`<option value="${lab.id}">${safe(lab.name)}</option>`).join('');$('#reservationLab').innerHTML='<option value="">Selecione o laboratório</option>'+options;$('#publicScheduleLab').innerHTML='<option value=""></option>'+options;renderPublicLabCards()}
   async function loadPublicSchedule(){
     const lab=$('#publicScheduleLab').value||publicLabs[0]?.id;
     if(!lab)return;
     $('#publicScheduleLab').value=lab;
+    renderPublicSoftwareInventory(publicLabs.find(item=>item.id===lab));
     const days=Array.from({length:6},(_,index)=>publicAddDays(publicWeekStart,index)),
           from=publicIsoDate(days[0]),
           to=publicIsoDate(days[5]),

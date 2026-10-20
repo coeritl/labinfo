@@ -1332,3 +1332,18 @@ body:has(#homeView:not([hidden])) .home-hero{margin-bottom:22px}
   line-height:1.25;
 }
 .reservation-admin-row h3,.public-reservation-item h3{text-transform:uppercase}
+
+/* Inventário de softwares dos laboratórios */
+.lab-spec-software{background:#f4f0ff;color:#5b3b91;border-color:#ddd2f2}
+.lab-software-editor{display:grid;gap:11px;margin:14px 0;padding:16px;border:1px solid #c6d8ce;border-radius:12px;background:#f8fbf9}
+.lab-software-editor-head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+.lab-software-editor-head>div{display:grid;gap:3px}.lab-software-editor-head strong{font-size:14px}.lab-software-editor-head small{color:var(--muted);font-size:11px;font-weight:500;line-height:1.4}
+.lab-software-editor-head>span{flex:0 0 auto;padding:6px 9px;border-radius:99px;background:var(--green-soft);color:var(--green-dark);font-size:10px;font-weight:800}
+.lab-software-editor textarea{margin:0;min-height:138px;font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;resize:vertical}
+.lab-software-actions{display:flex;flex-wrap:wrap;gap:8px}.lab-software-actions .secondary{width:auto;margin:0;padding:9px 12px;font-size:11px}.lab-software-file{display:inline-flex;align-items:center;cursor:pointer}
+.lab-software-errors{display:grid;gap:4px;padding:10px 12px;border:1px solid #efc9cb;border-radius:9px;background:#fff4f4;color:#9d1d22}.lab-software-errors span{font-size:10px;font-weight:700}
+.registry-software-preview{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.registry-software-preview span,.registry-software-preview em{padding:4px 7px;border-radius:6px;background:#f1f5f2;color:#33483b;font-size:10px;font-style:normal}.registry-software-preview b{margin-left:3px;color:var(--muted);font-weight:600}
+.public-schedule-software{margin:14px 0 18px;border:1px solid #d8e5dc;border-radius:11px;background:#f8fbf9;overflow:hidden}.public-schedule-software[hidden]{display:none}
+.public-schedule-software summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;cursor:pointer;color:var(--green-dark);font-size:13px;font-weight:800;list-style:none}.public-schedule-software summary::-webkit-details-marker{display:none}.public-schedule-software summary:after{content:'＋';font-size:16px}.public-schedule-software[open] summary:after{content:'−'}.public-schedule-software summary b{margin-left:auto;padding:4px 8px;border-radius:99px;background:var(--green-soft);font-size:10px}
+.public-software-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:7px;padding:0 14px 14px}.public-software-list>span{display:grid;gap:2px;padding:9px 10px;border:1px solid #e0e9e3;border-radius:8px;background:#fff}.public-software-list strong{font-size:11px;overflow-wrap:anywhere}.public-software-list small{color:var(--muted);font-size:10px;overflow-wrap:anywhere}
+@media(max-width:620px){.lab-software-editor-head{flex-direction:column}.lab-software-actions{flex-direction:column}.lab-software-actions .secondary{width:100%;justify-content:center}.public-software-list{grid-template-columns:1fr}.registry-software-preview{display:none}}

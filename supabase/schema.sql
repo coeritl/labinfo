@@ -27,7 +27,10 @@ create table public.categories (
 );
 create table public.labs (
   id uuid primary key default gen_random_uuid(), name text not null unique,
-  code text unique, location text, computer_count integer not null default 0 check (computer_count >= 0), reservation_enabled boolean not null default false, active boolean not null default true,
+  code text unique, location text, computer_count integer not null default 0 check (computer_count >= 0),
+  operating_system text,
+  software_inventory jsonb not null default '[]'::jsonb check (jsonb_typeof(software_inventory) = 'array' and jsonb_array_length(software_inventory) <= 1000),
+  reservation_enabled boolean not null default false, active boolean not null default true,
   created_at timestamptz not null default now()
 );
 create table public.protocol_sequences (
