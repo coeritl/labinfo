@@ -42,6 +42,10 @@
           <span class="software-security-icon" aria-hidden="true">✉</span>
           <div><strong>Confirmação obrigatória por e-mail</strong><span>O chamado só será criado depois que você confirmar a solicitação pelo e-mail institucional cadastrado no sistema.</span></div>
         </div>
+        <div class="software-compatibility-note">
+          <span class="software-compatibility-icon" aria-hidden="true">i</span>
+          <div><strong>Aguarde a análise da equipe técnica</strong><span>Após confirmar a solicitação, acompanhe as atualizações até a conclusão do chamado. A instalação ou atualização depende da compatibilidade do software com o sistema operacional, os computadores e as configurações do laboratório solicitado.</span></div>
+        </div>
         <button class="primary" type="submit">Enviar para confirmação por e-mail <span>→</span></button>
       </form>
     </section>`;
@@ -108,13 +112,18 @@
         :'<p class="empty">Nenhum software corresponde à busca.</p>';
   }
 
-  async function loadPublicCampaign(){
+  async function loadPublicCampaign(attempt=0){
     const client=db();if(!client)return;
-    const [{data:cycles,error},{data:labs}]=await Promise.all([
+    const [{data:cycles,error},{data:labs,error:labsError}]=await Promise.all([
       client.rpc('get_active_software_request_cycle'),
       client.from('labs').select('id,name,location,software_inventory').eq('active',true).order('name')
     ]);
-    if(error){console.warn('Campanha de software indisponível',error);return}
+    if(error||labsError){
+      console.warn('Campanha de software indisponível',error||labsError);
+      if(attempt<3){await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));return loadPublicCampaign(attempt+1)}
+      return;
+    }
+    if(!cycles?.length&&attempt<2){await new Promise(resolve=>setTimeout(resolve,500*(attempt+1)));return loadPublicCampaign(attempt+1)}
     activeCycle=cycles?.[0]||null;publicLabs=labs||[];
     const section=$('#softwareRequestCampaign');if(!section)return;
     section.hidden=!activeCycle;

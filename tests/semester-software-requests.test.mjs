@@ -42,8 +42,11 @@ test('interface possui campanha pública, administração e confirmação instit
   assert.match(js,/Softwares instalados neste laboratório/);
   assert.match(js,/Selecione um laboratório para visualizar os softwares cadastrados/);
   assert.match(js,/Confirmação obrigatória por e-mail/);
+  assert.match(js,/Aguarde a análise da equipe técnica/);
+  assert.match(js,/compatibilidade do software com o sistema operacional/);
   assert.match(js,/const form=event\.currentTarget/);
   assert.match(js,/form\.reset\(\)/);
+  assert.match(js,/loadPublicCampaign\(attempt\+1\)/);
   assert.match(admin,/softwareRequestsMenuButton/);
   assert.match(email,/Confirmar e criar chamado/);
   assert.match(email,/Cancelar solicitação/);
