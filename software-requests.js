@@ -18,6 +18,7 @@
         <button id="toggleSoftwareRequestForm" class="primary" type="button" aria-expanded="false">Fazer solicitação</button>
       </div>
       <p id="softwareCampaignInstructions" class="software-campaign-instructions"></p>
+      <div id="softwareRequestResult" class="software-request-result" hidden aria-live="polite"></div>
       <form id="softwareRequestForm" class="software-request-form" hidden>
         <div class="section-title"><span>1</span><div><h2>Identificação</h2><p>A confirmação será enviada ao e-mail institucional cadastrado</p></div></div>
         <label>SIAPE<input id="softwareRequestSiape" inputmode="numeric" autocomplete="off" placeholder="0000000" required></label>
@@ -106,16 +107,27 @@
     if(!identifiedServer)return notify('Valide um SIAPE ativo antes de enviar.');
     const items=collectItems();if(items.some(item=>item.name.length<2))return notify('Informe o nome de todos os softwares.');
     const scope=document.querySelector('input[name="softwareScope"]:checked').value;
-    const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true;button.textContent='Enviando…';
-    const {error}=await db().rpc('submit_software_request',{
-      p_siape:$('#softwareRequestSiape').value.trim(),p_cycle:activeCycle.id,p_lab:$('#softwareRequestLab').value,
-      p_course_subject:$('#softwareRequestSubject').value.trim(),p_computer_scope:scope,
-      p_machines:scope==='specific'?$('#softwareRequestMachines').value.trim():null,p_items:items,p_notes:$('#softwareRequestNotes').value.trim()||null
-    });
-    button.disabled=false;button.innerHTML='Enviar para confirmação por e-mail <span>→</span>';
-    if(error)return notify(error.message||'Não foi possível enviar a solicitação.');
-    event.currentTarget.reset();identifiedServer=null;$('#softwareRequestIdentity').textContent='Digite seu SIAPE para validação.';$('#softwareRequestItems').innerHTML='';addItem();
-    const box=$('#reservationConfirmation');box.hidden=false;box.innerHTML=`<strong>✓ Verifique seu e-mail institucional</strong><p>Enviamos os botões para confirmar ou cancelar a solicitação. O chamado só será criado depois da confirmação.</p>`;box.scrollIntoView({behavior:'smooth',block:'center'});
+    const button=event.currentTarget.querySelector('button[type="submit"]'),result=$('#softwareRequestResult');
+    button.disabled=true;button.textContent='Enviando…';result.hidden=true;result.className='software-request-result';
+    try{
+      const request=db().rpc('submit_software_request',{
+        p_siape:$('#softwareRequestSiape').value.trim(),p_cycle:activeCycle.id,p_lab:$('#softwareRequestLab').value,
+        p_course_subject:$('#softwareRequestSubject').value.trim(),p_computer_scope:scope,
+        p_machines:scope==='specific'?$('#softwareRequestMachines').value.trim():null,p_items:items,p_notes:$('#softwareRequestNotes').value.trim()||null
+      });
+      const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('O servidor demorou para responder. Verifique sua conexão e tente novamente.')),20000));
+      const {error}=await Promise.race([request,timeout]);
+      if(error)throw error;
+      event.currentTarget.reset();identifiedServer=null;$('#softwareRequestIdentity').textContent='Digite seu SIAPE para validação.';$('#softwareRequestItems').innerHTML='';addItem();
+      result.classList.add('success');result.hidden=false;result.innerHTML='<strong>✓ Verifique seu e-mail institucional</strong><p>Enviamos os botões para confirmar ou cancelar a solicitação. O chamado só será criado depois da confirmação.</p>';
+      result.scrollIntoView({behavior:'smooth',block:'center'});
+    }catch(error){
+      console.error('Falha ao enviar solicitação de software',error);
+      result.classList.add('error');result.hidden=false;result.innerHTML=`<strong>Não foi possível enviar</strong><p>${safe(error?.message||'Tente novamente em alguns instantes.')}</p>`;
+      result.scrollIntoView({behavior:'smooth',block:'center'});
+    }finally{
+      button.disabled=false;button.innerHTML='Enviar para confirmação por e-mail <span>→</span>';
+    }
   }
 
   async function handleToken(){

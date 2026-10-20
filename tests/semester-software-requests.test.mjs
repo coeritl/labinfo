@@ -33,6 +33,8 @@ test('interface possui campanha pública, administração e confirmação instit
   assert.match(js,/submit_software_request/);
   assert.match(js,/confirm_software_request/);
   assert.match(js,/staff_save_software_request_cycle/);
+  assert.match(js,/Promise\.race\(\[request,timeout\]\)/);
+  assert.match(js,/finally\s*\{/);
   assert.match(admin,/softwareRequestsMenuButton/);
   assert.match(email,/Confirmar e criar chamado/);
   assert.match(email,/Cancelar solicitação/);
