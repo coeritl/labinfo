@@ -38,7 +38,10 @@
         <div id="softwareRequestItems" class="software-request-items"></div>
         <button id="addSoftwareRequestItem" class="secondary software-add-item" type="button">+ Adicionar outro software</button>
         <label>Observações gerais <small>(opcional)</small><textarea id="softwareRequestNotes" rows="3" maxlength="1200" placeholder="Requisitos da disciplina, plugins, configurações ou outras orientações"></textarea></label>
-        <div class="software-security-note"><strong>Validação institucional</strong><span>O chamado só será criado depois que você confirmar a solicitação pelo e-mail institucional cadastrado no sistema.</span></div>
+        <div class="software-security-note">
+          <span class="software-security-icon" aria-hidden="true">✉</span>
+          <div><strong>Confirmação obrigatória por e-mail</strong><span>O chamado só será criado depois que você confirmar a solicitação pelo e-mail institucional cadastrado no sistema.</span></div>
+        </div>
         <button class="primary" type="submit">Enviar para confirmação por e-mail <span>→</span></button>
       </form>
     </section>`;
