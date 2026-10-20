@@ -140,6 +140,7 @@ function registrarMetricas_(kind, sent) {
 
 
 function montarEmail_(eventType, data) {
+  if (String(eventType).indexOf('software_') === 0) return montarEmailSoftware_(eventType, data || {});
   if (String(eventType).indexOf('reserva_') === 0) return montarEmailReserva_(eventType, data);
   const names = {
     recebido: ['Chamado recebido pela equipe', 'Recebemos seu chamado e ele já está na fila de atendimento.', '#07852a', '&#10003;&#65038;', 'Solicitação registrada'],
@@ -160,6 +161,22 @@ function montarEmail_(eventType, data) {
       : `${data.protocol || 'LabInfo TL'} — ${content[0]}`,
     html: layout_(content[0], content[1], data, {color:content[2],icon:content[3],label:content[4],completed:eventType==='concluido'})
   };
+}
+
+function montarEmailSoftware_(eventType, data) {
+  const items = Array.isArray(data.items) ? data.items : [];
+  const rows = items.map(function(item) {
+    const action = item.action === 'update' ? 'Atualizar' : 'Instalar';
+    return '<tr><td style="padding:11px 12px;border-top:1px solid #dce7df"><b style="color:#086c3c">'+escapar_(action)+'</b><br><strong>'+escapar_(item.name || '')+'</strong>'+
+      (item.version ? '<br><span style="color:#52635a">Versão: '+escapar_(item.version)+'</span>' : '')+
+      (item.official_url ? '<br><a href="'+escapar_(item.official_url)+'" style="color:#086c3c">Fonte oficial</a>' : '')+
+      (item.license_notes ? '<br><span style="color:#52635a">'+escapar_(item.license_notes)+'</span>' : '')+'</td></tr>';
+  }).join('');
+  const confirmation = escapar_(data.confirmation_url || '');
+  const cancellation = escapar_(data.cancellation_url || '');
+  const scope = data.computer_scope === 'specific' ? escapar_(data.machines || 'Computadores específicos') : 'Todos os computadores do laboratório';
+  const html = '<!doctype html><html><body style="margin:0;background:#f2f6f3;font-family:Arial,sans-serif;color:#10231a"><table role="presentation" width="100%"><tr><td align="center" style="padding:28px 12px"><table role="presentation" width="600" style="max-width:600px;background:#fff;border-radius:18px;overflow:hidden;border:1px solid #dce7df"><tr><td style="padding:25px 30px;border-top:7px solid #086c3c"><img src="'+LABINFO.logoUrl+'" alt="LabInfo TL" width="235" style="display:block;max-width:100%;height:auto"></td></tr><tr><td style="padding:2px 30px 30px"><span style="color:#086c3c;font-size:13px;font-weight:bold;letter-spacing:.06em">CONFIRMAÇÃO INSTITUCIONAL</span><h1 style="font-size:25px;margin:10px 0 12px">Confirme sua solicitação de software</h1><p style="font-size:16px;line-height:1.6">Recebemos uma solicitação para preparar o laboratório para o semestre <b>'+escapar_(data.semester_label || '')+'</b>. O chamado somente será criado após sua confirmação.</p><table role="presentation" width="100%" style="background:#f5f8f6;border-left:4px solid #086c3c;border-radius:12px"><tr><td style="padding:16px;font-size:14px;line-height:1.8"><b>Servidor:</b> '+escapar_(data.server_name || '')+'<br><b>Disciplina/atividade:</b> '+escapar_(data.course_subject || '')+'<br><b>Laboratório:</b> '+escapar_(data.lab || '')+'<br><b>Computadores:</b> '+scope+'</td></tr></table><h2 style="font-size:17px;margin:22px 0 8px">Softwares solicitados</h2><table role="presentation" width="100%" style="border:1px solid #dce7df;border-radius:10px;border-collapse:separate;border-spacing:0">'+rows+'</table>'+(data.notes?'<p style="font-size:14px;line-height:1.6;background:#fff8e1;padding:12px;border-radius:9px"><b>Observações:</b> '+escapar_(data.notes)+'</p>':'')+'<table role="presentation" width="100%" style="margin-top:24px"><tr><td><a href="'+confirmation+'" style="display:block;background:#086c3c;color:#fff;text-align:center;text-decoration:none;font-weight:bold;padding:15px 22px;border-radius:10px">Confirmar e criar chamado</a></td></tr><tr><td style="padding-top:10px"><a href="'+cancellation+'" style="display:block;background:#fff;color:#a52127;text-align:center;text-decoration:none;font-weight:bold;padding:13px 21px;border:1px solid #cf555a;border-radius:10px">Cancelar solicitação</a></td></tr></table><p style="font-size:12px;color:#65736b;line-height:1.5;margin-top:18px">Não encaminhe este e-mail. Os links são pessoais, temporários e vinculados ao seu cadastro institucional.</p></td></tr><tr><td style="background:#073d25;color:#dcebe2;padding:18px 30px;font-size:12px">LabInfo TL · Preparação dos Laboratórios de Informática · IFMS Campus Três Lagoas</td></tr></table></td></tr></table></body></html>';
+  return {subject:'Confirme sua solicitação de software para '+(data.semester_label || 'o próximo semestre'),html:html};
 }
 
 function montarEmailReserva_(eventType, data) {

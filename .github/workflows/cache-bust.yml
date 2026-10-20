@@ -9,7 +9,7 @@ name: Build de assets estáticos (minificação + cache-busting)
 # Este workflow roda sempre que um dos arquivos-fonte muda em um push para
 # main:
 #   1. scripts/minify.mjs gera app.min.js, supabase-integration.min.js,
-#      reservations.min.js e styles.min.css (só remove espaços/comentários —
+#      reservations.min.js, software-requests.min.js e styles.min.css (só remove espaços/comentários —
 #      ver comentário no topo do script sobre por que não renomeia
 #      identificadores).
 #   2. scripts/bump-cache-version.mjs atualiza o "?v=" desses arquivos em
@@ -20,7 +20,8 @@ name: Build de assets estáticos (minificação + cache-busting)
 # o que é servido.
 #
 # Desenvolvimento continua sendo feito editando os arquivos-fonte
-# (app.js, supabase-integration.js, reservations.js, styles.css) — os
+# (app.js, supabase-integration.js, reservations.js, software-requests.js,
+# styles.css) — os
 # `.min.` são sempre gerados, nunca editados à mão.
 
 on:
@@ -31,6 +32,7 @@ on:
       - 'app.js'
       - 'supabase-integration.js'
       - 'reservations.js'
+      - 'software-requests.js'
       - 'supabase-config.js'
       - 'scripts/bump-cache-version.mjs'
       - 'scripts/minify.mjs'
@@ -65,12 +67,12 @@ jobs:
 
       - name: Commit se houver mudança
         run: |
-          if git diff --quiet -- index.html app.min.js supabase-integration.min.js reservations.min.js styles.min.css; then
+          if git diff --quiet -- index.html app.min.js supabase-integration.min.js reservations.min.js software-requests.min.js styles.min.css; then
             echo "Nada mudou, nada para commitar."
             exit 0
           fi
           git config user.name "labinfo-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add index.html app.min.js supabase-integration.min.js reservations.min.js styles.min.css
+          git add index.html app.min.js supabase-integration.min.js reservations.min.js software-requests.min.js styles.min.css
           git commit -m "chore: atualiza build (minificação + cache-busting) [skip ci]"
           git push

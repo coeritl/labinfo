@@ -1,6 +1,7 @@
 // Complemento carregado pelo projeto ativo para diferenciar reservas de chamados.
 var montarEmailChamado_ = montarEmail_;
 montarEmail_ = function(eventType, data) {
+  if (String(eventType).indexOf('software_') === 0) return montarEmailSoftware_(eventType, data || {});
   if (String(eventType).indexOf('reserva_') === 0) return montarEmailReservaAtual_(eventType, data || {});
   return montarEmailChamado_(eventType, data || {});
 };

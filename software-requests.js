@@ -1,0 +1,183 @@
+(()=>{
+  const $=selector=>document.querySelector(selector);
+  const safe=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const db=()=>window.labinfoDb||window.supabaseClient;
+  const siteBase=location.hostname.endsWith('.github.io')?'/labinfo':'';
+  const sitePath=route=>`${siteBase}/${String(route||'').replace(/^\/+|\/+$/g,'')}${route?'/':''}`;
+  const notify=message=>typeof window.toast==='function'?window.toast(message):alert(message);
+  const localDate=value=>value?new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Cuiaba'}).format(new Date(value)):'—';
+  let activeCycle=null,publicLabs=[],identifiedServer=null,staffCycles=[],staffRequests=[],staffProfile=null;
+
+  let resolveReady;
+  window.labinfoSoftwareRequestsReady=new Promise(resolve=>{resolveReady=resolve});
+
+  function publicMarkup(){
+    return `<section id="softwareRequestCampaign" class="card software-campaign" hidden>
+      <div class="software-campaign-head">
+        <div><span class="eyebrow">PREPARAÇÃO DO PRÓXIMO SEMESTRE</span><h2 id="softwareCampaignTitle">Solicitar instalação ou atualização</h2><p id="softwareCampaignDeadline"></p></div>
+        <button id="toggleSoftwareRequestForm" class="primary" type="button" aria-expanded="false">Fazer solicitação</button>
+      </div>
+      <p id="softwareCampaignInstructions" class="software-campaign-instructions"></p>
+      <form id="softwareRequestForm" class="software-request-form" hidden>
+        <div class="section-title"><span>1</span><div><h2>Identificação</h2><p>A confirmação será enviada ao e-mail institucional cadastrado</p></div></div>
+        <label>SIAPE<input id="softwareRequestSiape" inputmode="numeric" autocomplete="off" placeholder="0000000" required></label>
+        <p id="softwareRequestIdentity" class="field-hint">Digite seu SIAPE para validação.</p>
+        <div class="section-title"><span>2</span><div><h2>Turma e laboratório</h2></div></div>
+        <div class="field-row"><label>Laboratório<select id="softwareRequestLab" required><option value="">Selecione</option></select></label><label>Disciplina, curso ou atividade<input id="softwareRequestSubject" maxlength="160" required placeholder="Ex.: Programação Web — ADS 3º semestre"></label></div>
+        <fieldset class="software-scope"><legend>Onde o software deve estar disponível?</legend><label><input type="radio" name="softwareScope" value="all" checked> Todos os computadores do laboratório</label><label><input type="radio" name="softwareScope" value="specific"> Somente computadores específicos</label></fieldset>
+        <label id="softwareMachinesLabel" hidden>Computadores ou bancadas<input id="softwareRequestMachines" maxlength="500" placeholder="Ex.: PC-01 a PC-12, bancada do professor"></label>
+        <div class="section-title"><span>3</span><div><h2>Softwares solicitados</h2><p>Informe nome, versão desejada e fonte oficial sempre que possível</p></div></div>
+        <div id="softwareRequestItems" class="software-request-items"></div>
+        <button id="addSoftwareRequestItem" class="secondary software-add-item" type="button">+ Adicionar outro software</button>
+        <label>Observações gerais <small>(opcional)</small><textarea id="softwareRequestNotes" rows="3" maxlength="1200" placeholder="Requisitos da disciplina, plugins, configurações ou outras orientações"></textarea></label>
+        <div class="software-security-note"><strong>Validação institucional</strong><span>O chamado só será criado depois que você confirmar a solicitação pelo e-mail institucional cadastrado no sistema.</span></div>
+        <button class="primary" type="submit">Enviar para confirmação por e-mail <span>→</span></button>
+      </form>
+    </section>`;
+  }
+
+  function adminMarkup(){
+    return `<section id="softwareRequestsSection" class="admin-section" hidden>
+      <div class="software-admin-grid">
+        <form id="softwareCycleForm" class="card software-cycle-form">
+          <span class="eyebrow">JANELA DE SOLICITAÇÕES</span><h2>Abrir preparação de semestre</h2><p>Defina quando os professores poderão solicitar instalação ou atualização de softwares.</p>
+          <input id="softwareCycleId" type="hidden">
+          <div class="field-row"><label>Semestre<input id="softwareCycleLabel" required pattern="[0-9]{4}/[12]" placeholder="2027/1"></label><label>Data desejada para conclusão<input id="softwareCycleTarget" type="date"></label></div>
+          <div class="field-row"><label>Abertura<input id="softwareCycleOpens" type="datetime-local" required></label><label>Encerramento<input id="softwareCycleCloses" type="datetime-local" required></label></div>
+          <label>Orientações públicas<textarea id="softwareCycleInstructions" rows="4" maxlength="1200" placeholder="Ex.: Informe softwares necessários para as aulas do próximo semestre."></textarea></label>
+          <label class="software-cycle-active"><input id="softwareCycleActive" type="checkbox"> Campanha ativa e visível durante o período</label>
+          <div class="modal-actions"><button id="newSoftwareCycle" class="secondary" type="button">Nova campanha</button><button class="primary" type="submit">Salvar campanha</button></div>
+        </form>
+        <section class="card software-cycle-history"><div class="registry-head"><div><span class="eyebrow">CAMPANHAS</span><h2>Períodos cadastrados</h2></div></div><div id="softwareCycleList"><p class="empty">Carregando…</p></div></section>
+      </div>
+      <section class="card software-requests-list-card"><div class="registry-head"><div><span class="eyebrow">SOLICITAÇÕES RECEBIDAS</span><h2>Acompanhamento</h2><span id="softwareRequestsCount"></span></div><select id="softwareRequestsStatus"><option value="">Todos os status</option><option value="awaiting_email">Aguardando e-mail</option><option value="confirmed">Confirmadas</option><option value="cancelled">Canceladas</option><option value="expired">Expiradas</option></select></div><div id="softwareRequestsList"><p class="empty">Carregando…</p></div></section>
+    </section>`;
+  }
+
+  function addItem(values={}){
+    const box=$('#softwareRequestItems');
+    const row=document.createElement('article');
+    row.className='software-request-item';
+    row.innerHTML=`<div class="software-item-head"><strong>Software</strong><button class="software-remove-item" type="button" aria-label="Remover software">×</button></div><div class="field-row"><label>Ação<select data-field="action"><option value="install" ${values.action==='update'?'':'selected'}>Instalar</option><option value="update" ${values.action==='update'?'selected':''}>Atualizar</option></select></label><label>Nome<input data-field="name" maxlength="120" required value="${safe(values.name||'')}" placeholder="Ex.: Visual Studio Code"></label><label>Versão desejada<input data-field="version" maxlength="60" value="${safe(values.version||'')}" placeholder="Ex.: 1.96 ou mais recente"></label></div><div class="field-row"><label>Link oficial <small>(opcional)</small><input data-field="official_url" type="url" maxlength="400" value="${safe(values.official_url||'')}" placeholder="https://..."></label><label>Licença ou configuração <small>(opcional)</small><input data-field="license_notes" maxlength="500" value="${safe(values.license_notes||'')}" placeholder="Ex.: gratuito para educação; instalar extensão X"></label></div>`;
+    row.querySelector('.software-remove-item').onclick=()=>{if(box.children.length>1)row.remove();else notify('Informe pelo menos um software.')};
+    box.append(row);
+  }
+
+  function collectItems(){
+    return [...document.querySelectorAll('.software-request-item')].map(row=>({
+      action:row.querySelector('[data-field="action"]').value,
+      name:row.querySelector('[data-field="name"]').value.trim(),
+      version:row.querySelector('[data-field="version"]').value.trim(),
+      official_url:row.querySelector('[data-field="official_url"]').value.trim(),
+      license_notes:row.querySelector('[data-field="license_notes"]').value.trim()
+    }));
+  }
+
+  async function loadPublicCampaign(){
+    const client=db();if(!client)return;
+    const [{data:cycles,error},{data:labs}]=await Promise.all([
+      client.rpc('get_active_software_request_cycle'),
+      client.from('labs').select('id,name,location').eq('active',true).order('name')
+    ]);
+    if(error){console.warn('Campanha de software indisponível',error);return}
+    activeCycle=cycles?.[0]||null;publicLabs=labs||[];
+    const section=$('#softwareRequestCampaign');if(!section)return;
+    section.hidden=!activeCycle;
+    if(!activeCycle)return;
+    $('#softwareCampaignTitle').textContent=`Solicitações de software — ${activeCycle.semester_label}`;
+    $('#softwareCampaignDeadline').textContent=`Envie até ${localDate(activeCycle.closes_at)}${activeCycle.target_date?` · preparação prevista até ${new Date(activeCycle.target_date+'T12:00:00').toLocaleDateString('pt-BR')}`:''}.`;
+    $('#softwareCampaignInstructions').textContent=activeCycle.instructions||'Informe os softwares necessários para as atividades do próximo semestre.';
+    $('#softwareRequestLab').innerHTML='<option value="">Selecione o laboratório</option>'+publicLabs.map(lab=>`<option value="${lab.id}">${safe(lab.name)}${lab.location?' — '+safe(lab.location):''}</option>`).join('');
+  }
+
+  async function identify(){
+    const siape=$('#softwareRequestSiape').value.trim(),hint=$('#softwareRequestIdentity');identifiedServer=null;
+    if(siape.length<5){hint.textContent='Digite seu SIAPE para validação.';hint.className='field-hint';return}
+    hint.textContent='Validando cadastro…';
+    const {data,error}=await db().rpc('identify_server',{p_siape:siape});
+    identifiedServer=data?.[0]||null;
+    hint.textContent=error||!identifiedServer?'Servidor não localizado ou cadastro inativo.':`${identifiedServer.full_name} • confirmação em ${identifiedServer.email}`;
+    hint.className='field-hint '+(identifiedServer?'found':'pending');
+  }
+
+  async function submitRequest(event){
+    event.preventDefault();
+    if(!activeCycle)return notify('O período de solicitações foi encerrado.');
+    if(!identifiedServer)return notify('Valide um SIAPE ativo antes de enviar.');
+    const items=collectItems();if(items.some(item=>item.name.length<2))return notify('Informe o nome de todos os softwares.');
+    const scope=document.querySelector('input[name="softwareScope"]:checked').value;
+    const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true;button.textContent='Enviando…';
+    const {error}=await db().rpc('submit_software_request',{
+      p_siape:$('#softwareRequestSiape').value.trim(),p_cycle:activeCycle.id,p_lab:$('#softwareRequestLab').value,
+      p_course_subject:$('#softwareRequestSubject').value.trim(),p_computer_scope:scope,
+      p_machines:scope==='specific'?$('#softwareRequestMachines').value.trim():null,p_items:items,p_notes:$('#softwareRequestNotes').value.trim()||null
+    });
+    button.disabled=false;button.innerHTML='Enviar para confirmação por e-mail <span>→</span>';
+    if(error)return notify(error.message||'Não foi possível enviar a solicitação.');
+    event.currentTarget.reset();identifiedServer=null;$('#softwareRequestIdentity').textContent='Digite seu SIAPE para validação.';$('#softwareRequestItems').innerHTML='';addItem();
+    const box=$('#reservationConfirmation');box.hidden=false;box.innerHTML=`<strong>✓ Verifique seu e-mail institucional</strong><p>Enviamos os botões para confirmar ou cancelar a solicitação. O chamado só será criado depois da confirmação.</p>`;box.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+
+  async function handleToken(){
+    const params=new URLSearchParams(location.search),confirmToken=params.get('confirm_software_request'),cancelToken=params.get('cancel_software_request');
+    if(!confirmToken&&!cancelToken)return;
+    const box=$('#reservationConfirmation');if(!box)return;box.hidden=false;
+    if(cancelToken){
+      box.innerHTML='<strong>Cancelar solicitação de software?</strong><p>Nenhum chamado será criado.</p><button id="confirmSoftwareCancellation" class="danger-button" type="button">Sim, cancelar solicitação</button>';
+      $('#confirmSoftwareCancellation').onclick=async()=>{const {error}=await db().rpc('cancel_software_request',{p_token:cancelToken});box.innerHTML=error?`<strong>Não foi possível cancelar</strong><p>${safe(error.message)}</p>`:'<strong>✓ Solicitação cancelada</strong><p>Nenhum chamado foi criado.</p>';history.replaceState({},'',sitePath('reservas'))};
+      return;
+    }
+    box.innerHTML='<strong>Confirmando a solicitação…</strong><p>Aguarde enquanto o chamado é registrado.</p>';
+    const {data,error}=await db().rpc('confirm_software_request',{p_token:confirmToken});
+    box.innerHTML=error?`<strong>Não foi possível confirmar</strong><p>${safe(error.message)}</p>`:`<strong>✓ Solicitação confirmada</strong><p>O chamado <b>${safe(data?.[0]?.protocol)}</b> foi criado e já está na fila da equipe técnica.</p>`;
+    history.replaceState({},'',sitePath('reservas'));
+  }
+
+  function asLocalInput(value){if(!value)return'';const d=new Date(value),pad=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`}
+  function resetCycleForm(){const form=$('#softwareCycleForm');form.reset();$('#softwareCycleId').value='';const now=new Date(),end=new Date(now.getTime()+30*86400000);$('#softwareCycleOpens').value=asLocalInput(now);$('#softwareCycleCloses').value=asLocalInput(end);$('#softwareCycleActive').checked=true}
+  function editCycle(id){const cycle=staffCycles.find(item=>item.id===id);if(!cycle)return;$('#softwareCycleId').value=cycle.id;$('#softwareCycleLabel').value=cycle.semester_label;$('#softwareCycleOpens').value=asLocalInput(cycle.opens_at);$('#softwareCycleCloses').value=asLocalInput(cycle.closes_at);$('#softwareCycleTarget').value=cycle.target_date||'';$('#softwareCycleInstructions').value=cycle.instructions||'';$('#softwareCycleActive').checked=cycle.active;$('#softwareCycleForm').scrollIntoView({behavior:'smooth',block:'start'})}
+  function statusLabel(status){return {awaiting_email:'Aguardando confirmação',confirmed:'Confirmada · chamado criado',cancelled:'Cancelada',expired:'Link expirado'}[status]||status}
+
+  function renderAdmin(){
+    $('#softwareCycleList').innerHTML=staffCycles.length?staffCycles.map(cycle=>`<button class="software-cycle-row" type="button" data-cycle="${cycle.id}"><span><strong>${safe(cycle.semester_label)}</strong><small>${localDate(cycle.opens_at)} até ${localDate(cycle.closes_at)}</small></span><b class="${cycle.active?'active':'inactive'}">${cycle.active?'Ativa':'Inativa'}</b></button>`).join(''):'<p class="empty">Nenhuma campanha cadastrada.</p>';
+    document.querySelectorAll('[data-cycle]').forEach(button=>button.onclick=()=>editCycle(button.dataset.cycle));
+    const filter=$('#softwareRequestsStatus').value,rows=filter?staffRequests.filter(row=>row.status===filter):staffRequests;
+    $('#softwareRequestsCount').textContent=`${rows.length} solicitação(ões)`;
+    $('#softwareRequestsList').innerHTML=rows.length?rows.map(row=>`<article class="software-admin-request"><div><strong>${safe(row.course_subject)}</strong><span>${safe(row.servers?.full_name||'Servidor')} · ${safe(row.labs?.name||'Laboratório')} · ${safe(row.software_request_cycles?.semester_label||'')}</span><small>${safe((row.items||[]).map(item=>item.name+(item.version?' '+item.version:'')).join(' · '))}</small></div><div><b class="software-status ${row.status}">${statusLabel(row.status)}</b>${row.tickets?.protocol?`<span>${safe(row.tickets.protocol)}</span>`:''}<time>${localDate(row.created_at)}</time></div></article>`).join(''):'<p class="empty">Nenhuma solicitação neste filtro.</p>';
+    const editable=staffProfile?.role==='tecnico';$('#softwareCycleForm').querySelectorAll('input,textarea,button').forEach(control=>control.disabled=!editable);if(!editable&&!$('#softwareCycleForm .software-readonly'))$('#softwareCycleForm').insertAdjacentHTML('afterbegin','<p class="software-readonly">Supervisores podem acompanhar, mas somente técnicos alteram campanhas.</p>');
+  }
+
+  async function loadAdmin(){
+    const client=db();if(!client)return;
+    const {data:sessionData}=await client.auth.getSession(),uid=sessionData?.session?.user?.id;if(!uid)return;
+    const [{data:profile},{data:cycles,error:cycleError},{data:requests,error:requestError}]=await Promise.all([
+      client.from('profiles').select('role').eq('id',uid).single(),
+      client.from('software_request_cycles').select('*').order('opens_at',{ascending:false}),
+      client.from('software_requests').select('id,course_subject,computer_scope,machines,items,notes,status,created_at,servers(full_name,email),labs(name),software_request_cycles(semester_label),tickets(protocol)').order('created_at',{ascending:false}).limit(250)
+    ]);
+    if(cycleError||requestError){console.error(cycleError||requestError);return notify((cycleError||requestError).message)}
+    staffProfile=profile;staffCycles=cycles||[];staffRequests=requests||[];renderAdmin();
+  }
+
+  window.labinfoOpenSoftwareRequests=async function(){
+    document.querySelectorAll('.admin-section').forEach(section=>section.hidden=true);$('#softwareRequestsSection').hidden=false;
+    if($('#adminTitle'))$('#adminTitle').textContent='Preparação de softwares';if($('#adminSubtitle'))$('#adminSubtitle').textContent='Abra campanhas semestrais e acompanhe as solicitações confirmadas.';
+    $('#adminMenuDropdown')?.setAttribute('hidden','');await loadAdmin();window.scrollTo(0,0);
+  };
+
+  function init(){
+    const publicAnchor=$('#toggleMyReservationsForm');if(publicAnchor)publicAnchor.insertAdjacentHTML('afterend',publicMarkup());
+    const admin=$('#adminView');if(admin)admin.insertAdjacentHTML('beforeend',adminMarkup());
+    if($('#softwareRequestItems'))addItem();
+    $('#addSoftwareRequestItem')?.addEventListener('click',()=>addItem());
+    $('#toggleSoftwareRequestForm')?.addEventListener('click',()=>{const form=$('#softwareRequestForm'),open=form.hidden;form.hidden=!open;$('#toggleSoftwareRequestForm').textContent=open?'Fechar formulário':'Fazer solicitação';$('#toggleSoftwareRequestForm').setAttribute('aria-expanded',String(open));if(open)form.scrollIntoView({behavior:'smooth',block:'start'})});
+    let identityTimer;$('#softwareRequestSiape')?.addEventListener('input',()=>{clearTimeout(identityTimer);identityTimer=setTimeout(identify,350)});
+    document.querySelectorAll('input[name="softwareScope"]').forEach(input=>input.onchange=()=>{const specific=input.value==='specific'&&input.checked;$('#softwareMachinesLabel').hidden=!specific;$('#softwareRequestMachines').required=specific});
+    $('#softwareRequestForm')?.addEventListener('submit',submitRequest);
+    $('#newSoftwareCycle')?.addEventListener('click',resetCycleForm);
+    $('#softwareRequestsStatus')?.addEventListener('change',renderAdmin);
+    $('#softwareCycleForm')?.addEventListener('submit',async event=>{event.preventDefault();const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true;const {error}=await db().rpc('staff_save_software_request_cycle',{p_id:$('#softwareCycleId').value||null,p_semester_label:$('#softwareCycleLabel').value.trim(),p_opens_at:new Date($('#softwareCycleOpens').value).toISOString(),p_closes_at:new Date($('#softwareCycleCloses').value).toISOString(),p_target_date:$('#softwareCycleTarget').value||null,p_instructions:$('#softwareCycleInstructions').value.trim()||null,p_active:$('#softwareCycleActive').checked});button.disabled=false;if(error)return notify(error.message);notify('Campanha salva.');await loadAdmin();await loadPublicCampaign()});
+    resetCycleForm();loadPublicCampaign();handleToken();resolveReady();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();

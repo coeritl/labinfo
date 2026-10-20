@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Achado P2 3.3 da auditoria de 26/08/2026 (item de baixa prioridade,
 // endereçado a pedido em 26/08/2026): gera versões minificadas de
-// app.js, supabase-integration.js, reservations.js e styles.css para
+// app.js, supabase-integration.js, reservations.js, software-requests.js e
+// styles.css para
 // reduzir o payload servido pelo GitHub Pages.
 //
 // IMPORTANTE — por que só remove espaços/comentários (minifyWhitespace) e
@@ -39,6 +40,7 @@ const targets = [
   { src: 'app.js', out: 'app.min.js' },
   { src: 'supabase-integration.js', out: 'supabase-integration.min.js' },
   { src: 'reservations.js', out: 'reservations.min.js' },
+  { src: 'software-requests.js', out: 'software-requests.min.js' },
   { src: 'styles.css', out: 'styles.min.css' },
 ];
 

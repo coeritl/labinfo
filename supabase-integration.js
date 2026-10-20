@@ -11,7 +11,7 @@
         feedbackParam=new URLSearchParams(location.search).get('feedback'),
         requestedRoute=routeParam||location.pathname.slice(siteBase.length).replace(/^\/+|\/+$/g,'');
   const adminRouteSlug=requestedRoute==='admin'?'chamados':requestedRoute.startsWith('admin/')?requestedRoute.slice(6):'';
-  const validAdminRouteSlugs=new Set(['chamados','relatorios','reservas','chat','cadastros','supervisor','horarios','manutencao']);
+  const validAdminRouteSlugs=new Set(['chamados','relatorios','reservas','chat','cadastros','supervisor','horarios','manutencao','softwares']);
   const isAdminRoute=validAdminRouteSlugs.has(adminRouteSlug);
   const isSupportRoute=requestedRoute==='suporte'||Boolean(feedbackParam);
   if(routeParam&&!feedbackParam)window.addEventListener('load',()=>history.replaceState({},'',sitePath(requestedRoute)),{once:true});
@@ -150,11 +150,11 @@
   $('#accountLogout').onclick=performLogout;
   $('#passwordForm').onsubmit=async e=>{e.preventDefault();const current=$('#currentPassword').value,next=$('#newPassword').value,confirm=$('#confirmPassword').value,errorBox=$('#passwordError');errorBox.textContent='';if(next!==confirm){errorBox.textContent='A confirmação não corresponde à nova senha.';return}if(next===current){errorBox.textContent='A nova senha deve ser diferente da senha atual.';return}const email=state.session?.user?.email;const {error:authError}=await sb.auth.signInWithPassword({email,password:current});if(authError){errorBox.textContent='A senha atual está incorreta.';return}const {error:updateError}=await sb.auth.updateUser({password:next});if(updateError){errorBox.textContent=updateError.message;return}closePasswordModal();toast('Senha atualizada com sucesso.')};
 
-  $('#adminMenuDropdown').querySelector('[data-section="tickets"]')?.remove();$('#adminMenuDropdown').querySelector('[data-section="analytics"]').textContent='Relatórios';$('#adminMenuDropdown').querySelector('[data-section="supervisor"]').textContent='Supervisor';$('#adminMenuDropdown').insertAdjacentHTML('beforeend','<button id="chatMenuButton" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg> Chat ao vivo <span id="chatMenuBadge" class="chat-menu-badge" hidden>0</span></button><button id="hoursMenuButton">Horários</button><button id="maintenanceMenuButton">Manutenção</button><button id="reservationsMenuButton" type="button">Reservas</button>');
-  const adminMenuDropdown=$('#adminMenuDropdown'),analyticsMenuButton=adminMenuDropdown.querySelector('[data-section="analytics"]'),registrationsMenuButton=adminMenuDropdown.querySelector('[data-section="registrations"]'),supervisorMenuButton=adminMenuDropdown.querySelector('[data-section="supervisor"]'),reservationsMenuButton=$('#reservationsMenuButton'),chatMenuButton=$('#chatMenuButton');
+  $('#adminMenuDropdown').querySelector('[data-section="tickets"]')?.remove();$('#adminMenuDropdown').querySelector('[data-section="analytics"]').textContent='Relatórios';$('#adminMenuDropdown').querySelector('[data-section="supervisor"]').textContent='Supervisor';$('#adminMenuDropdown').insertAdjacentHTML('beforeend','<button id="chatMenuButton" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg> Chat ao vivo <span id="chatMenuBadge" class="chat-menu-badge" hidden>0</span></button><button id="hoursMenuButton">Horários</button><button id="maintenanceMenuButton">Manutenção</button><button id="softwareRequestsMenuButton" type="button">Solicitações de software</button><button id="reservationsMenuButton" type="button">Reservas</button>');
+  const adminMenuDropdown=$('#adminMenuDropdown'),analyticsMenuButton=adminMenuDropdown.querySelector('[data-section="analytics"]'),registrationsMenuButton=adminMenuDropdown.querySelector('[data-section="registrations"]'),supervisorMenuButton=adminMenuDropdown.querySelector('[data-section="supervisor"]'),reservationsMenuButton=$('#reservationsMenuButton'),chatMenuButton=$('#chatMenuButton'),softwareRequestsMenuButton=$('#softwareRequestsMenuButton');
   const primaryAdminNav=document.createElement('nav');primaryAdminNav.className='primary-admin-nav';primaryAdminNav.setAttribute('aria-label','Navegação principal do painel');
   [analyticsMenuButton,reservationsMenuButton,chatMenuButton].forEach(button=>{button.dataset.adminNav='primary';primaryAdminNav.append(button)});
-  [registrationsMenuButton,supervisorMenuButton,$('#hoursMenuButton'),$('#maintenanceMenuButton')].forEach(button=>button.dataset.adminNav='management');
+  [registrationsMenuButton,supervisorMenuButton,$('#hoursMenuButton'),$('#maintenanceMenuButton'),softwareRequestsMenuButton].forEach(button=>button.dataset.adminNav='management');
   $('#adminMenuButton').textContent='Administração ▾';
   const mobileAdminMenuButton=document.createElement('button');mobileAdminMenuButton.id='mobileAdminMenuButton';mobileAdminMenuButton.className='mobile-admin-menu-button';mobileAdminMenuButton.type='button';mobileAdminMenuButton.setAttribute('aria-label','Abrir menu do painel');mobileAdminMenuButton.setAttribute('aria-expanded','false');mobileAdminMenuButton.innerHTML='<span></span><span></span><span></span>';
   const mobileAdminBackdrop=document.createElement('button');mobileAdminBackdrop.id='mobileAdminBackdrop';mobileAdminBackdrop.className='mobile-admin-backdrop';mobileAdminBackdrop.type='button';mobileAdminBackdrop.setAttribute('aria-label','Fechar menu do painel');
@@ -270,9 +270,11 @@
     toast('A agenda ainda está sendo preparada. Tente abrir Reservas novamente.');
   }
   $('#reservationsMenuButton').onclick=()=>{void openReservationsWhenReady()};
+  async function openSoftwareRequestsWhenReady(attempt=0){const ready=window.labinfoSoftwareRequestsReady;if(ready?.then)await ready;if(window.labinfoOpenSoftwareRequests)return window.labinfoOpenSoftwareRequests();if(attempt<20)return new Promise(resolve=>setTimeout(resolve,25)).then(()=>openSoftwareRequestsWhenReady(attempt+1));toast('O módulo de softwares ainda está sendo preparado. Tente novamente.')}
+  $('#softwareRequestsMenuButton').onclick=()=>{void openSoftwareRequestsWhenReady()};
   const adminRouteByTarget={
     analytics:'relatorios',registrations:'cadastros',supervisor:'supervisor',
-    reservationsMenuButton:'reservas',chatMenuButton:'chat',hoursMenuButton:'horarios',maintenanceMenuButton:'manutencao'
+    reservationsMenuButton:'reservas',chatMenuButton:'chat',hoursMenuButton:'horarios',maintenanceMenuButton:'manutencao',softwareRequestsMenuButton:'softwares'
   };
   function openAdminRoute(slug,{push=false}={}){
     const route=validAdminRouteSlugs.has(slug)?slug:'chamados';
@@ -285,13 +287,14 @@
     else if(route==='chat')$('#chatMenuButton').onclick();
     else if(route==='horarios')$('#hoursMenuButton').onclick();
     else if(route==='manutencao')$('#maintenanceMenuButton').onclick();
+    else if(route==='softwares')void openSoftwareRequestsWhenReady();
     accountActions.querySelectorAll('[data-admin-nav]').forEach(item=>item.classList.toggle('active',(item.dataset.section&&adminRouteByTarget[item.dataset.section]===route)||adminRouteByTarget[item.id]===route));
     closeMobileAdminMenu();
     window.scrollTo(0,0);
   }
   window.labinfoOpenAdminRoute=openAdminRoute;
   accountActions.addEventListener('click',event=>{
-    const target=event.target.closest('[data-section], #reservationsMenuButton, #chatMenuButton, #hoursMenuButton, #maintenanceMenuButton');
+    const target=event.target.closest('[data-section], #reservationsMenuButton, #chatMenuButton, #hoursMenuButton, #maintenanceMenuButton, #softwareRequestsMenuButton');
     if(!target)return;
     const slug=target.dataset.section?adminRouteByTarget[target.dataset.section]:adminRouteByTarget[target.id];
     if(slug&&location.pathname!==sitePath('admin/'+slug))history.pushState({},'',sitePath('admin/'+slug));
