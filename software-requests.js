@@ -25,6 +25,13 @@
         <p id="softwareRequestIdentity" class="field-hint">Digite seu SIAPE para validação.</p>
         <div class="section-title"><span>2</span><div><h2>Turma e laboratório</h2></div></div>
         <div class="field-row"><label>Laboratório<select id="softwareRequestLab" required><option value="">Selecione</option></select></label><label>Disciplina, curso ou atividade<input id="softwareRequestSubject" maxlength="160" required placeholder="Ex.: Programação Web — ADS 3º semestre"></label></div>
+        <details id="softwareInstalledPanel" class="software-installed-panel" hidden>
+          <summary><span><strong>Consultar softwares já instalados</strong><small id="softwareInstalledHint">Selecione um laboratório para conferir o inventário.</small></span><b id="softwareInstalledCount">0</b></summary>
+          <div class="software-installed-content">
+            <label class="software-installed-search">Buscar na lista<input id="softwareInstalledSearch" type="search" autocomplete="off" placeholder="Digite o nome do software"></label>
+            <div id="softwareInstalledList" class="software-installed-list" aria-live="polite"></div>
+          </div>
+        </details>
         <fieldset class="software-scope"><legend>Onde o software deve estar disponível?</legend><label><input type="radio" name="softwareScope" value="all" checked> Todos os computadores do laboratório</label><label><input type="radio" name="softwareScope" value="specific"> Somente computadores específicos</label></fieldset>
         <label id="softwareMachinesLabel" hidden>Computadores ou bancadas<input id="softwareRequestMachines" maxlength="500" placeholder="Ex.: PC-01 a PC-12, bancada do professor"></label>
         <div class="section-title"><span>3</span><div><h2>Softwares solicitados</h2><p>Informe nome, versão desejada e fonte oficial sempre que possível</p></div></div>
@@ -74,11 +81,29 @@
     }));
   }
 
+  function renderInstalledSoftware(){
+    const panel=$('#softwareInstalledPanel'),select=$('#softwareRequestLab'),search=$('#softwareInstalledSearch');
+    if(!panel||!select)return;
+    const lab=publicLabs.find(item=>String(item.id)===select.value);
+    if(!lab){panel.hidden=true;panel.open=false;if(search)search.value='';return}
+    panel.hidden=false;
+    const inventory=Array.isArray(lab.software_inventory)?lab.software_inventory.filter(item=>item&&String(item.name||'').trim()):[];
+    const term=String(search?.value||'').trim().toLocaleLowerCase('pt-BR');
+    const visible=term?inventory.filter(item=>`${item.name||''} ${item.version||''}`.toLocaleLowerCase('pt-BR').includes(term)):inventory;
+    $('#softwareInstalledCount').textContent=String(inventory.length);
+    $('#softwareInstalledHint').textContent=inventory.length?`${inventory.length} software(s) cadastrado(s) em ${lab.name}.`:`Nenhum software cadastrado em ${lab.name}.`;
+    $('#softwareInstalledList').innerHTML=!inventory.length
+      ?'<p class="empty">O laboratório ainda não possui inventário de softwares cadastrado.</p>'
+      :visible.length
+        ?visible.map(item=>`<span><strong>${safe(item.name)}</strong><small>${safe(item.version||'Versão não informada')}</small></span>`).join('')
+        :'<p class="empty">Nenhum software corresponde à busca.</p>';
+  }
+
   async function loadPublicCampaign(){
     const client=db();if(!client)return;
     const [{data:cycles,error},{data:labs}]=await Promise.all([
       client.rpc('get_active_software_request_cycle'),
-      client.from('labs').select('id,name,location').eq('active',true).order('name')
+      client.from('labs').select('id,name,location,software_inventory').eq('active',true).order('name')
     ]);
     if(error){console.warn('Campanha de software indisponível',error);return}
     activeCycle=cycles?.[0]||null;publicLabs=labs||[];
@@ -89,6 +114,7 @@
     $('#softwareCampaignDeadline').textContent=`Envie até ${localDate(activeCycle.closes_at)}${activeCycle.target_date?` · preparação prevista até ${new Date(activeCycle.target_date+'T12:00:00').toLocaleDateString('pt-BR')}`:''}.`;
     $('#softwareCampaignInstructions').textContent=activeCycle.instructions||'Informe os softwares necessários para as atividades do próximo semestre.';
     $('#softwareRequestLab').innerHTML='<option value="">Selecione o laboratório</option>'+publicLabs.map(lab=>`<option value="${lab.id}">${safe(lab.name)}${lab.location?' — '+safe(lab.location):''}</option>`).join('');
+    renderInstalledSoftware();
   }
 
   async function identify(){
@@ -118,7 +144,7 @@
       const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('O servidor demorou para responder. Verifique sua conexão e tente novamente.')),20000));
       const {error}=await Promise.race([request,timeout]);
       if(error)throw error;
-      event.currentTarget.reset();identifiedServer=null;$('#softwareRequestIdentity').textContent='Digite seu SIAPE para validação.';$('#softwareRequestItems').innerHTML='';addItem();
+      event.currentTarget.reset();identifiedServer=null;$('#softwareRequestIdentity').textContent='Digite seu SIAPE para validação.';$('#softwareRequestItems').innerHTML='';addItem();renderInstalledSoftware();
       result.classList.add('success');result.hidden=false;result.innerHTML='<strong>✓ Verifique seu e-mail institucional</strong><p>Enviamos os botões para confirmar ou cancelar a solicitação. O chamado só será criado depois da confirmação.</p>';
       result.scrollIntoView({behavior:'smooth',block:'center'});
     }catch(error){
@@ -178,12 +204,14 @@
   };
 
   function init(){
-    const publicAnchor=$('#toggleMyReservationsForm');if(publicAnchor)publicAnchor.insertAdjacentHTML('afterend',publicMarkup());
+    const publicAnchor=$('#homeView .home-hero');if(publicAnchor)publicAnchor.insertAdjacentHTML('afterend',publicMarkup());
     const admin=$('#adminView');if(admin)admin.insertAdjacentHTML('beforeend',adminMarkup());
     if($('#softwareRequestItems'))addItem();
     $('#addSoftwareRequestItem')?.addEventListener('click',()=>addItem());
     $('#toggleSoftwareRequestForm')?.addEventListener('click',()=>{const form=$('#softwareRequestForm'),open=form.hidden;form.hidden=!open;$('#toggleSoftwareRequestForm').textContent=open?'Fechar formulário':'Fazer solicitação';$('#toggleSoftwareRequestForm').setAttribute('aria-expanded',String(open));if(open)form.scrollIntoView({behavior:'smooth',block:'start'})});
     let identityTimer;$('#softwareRequestSiape')?.addEventListener('input',()=>{clearTimeout(identityTimer);identityTimer=setTimeout(identify,350)});
+    $('#softwareRequestLab')?.addEventListener('change',()=>{if($('#softwareInstalledSearch'))$('#softwareInstalledSearch').value='';renderInstalledSoftware()});
+    $('#softwareInstalledSearch')?.addEventListener('input',renderInstalledSoftware);
     document.querySelectorAll('input[name="softwareScope"]').forEach(input=>input.onchange=()=>{const specific=input.value==='specific'&&input.checked;$('#softwareMachinesLabel').hidden=!specific;$('#softwareRequestMachines').required=specific});
     $('#softwareRequestForm')?.addEventListener('submit',submitRequest);
     $('#newSoftwareCycle')?.addEventListener('click',resetCycleForm);
