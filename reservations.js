@@ -291,7 +291,7 @@
     url.searchParams.set('google_auth_return',context);
     return url.pathname+url.search;
   };
-  const beginGoogleAuth=async(button,context)=>{button.disabled=true;button.textContent='Abrindo Google…';sessionStorage.setItem('labinfo_google_auth_return',context);try{await window.labinfoInstitutionalAuth?.signIn(googleReturnPath(context))}catch(error){sessionStorage.removeItem('labinfo_google_auth_return');button.disabled=false;button.innerHTML='<span aria-hidden="true">G</span> Entrar com Google IFMS';toast(error.message||'Não foi possível iniciar o acesso com Google.')}};
+  const beginGoogleAuth=async(button,context)=>{button.disabled=true;button.textContent='Abrindo Gmail institucional…';sessionStorage.setItem('labinfo_google_auth_return',context);try{await window.labinfoInstitutionalAuth?.signIn(googleReturnPath(context))}catch(error){sessionStorage.removeItem('labinfo_google_auth_return');button.disabled=false;button.innerHTML='<span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br';toast(error.message||'Não foi possível iniciar o acesso com Gmail institucional.')}};
   $('#reservationGoogleLogin').onclick=event=>beginGoogleAuth(event.currentTarget,'reservation');
   $('#myReservationsGoogleLogin').onclick=event=>beginGoogleAuth(event.currentTarget,'my-reservations');
   if(googleAuthReturn==='my-reservations'){
@@ -301,8 +301,7 @@
   }
 
   async function applyReservationInstitutionalAuth(authState){
-    const identity=authState?.identity||null,error=authState?.error||null,session=authState?.session||null,
-          publicSessionStatus=$('#publicSessionStatus'),publicSessionIdentity=$('#publicSessionIdentity'),publicSessionAvatar=$('#publicSessionAvatar');
+    const identity=authState?.identity||null,error=authState?.error||null;
     publicAuthIdentity=identity;
     const reservationButton=$('#reservationGoogleLogin'),reservationIdentity=$('#reservationGoogleIdentity'),fallback=$('#reservationSiapeFallback'),siapeInput=$('#reservationSiape');
     const myButton=$('#myReservationsGoogleLogin'),myIdentity=$('#myReservationsGoogleIdentity'),myFallback=$('#myReservationsFallback');
@@ -321,13 +320,10 @@
       }
       sessionStorage.removeItem('labinfo_google_auth_return');
       publicServer=identity;
-      publicSessionStatus.hidden=false;
-      publicSessionIdentity.textContent=identity.full_name||identity.email;
-      publicSessionAvatar.textContent=(identity.full_name||identity.email||'IF').trim().slice(0,2).toUpperCase();
       reservationButton.hidden=true;reservationIdentity.hidden=false;
       reservationIdentity.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)} · SIAPE ${safe(identity.siape)}</small></span><button type="button" data-google-signout>Sair</button>`;
       fallback.hidden=true;siapeInput.required=false;siapeInput.value=identity.siape;
-      $('#reservationIdentity').textContent='Identidade confirmada pelo Google IFMS.';$('#reservationIdentity').className='field-hint found';
+      $('#reservationIdentity').textContent='Identidade confirmada pelo Gmail @ifms.edu.br.';$('#reservationIdentity').className='field-hint found';
       myButton.hidden=true;myIdentity.hidden=false;
       myIdentity.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)}</small></span><button type="button" data-google-signout>Sair</button>`;
       myFallback.hidden=true;
@@ -336,15 +332,9 @@
     }else{
       publicAuthReservationsLoadedFor=null;
       publicServer=null;
-      reservationButton.hidden=false;reservationButton.disabled=false;reservationButton.innerHTML='<span aria-hidden="true">G</span> Entrar com Google IFMS';
-      myButton.hidden=false;myButton.disabled=false;myButton.innerHTML='<span aria-hidden="true">G</span> Entrar com Google IFMS';
+      reservationButton.hidden=false;reservationButton.disabled=false;reservationButton.innerHTML='<span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br';
+      myButton.hidden=false;myButton.disabled=false;myButton.innerHTML='<span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br';
       reservationIdentity.hidden=true;myIdentity.hidden=true;fallback.hidden=false;myFallback.hidden=false;siapeInput.required=true;
-      publicSessionStatus.hidden=!session;
-      if(session){
-        const email=session.user?.email||'Conta institucional';
-        publicSessionIdentity.textContent=email;
-        publicSessionAvatar.textContent=(email.split('@')[0]||'IF').slice(0,2).toUpperCase();
-      }
       if(error&&authState?.session){
         sessionStorage.removeItem('labinfo_google_auth_return');
         $('#reservationIdentity').textContent=error;$('#reservationIdentity').className='field-hint pending';
@@ -352,12 +342,11 @@
       }
     }
   }
-  $('#publicSessionLogout').onclick=()=>window.labinfoInstitutionalAuth?.signOut();
   window.addEventListener('labinfo:institutional-auth',event=>applyReservationInstitutionalAuth(event.detail));
   if(window.labinfoInstitutionalAuth)applyReservationInstitutionalAuth(window.labinfoInstitutionalAuth.getState());
   $('#reservationDate').onchange=()=>{const date=new Date($('#reservationDate').value+'T12:00:00');if(date.getDay()===0){$('#reservationDate').value='';toast('Os laboratórios não recebem reservas aos domingos.')}};
   const selectPublicRecurrence=setupChoiceGroup('reservationRecurrence');$('#reservationRecurrence').onchange=()=>{const weekly=$('#reservationRecurrence').value==='weekly';$('#reservationUntilLabel').hidden=!weekly;$('#reservationUntil').required=weekly;$('#reservationUntil').min=$('#reservationDate').value};
-  $('#publicReservationForm').onsubmit=async event=>{event.preventDefault();if(!$('#reservationLab').value)return toast('Selecione um laboratório nos cards acima.');if(!publicServer)return toast('Entre com o Google IFMS ou valide um SIAPE cadastrado antes de continuar.');const startMinutes=timeMinutes($('#reservationTime').value),endMinutes=timeMinutes($('#reservationEndTime').value),duration=endMinutes-startMinutes;if(!Number.isFinite(duration)||duration<=0)return toast('O horário final deve ser posterior ao horário inicial.');if(duration<45||duration>360)return toast('A reserva deve ter entre 45 minutos e 6 horas.');const button=event.submitter;button.disabled=true;button.textContent='Registrando solicitação…';try{const recurrence=$('#reservationRecurrence').value,date=$('#reservationDate').value,common={p_lab:$('#reservationLab').value,p_subject:$('#reservationSubject').value.trim(),p_start:localIso(date,$('#reservationTime').value),p_end:localIso(date,$('#reservationEndTime').value),p_notes:$('#reservationNotes').value.trim()||null,p_recurrence:recurrence,p_until:recurrence==='weekly'?$('#reservationUntil').value:null},rpc=publicAuthIdentity?'create_my_reservation_range':'create_public_reservation_range',params=publicAuthIdentity?common:{p_siape:$('#reservationSiape').value.trim(),...common},{data,error}=await sb.rpc(rpc,params);if(error)throw error;const protocol=data?.[0]?.protocol||'',selectedLab=$('#reservationLab').value;event.target.reset();$('#reservationLab').value=selectedLab;selectPublicRecurrence('none');$('#reservationUntilLabel').hidden=true;if(publicAuthIdentity){publicServer=publicAuthIdentity;$('#reservationSiape').value=publicAuthIdentity.siape;$('#reservationIdentity').textContent='Identidade confirmada pelo Google IFMS.';showPublicReservationNotice({type:'success',eyebrow:'PEDIDO REGISTRADO',title:'Reserva enviada para avaliação',message:'Sua identidade já foi confirmada pelo Google IFMS. O pedido foi encaminhado diretamente para aprovação da equipe técnica.',protocol});publicAuthReservationsLoadedFor=null;await applyReservationInstitutionalAuth({identity:publicAuthIdentity})}else{publicServer=null;$('#reservationIdentity').textContent='Digite seu SIAPE para validação.';showPublicReservationNotice({type:'success',eyebrow:'PEDIDO REGISTRADO',title:'Confirme sua reserva no e-mail',message:'Enviamos uma mensagem para o seu e-mail institucional. Abra essa mensagem e clique em “Confirmar reserva”. Somente depois dessa confirmação o pedido será encaminhado para aprovação da equipe técnica.',protocol})}}catch(error){
+  $('#publicReservationForm').onsubmit=async event=>{event.preventDefault();if(!$('#reservationLab').value)return toast('Selecione um laboratório nos cards acima.');if(!publicServer)return toast('Entre com o Gmail @ifms.edu.br ou valide um SIAPE cadastrado antes de continuar.');const startMinutes=timeMinutes($('#reservationTime').value),endMinutes=timeMinutes($('#reservationEndTime').value),duration=endMinutes-startMinutes;if(!Number.isFinite(duration)||duration<=0)return toast('O horário final deve ser posterior ao horário inicial.');if(duration<45||duration>360)return toast('A reserva deve ter entre 45 minutos e 6 horas.');const button=event.submitter;button.disabled=true;button.textContent='Registrando solicitação…';try{const recurrence=$('#reservationRecurrence').value,date=$('#reservationDate').value,common={p_lab:$('#reservationLab').value,p_subject:$('#reservationSubject').value.trim(),p_start:localIso(date,$('#reservationTime').value),p_end:localIso(date,$('#reservationEndTime').value),p_notes:$('#reservationNotes').value.trim()||null,p_recurrence:recurrence,p_until:recurrence==='weekly'?$('#reservationUntil').value:null},rpc=publicAuthIdentity?'create_my_reservation_range':'create_public_reservation_range',params=publicAuthIdentity?common:{p_siape:$('#reservationSiape').value.trim(),...common},{data,error}=await sb.rpc(rpc,params);if(error)throw error;const protocol=data?.[0]?.protocol||'',selectedLab=$('#reservationLab').value;event.target.reset();$('#reservationLab').value=selectedLab;selectPublicRecurrence('none');$('#reservationUntilLabel').hidden=true;if(publicAuthIdentity){publicServer=publicAuthIdentity;$('#reservationSiape').value=publicAuthIdentity.siape;$('#reservationIdentity').textContent='Identidade confirmada pelo Gmail @ifms.edu.br.';showPublicReservationNotice({type:'success',eyebrow:'PEDIDO REGISTRADO',title:'Reserva enviada para avaliação',message:'Sua identidade já foi confirmada pelo Gmail @ifms.edu.br. O pedido foi encaminhado diretamente para aprovação da equipe técnica.',protocol});publicAuthReservationsLoadedFor=null;await applyReservationInstitutionalAuth({identity:publicAuthIdentity})}else{publicServer=null;$('#reservationIdentity').textContent='Digite seu SIAPE para validação.';showPublicReservationNotice({type:'success',eyebrow:'PEDIDO REGISTRADO',title:'Confirme sua reserva no e-mail',message:'Enviamos uma mensagem para o seu e-mail institucional. Abra essa mensagem e clique em “Confirmar reserva”. Somente depois dessa confirmação o pedido será encaminhado para aprovação da equipe técnica.',protocol})}}catch(error){
       const message = error?.message || 'Não foi possível solicitar a reserva.';
       const isPastDate = /passado/i.test(message);
       const isConflict = /ocupad|indispon|conflit|sobrepos/i.test(message) && !isPastDate;

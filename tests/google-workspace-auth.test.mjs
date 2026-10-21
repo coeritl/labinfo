@@ -19,7 +19,7 @@ test('identidade institucional exige Google, domínio IFMS e servidor ativo',()=
 });
 
 test('RPCs da conta institucional não são executáveis por visitantes anônimos',()=>{
-  for(const name of ['get_my_ifms_identity','create_my_reservation_range','list_my_reservations','request_my_reservation_cancellation','submit_my_software_request']){
+  for(const name of ['get_my_ifms_identity','create_my_reservation_range','list_my_reservations','request_my_reservation_cancellation','submit_my_software_request','create_my_ticket','register_my_ticket_attachment','my_tickets_authenticated','request_my_chat_session']){
     const grants=resolveFunctionGrants(corpus,name);
     assert.ok(grants.seen,`RPC não encontrada: ${name}`);
     assert.equal(grants.canExecute('anon'),false,`${name} não pode aceitar anon`);
@@ -39,7 +39,12 @@ test('frontend usa OAuth Google e mantém o fluxo SIAPE como contingência',()=>
   assert.match(reservations,/google_auth_return/);
   assert.match(reservations,/sessionStorage\.setItem\('labinfo_google_auth_return',context\)/);
   assert.match(reservations,/if\(googleAuthReturn\)\{[\s\S]*?showPublic\('reservations',false\)[\s\S]*?history\.replaceState\(\{\},'',sitePath\('reservas'\)\)/);
-  assert.match(reservations,/publicSessionStatus\.hidden=false/);
+  assert.match(integration,/publicSessionLogin/);
+  assert.match(integration,/applySharedInstitutionalIdentity/);
+  assert.match(integration,/ticketSiapeFallback/);
+  assert.match(integration,/chatSiapeFallback/);
+  assert.match(integration,/setTimeout\(\(\)=>\$\('#protocolButton'\)\?\.click\(\),0\)/);
+  assert.match(integration,/Entrar com Gmail @ifms\.edu\.br/);
   assert.match(integration,/if\(!force&&!state\.profile\)/);
   assert.match(reservations,/toggleMyReservationsForm\(true\)/);
   assert.match(reservations,/create_my_reservation_range/);

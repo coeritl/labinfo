@@ -726,14 +726,17 @@
 @media(max-width:620px){.institutional-auth-identity{align-items:flex-start}.auth-divider span{max-width:230px}.google-auth-button{min-height:52px}}
 
 /* Sessão institucional visível nas áreas públicas. */
+.public-auth-header{display:flex;align-items:center;margin-left:auto;margin-right:10px}.public-auth-header[hidden],.admin-route .public-auth-header{display:none!important}
+.public-session-login{display:flex;min-height:42px;align-items:center;gap:7px;padding:7px 11px;border:1px solid #a8ceb7;border-radius:11px;background:#fff;color:var(--green-dark);font:inherit;cursor:pointer;box-shadow:0 4px 12px rgba(17,115,60,.06)}.public-session-login[hidden],#myTicketsFallback[hidden]{display:none!important}
+.public-session-login:hover{background:var(--green-soft);border-color:var(--green)}.public-session-login:disabled{cursor:wait;opacity:.65}.public-session-login>span{display:grid;width:25px;height:25px;place-items:center;border-radius:50%;background:conic-gradient(from -45deg,#4285f4 0 25%,#34a853 0 50%,#fbbc05 0 75%,#ea4335 0);color:#fff;font-size:11px;font-weight:900;text-shadow:0 1px 2px rgba(0,0,0,.3)}.public-session-login>b{font-size:11px}.public-session-login>small{font-size:9px;color:#52705f}
 .public-session-status{display:flex;align-items:center;gap:9px;margin-left:auto;margin-right:10px;padding:5px 7px 5px 5px;border:1px solid #a8ceb7;border-radius:12px;background:#edf8f1;color:var(--green-dark);box-shadow:0 4px 12px rgba(17,115,60,.07)}
 .public-session-status[hidden],.admin-route .public-session-status{display:none!important}
 .public-session-avatar{width:32px;height:32px;display:grid;place-items:center;flex:0 0 32px;border-radius:9px;background:var(--green);color:#fff;font-size:10px;font-weight:900}
 .public-session-copy{display:flex;min-width:0;max-width:190px;flex-direction:column;line-height:1.2}
 .public-session-copy strong{font-size:10px;letter-spacing:.02em}.public-session-copy small{overflow:hidden;color:#52705f;font-size:9px;text-overflow:ellipsis;white-space:nowrap}
 .public-session-status button{border:0;border-left:1px solid #c7dfd0;background:transparent;color:#9b252b;padding:5px 6px;font-size:10px;font-weight:800;cursor:pointer}
-@media(max-width:760px){.public-session-status{margin-right:6px}.public-session-copy{max-width:125px}.public-session-copy small{display:none}}
-@media(max-width:620px){.public-session-status{gap:6px;padding:4px}.public-session-avatar{width:29px;height:29px;flex-basis:29px}.public-session-copy{display:none}.public-session-status button{padding:4px 5px}.topbar:has(.public-session-status:not([hidden])) .admin-link{padding:8px;font-size:10px}}
+@media(max-width:760px){.public-auth-header{margin-right:6px}.public-session-status{margin-right:0}.public-session-copy{max-width:125px}.public-session-copy small{display:none}.public-session-login>small{display:none}}
+@media(max-width:620px){.public-session-status{gap:6px;padding:4px}.public-session-avatar{width:29px;height:29px;flex-basis:29px}.public-session-copy{display:none}.public-session-status button{padding:4px 5px}.public-session-login{min-height:38px;padding:6px 8px}.public-session-login>b{font-size:0}.public-session-login>b:after{content:'Gmail';font-size:9px}.public-session-login>span{width:22px;height:22px}.topbar:has(.public-session-status:not([hidden])) .admin-link{padding:8px;font-size:10px}.topbar:has(.public-session-login:not([hidden])) .admin-link{padding:8px;font-size:10px}}
 
 /* Painel / Central de Chat Técnico (Admin) */
 .chat-admin-card{padding:28px}
