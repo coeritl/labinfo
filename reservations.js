@@ -285,13 +285,13 @@
   publicNotice.addEventListener('click',event=>{if(event.target===publicNotice)closePublicReservationNotice()});
   let identityTimer;
   $('#reservationSiape').oninput=()=>{clearTimeout(identityTimer);publicServer=null;$('#reservationIdentity').textContent='Validando cadastro…';identityTimer=setTimeout(async()=>{const siape=$('#reservationSiape').value.trim();if(siape.length<5){$('#reservationIdentity').textContent='Digite seu SIAPE para validação.';return}const {data,error}=await sb.rpc('identify_server',{p_siape:siape});publicServer=data?.[0]||null;$('#reservationIdentity').textContent=error||!publicServer?'Servidor não localizado ou cadastro inativo.':`${publicServer.full_name} • ${publicServer.email}`;$('#reservationIdentity').className='field-hint '+(publicServer?'found':'pending')},350)};
-  const googleAuthReturn=new URLSearchParams(location.search).get('google_auth_return');
+  const googleAuthReturn=new URLSearchParams(location.search).get('google_auth_return')||sessionStorage.getItem('labinfo_google_auth_return');
   const googleReturnPath=context=>{
     const url=new URL(location.href);url.search='';url.hash='';
     url.searchParams.set('google_auth_return',context);
     return url.pathname+url.search;
   };
-  const beginGoogleAuth=async(button,context)=>{button.disabled=true;button.textContent='Abrindo Google…';try{await window.labinfoInstitutionalAuth?.signIn(googleReturnPath(context))}catch(error){button.disabled=false;button.innerHTML='<span aria-hidden="true">G</span> Entrar com Google IFMS';toast(error.message||'Não foi possível iniciar o acesso com Google.')}};
+  const beginGoogleAuth=async(button,context)=>{button.disabled=true;button.textContent='Abrindo Google…';sessionStorage.setItem('labinfo_google_auth_return',context);try{await window.labinfoInstitutionalAuth?.signIn(googleReturnPath(context))}catch(error){sessionStorage.removeItem('labinfo_google_auth_return');button.disabled=false;button.innerHTML='<span aria-hidden="true">G</span> Entrar com Google IFMS';toast(error.message||'Não foi possível iniciar o acesso com Google.')}};
   $('#reservationGoogleLogin').onclick=event=>beginGoogleAuth(event.currentTarget,'reservation');
   $('#myReservationsGoogleLogin').onclick=event=>beginGoogleAuth(event.currentTarget,'my-reservations');
   if(googleAuthReturn==='my-reservations'){
@@ -306,6 +306,7 @@
     const reservationButton=$('#reservationGoogleLogin'),reservationIdentity=$('#reservationGoogleIdentity'),fallback=$('#reservationSiapeFallback'),siapeInput=$('#reservationSiape');
     const myButton=$('#myReservationsGoogleLogin'),myIdentity=$('#myReservationsGoogleIdentity'),myFallback=$('#myReservationsFallback');
     if(identity){
+      sessionStorage.removeItem('labinfo_google_auth_return');
       publicServer=identity;
       reservationButton.hidden=true;reservationIdentity.hidden=false;
       reservationIdentity.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)} · SIAPE ${safe(identity.siape)}</small></span><button type="button" data-google-signout>Sair</button>`;
@@ -323,6 +324,7 @@
       myButton.hidden=false;myButton.disabled=false;myButton.innerHTML='<span aria-hidden="true">G</span> Entrar com Google IFMS';
       reservationIdentity.hidden=true;myIdentity.hidden=true;fallback.hidden=false;myFallback.hidden=false;siapeInput.required=true;
       if(error&&authState?.session){
+        sessionStorage.removeItem('labinfo_google_auth_return');
         $('#reservationIdentity').textContent=error;$('#reservationIdentity').className='field-hint pending';
         $('#myReservationsResult').innerHTML=`<p class="error-text">${safe(error)}</p>`;
       }

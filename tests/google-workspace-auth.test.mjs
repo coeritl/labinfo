@@ -31,6 +31,7 @@ test('frontend usa OAuth Google e mantém o fluxo SIAPE como contingência',()=>
   assert.match(integration,/hd:'ifms\.edu\.br'/);
   assert.match(integration,/searchParams\.set\('auth_refresh',Date\.now\(\)\.toString\(\)\)/);
   assert.match(reservations,/google_auth_return/);
+  assert.match(reservations,/sessionStorage\.setItem\('labinfo_google_auth_return',context\)/);
   assert.match(reservations,/toggleMyReservationsForm\(true\)/);
   assert.match(reservations,/create_my_reservation_range/);
   assert.match(reservations,/create_public_reservation_range/);
