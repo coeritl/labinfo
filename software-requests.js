@@ -195,12 +195,29 @@
   function editCycle(id){const cycle=staffCycles.find(item=>item.id===id);if(!cycle)return;$('#softwareCycleId').value=cycle.id;$('#softwareCycleLabel').value=cycle.semester_label;$('#softwareCycleOpens').value=asLocalInput(cycle.opens_at);$('#softwareCycleCloses').value=asLocalInput(cycle.closes_at);$('#softwareCycleTarget').value=cycle.target_date||'';$('#softwareCycleInstructions').value=cycle.instructions||'';$('#softwareCycleActive').checked=cycle.active;$('#softwareCycleForm').scrollIntoView({behavior:'smooth',block:'start'})}
   function statusLabel(status){return {awaiting_email:'Aguardando confirmação',confirmed:'Confirmada · chamado criado',cancelled:'Cancelada',expired:'Link expirado'}[status]||status}
 
+  async function deleteRequest(id){
+    const request=staffRequests.find(item=>item.id===id);if(!request)return;
+    const protocol=request.tickets?.protocol||'';
+    const warning=protocol
+      ? `Excluir esta solicitação da campanha?\n\nO chamado ${protocol} será preservado na Central de Chamados.`
+      : 'Excluir permanentemente esta solicitação? O link enviado por e-mail deixará de funcionar.';
+    if(!confirm(warning))return;
+    const button=document.querySelector(`[data-delete-software-request="${id}"]`);
+    if(button){button.disabled=true;button.textContent='Excluindo…'}
+    const {data,error}=await db().rpc('staff_delete_software_request',{p_request:id});
+    if(error){if(button){button.disabled=false;button.textContent='Excluir'}return notify(error.message)}
+    staffRequests=staffRequests.filter(item=>item.id!==id);renderAdmin();
+    const preserved=data?.[0]?.preserved_protocol||protocol;
+    notify(preserved?`Solicitação excluída. O chamado ${preserved} foi preservado.`:'Solicitação excluída e link invalidado.');
+  }
+
   function renderAdmin(){
     $('#softwareCycleList').innerHTML=staffCycles.length?staffCycles.map(cycle=>`<button class="software-cycle-row" type="button" data-cycle="${cycle.id}"><span><strong>${safe(cycle.semester_label)}</strong><small>${localDate(cycle.opens_at)} até ${localDate(cycle.closes_at)}</small></span><b class="${cycle.active?'active':'inactive'}">${cycle.active?'Ativa':'Inativa'}</b></button>`).join(''):'<p class="empty">Nenhuma campanha cadastrada.</p>';
     document.querySelectorAll('[data-cycle]').forEach(button=>button.onclick=()=>editCycle(button.dataset.cycle));
     const filter=$('#softwareRequestsStatus').value,rows=filter?staffRequests.filter(row=>row.status===filter):staffRequests;
     $('#softwareRequestsCount').textContent=`${rows.length} solicitação(ões)`;
-    $('#softwareRequestsList').innerHTML=rows.length?rows.map(row=>`<article class="software-admin-request"><div><strong>${safe(row.course_subject)}</strong><span>${safe(row.servers?.full_name||'Servidor')} · ${safe(row.labs?.name||'Laboratório')} · ${safe(row.software_request_cycles?.semester_label||'')}</span><small>${safe((row.items||[]).map(item=>item.name+(item.version?' '+item.version:'')).join(' · '))}</small></div><div><b class="software-status ${row.status}">${statusLabel(row.status)}</b>${row.tickets?.protocol?`<span>${safe(row.tickets.protocol)}</span>`:''}<time>${localDate(row.created_at)}</time></div></article>`).join(''):'<p class="empty">Nenhuma solicitação neste filtro.</p>';
+    $('#softwareRequestsList').innerHTML=rows.length?rows.map(row=>`<article class="software-admin-request"><div><strong>${safe(row.course_subject)}</strong><span>${safe(row.servers?.full_name||'Servidor')} · ${safe(row.labs?.name||'Laboratório')} · ${safe(row.software_request_cycles?.semester_label||'')}</span><small>${safe((row.items||[]).map(item=>item.name+(item.version?' '+item.version:'')).join(' · '))}</small></div><div><b class="software-status ${row.status}">${statusLabel(row.status)}</b>${row.tickets?.protocol?`<span>${safe(row.tickets.protocol)}</span>`:''}<time>${localDate(row.created_at)}</time>${staffProfile?.role==='tecnico'?`<button class="software-delete-request" data-delete-software-request="${row.id}" type="button">Excluir</button>`:''}</div></article>`).join(''):'<p class="empty">Nenhuma solicitação neste filtro.</p>';
+    document.querySelectorAll('[data-delete-software-request]').forEach(button=>button.onclick=()=>deleteRequest(button.dataset.deleteSoftwareRequest));
     const editable=staffProfile?.role==='tecnico';$('#softwareCycleForm').querySelectorAll('input,textarea,button').forEach(control=>control.disabled=!editable);if(!editable&&!$('#softwareCycleForm .software-readonly'))$('#softwareCycleForm').insertAdjacentHTML('afterbegin','<p class="software-readonly">Supervisores podem acompanhar, mas somente técnicos alteram campanhas.</p>');
   }
 

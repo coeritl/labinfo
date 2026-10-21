@@ -56,3 +56,17 @@ test('interface possui campanha pública, administração e confirmação instit
   assert.match(reservationDispatcher,/montarEmailReserva_\(tipo, payload\)/);
   assert.doesNotMatch(reservationDispatcher,/montarEmailReservaAtual_/);
 });
+
+test('técnico pode excluir solicitação sem apagar o chamado criado',async()=>{
+  const [sql,js]=await Promise.all([
+    read('supabase/migrations/20261021_delete_software_requests.sql'),
+    read('software-requests.js')
+  ]);
+  assert.match(sql,/current_role\(\) is distinct from 'tecnico'/);
+  assert.match(sql,/delete from public\.software_requests/);
+  assert.doesNotMatch(sql,/delete from public\.tickets/);
+  assert.match(sql,/preserved_protocol/);
+  assert.match(js,/staff_delete_software_request/);
+  assert.match(js,/O chamado .* será preservado/);
+  assert.match(js,/data-delete-software-request/);
+});
