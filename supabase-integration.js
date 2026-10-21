@@ -435,6 +435,10 @@
   async function enterAdmin(){
     const p=await getProfile();
     if(!p){openLogin();if(state.session)$('#loginError').textContent='Esta conta institucional não possui perfil técnico ativo.';return}
+    // No retorno do OAuth a sessão é restaurada de forma assíncrona. Quando o
+    // perfil finalmente é encontrado, retire o modal que pode ter sido aberto
+    // pela primeira tentativa (ainda sem sessão).
+    closeLogin(true);
     await loadAdmin();
     $('#adminView').hidden=false;
     $('#teacherView').hidden=true;
@@ -2263,6 +2267,14 @@
   loadChatAvailability();
   confirmFeedbackFromLink();
   refreshInstitutionalAuth();
-  sb.auth.onAuthStateChange(()=>setTimeout(refreshInstitutionalAuth,0));
+  sb.auth.onAuthStateChange((event,session)=>setTimeout(async()=>{
+    await refreshInstitutionalAuth();
+    // A inicialização da rota administrativa pode acontecer antes de o
+    // Supabase concluir a troca do código OAuth pela sessão. Retome a entrada
+    // assim que SIGNED_IN/INITIAL_SESSION entregar a sessão válida.
+    if(session&&(isAdminRoute||document.body.classList.contains('admin-route'))&&!state.profile){
+      await enterAdmin();
+    }
+  },0));
   if (isAdminRoute) enterAdmin().then(startAdminSynchronization);
 })();
