@@ -120,7 +120,7 @@
   const closeLogin=(force=false)=>{
     loginModal.hidden=true;
     document.body.classList.remove('modal-open');
-    if(!state.profile){
+    if(!force&&!state.profile){
       document.body.classList.remove('admin-route');
       $('#homeView').hidden=false;
       $('#teacherView').hidden=true;

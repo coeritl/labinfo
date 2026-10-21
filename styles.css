@@ -725,6 +725,16 @@
 .login-card>.google-auth-button{margin:8px 0 2px}
 @media(max-width:620px){.institutional-auth-identity{align-items:flex-start}.auth-divider span{max-width:230px}.google-auth-button{min-height:52px}}
 
+/* Sessão institucional visível nas áreas públicas. */
+.public-session-status{display:flex;align-items:center;gap:9px;margin-left:auto;margin-right:10px;padding:5px 7px 5px 5px;border:1px solid #a8ceb7;border-radius:12px;background:#edf8f1;color:var(--green-dark);box-shadow:0 4px 12px rgba(17,115,60,.07)}
+.public-session-status[hidden],.admin-route .public-session-status{display:none!important}
+.public-session-avatar{width:32px;height:32px;display:grid;place-items:center;flex:0 0 32px;border-radius:9px;background:var(--green);color:#fff;font-size:10px;font-weight:900}
+.public-session-copy{display:flex;min-width:0;max-width:190px;flex-direction:column;line-height:1.2}
+.public-session-copy strong{font-size:10px;letter-spacing:.02em}.public-session-copy small{overflow:hidden;color:#52705f;font-size:9px;text-overflow:ellipsis;white-space:nowrap}
+.public-session-status button{border:0;border-left:1px solid #c7dfd0;background:transparent;color:#9b252b;padding:5px 6px;font-size:10px;font-weight:800;cursor:pointer}
+@media(max-width:760px){.public-session-status{margin-right:6px}.public-session-copy{max-width:125px}.public-session-copy small{display:none}}
+@media(max-width:620px){.public-session-status{gap:6px;padding:4px}.public-session-avatar{width:29px;height:29px;flex-basis:29px}.public-session-copy{display:none}.public-session-status button{padding:4px 5px}.topbar:has(.public-session-status:not([hidden])) .admin-link{padding:8px;font-size:10px}}
+
 /* Painel / Central de Chat Técnico (Admin) */
 .chat-admin-card{padding:28px}
 .chat-admin-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:24px}

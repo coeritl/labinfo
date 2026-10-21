@@ -38,6 +38,9 @@ test('frontend usa OAuth Google e mantém o fluxo SIAPE como contingência',()=>
   assert.match(integration,/if\(session&&\(isAdminRoute\|\|document\.body\.classList\.contains\('admin-route'\)\)&&!state\.profile\)/);
   assert.match(reservations,/google_auth_return/);
   assert.match(reservations,/sessionStorage\.setItem\('labinfo_google_auth_return',context\)/);
+  assert.match(reservations,/if\(googleAuthReturn\)\{[\s\S]*?showPublic\('reservations',false\)[\s\S]*?history\.replaceState\(\{\},'',sitePath\('reservas'\)\)/);
+  assert.match(reservations,/publicSessionStatus\.hidden=false/);
+  assert.match(integration,/if\(!force&&!state\.profile\)/);
   assert.match(reservations,/toggleMyReservationsForm\(true\)/);
   assert.match(reservations,/create_my_reservation_range/);
   assert.match(reservations,/create_public_reservation_range/);

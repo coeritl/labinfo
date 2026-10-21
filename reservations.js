@@ -301,13 +301,29 @@
   }
 
   async function applyReservationInstitutionalAuth(authState){
-    const identity=authState?.identity||null,error=authState?.error||null;
+    const identity=authState?.identity||null,error=authState?.error||null,session=authState?.session||null,
+          publicSessionStatus=$('#publicSessionStatus'),publicSessionIdentity=$('#publicSessionIdentity'),publicSessionAvatar=$('#publicSessionAvatar');
     publicAuthIdentity=identity;
     const reservationButton=$('#reservationGoogleLogin'),reservationIdentity=$('#reservationGoogleIdentity'),fallback=$('#reservationSiapeFallback'),siapeInput=$('#reservationSiape');
     const myButton=$('#myReservationsGoogleLogin'),myIdentity=$('#myReservationsGoogleIdentity'),myFallback=$('#myReservationsFallback');
     if(identity){
+      // O retorno OAuth acontece na raiz física do Pages. Reaplique a rota
+      // pública antes de limpar o contexto para que o primeiro acesso já abra
+      // a agenda, sem depender de uma segunda navegação para /reservas/.
+      if(googleAuthReturn){
+        showPublic('reservations',false);
+        history.replaceState({},'',sitePath('reservas'));
+        if(googleAuthReturn==='my-reservations'){
+          togglePublicReservationForm(false);toggleMyReservationsForm(true);
+        }else if(googleAuthReturn==='reservation'){
+          togglePublicReservationForm(true);toggleMyReservationsForm(false);
+        }
+      }
       sessionStorage.removeItem('labinfo_google_auth_return');
       publicServer=identity;
+      publicSessionStatus.hidden=false;
+      publicSessionIdentity.textContent=identity.full_name||identity.email;
+      publicSessionAvatar.textContent=(identity.full_name||identity.email||'IF').trim().slice(0,2).toUpperCase();
       reservationButton.hidden=true;reservationIdentity.hidden=false;
       reservationIdentity.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)} · SIAPE ${safe(identity.siape)}</small></span><button type="button" data-google-signout>Sair</button>`;
       fallback.hidden=true;siapeInput.required=false;siapeInput.value=identity.siape;
@@ -323,6 +339,12 @@
       reservationButton.hidden=false;reservationButton.disabled=false;reservationButton.innerHTML='<span aria-hidden="true">G</span> Entrar com Google IFMS';
       myButton.hidden=false;myButton.disabled=false;myButton.innerHTML='<span aria-hidden="true">G</span> Entrar com Google IFMS';
       reservationIdentity.hidden=true;myIdentity.hidden=true;fallback.hidden=false;myFallback.hidden=false;siapeInput.required=true;
+      publicSessionStatus.hidden=!session;
+      if(session){
+        const email=session.user?.email||'Conta institucional';
+        publicSessionIdentity.textContent=email;
+        publicSessionAvatar.textContent=(email.split('@')[0]||'IF').slice(0,2).toUpperCase();
+      }
       if(error&&authState?.session){
         sessionStorage.removeItem('labinfo_google_auth_return');
         $('#reservationIdentity').textContent=error;$('#reservationIdentity').className='field-hint pending';
@@ -330,6 +352,7 @@
       }
     }
   }
+  $('#publicSessionLogout').onclick=()=>window.labinfoInstitutionalAuth?.signOut();
   window.addEventListener('labinfo:institutional-auth',event=>applyReservationInstitutionalAuth(event.detail));
   if(window.labinfoInstitutionalAuth)applyReservationInstitutionalAuth(window.labinfoInstitutionalAuth.getState());
   $('#reservationDate').onchange=()=>{const date=new Date($('#reservationDate').value+'T12:00:00');if(date.getDay()===0){$('#reservationDate').value='';toast('Os laboratórios não recebem reservas aos domingos.')}};
