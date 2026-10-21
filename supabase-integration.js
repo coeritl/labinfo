@@ -41,7 +41,12 @@
     return {...institutionalAuth};
   }
   async function signInWithGoogle(returnPath=location.pathname){
-    const redirectTo=new URL(returnPath||sitePath(''),location.origin).href;
+    // O marcador torna a URL de retorno unica. Assim, depois que o Google
+    // redireciona de volta, o navegador nao reaproveita um HTML antigo que
+    // ainda possa estar no cache do Pages/CDN.
+    const returnUrl=new URL(returnPath||sitePath(''),location.origin);
+    returnUrl.searchParams.set('auth_refresh',Date.now().toString());
+    const redirectTo=returnUrl.href;
     const {error}=await sb.auth.signInWithOAuth({
       provider:'google',
       options:{redirectTo,queryParams:{hd:'ifms.edu.br',prompt:'select_account'}}

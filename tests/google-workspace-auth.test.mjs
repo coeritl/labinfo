@@ -29,6 +29,9 @@ test('RPCs da conta institucional não são executáveis por visitantes anônimo
 test('frontend usa OAuth Google e mantém o fluxo SIAPE como contingência',()=>{
   assert.match(integration,/signInWithOAuth\(\{[\s\S]*?provider:'google'/);
   assert.match(integration,/hd:'ifms\.edu\.br'/);
+  assert.match(integration,/searchParams\.set\('auth_refresh',Date\.now\(\)\.toString\(\)\)/);
+  assert.match(reservations,/google_auth_return/);
+  assert.match(reservations,/toggleMyReservationsForm\(true\)/);
   assert.match(reservations,/create_my_reservation_range/);
   assert.match(reservations,/create_public_reservation_range/);
   assert.match(software,/submit_my_software_request/);

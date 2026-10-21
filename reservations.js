@@ -285,9 +285,20 @@
   publicNotice.addEventListener('click',event=>{if(event.target===publicNotice)closePublicReservationNotice()});
   let identityTimer;
   $('#reservationSiape').oninput=()=>{clearTimeout(identityTimer);publicServer=null;$('#reservationIdentity').textContent='Validando cadastro…';identityTimer=setTimeout(async()=>{const siape=$('#reservationSiape').value.trim();if(siape.length<5){$('#reservationIdentity').textContent='Digite seu SIAPE para validação.';return}const {data,error}=await sb.rpc('identify_server',{p_siape:siape});publicServer=data?.[0]||null;$('#reservationIdentity').textContent=error||!publicServer?'Servidor não localizado ou cadastro inativo.':`${publicServer.full_name} • ${publicServer.email}`;$('#reservationIdentity').className='field-hint '+(publicServer?'found':'pending')},350)};
-  const beginGoogleAuth=async button=>{button.disabled=true;button.textContent='Abrindo Google…';try{await window.labinfoInstitutionalAuth?.signIn(location.pathname)}catch(error){button.disabled=false;button.innerHTML='<span aria-hidden="true">G</span> Entrar com Google IFMS';toast(error.message||'Não foi possível iniciar o acesso com Google.')}};
-  $('#reservationGoogleLogin').onclick=event=>beginGoogleAuth(event.currentTarget);
-  $('#myReservationsGoogleLogin').onclick=event=>beginGoogleAuth(event.currentTarget);
+  const googleAuthReturn=new URLSearchParams(location.search).get('google_auth_return');
+  const googleReturnPath=context=>{
+    const url=new URL(location.href);url.search='';url.hash='';
+    url.searchParams.set('google_auth_return',context);
+    return url.pathname+url.search;
+  };
+  const beginGoogleAuth=async(button,context)=>{button.disabled=true;button.textContent='Abrindo Google…';try{await window.labinfoInstitutionalAuth?.signIn(googleReturnPath(context))}catch(error){button.disabled=false;button.innerHTML='<span aria-hidden="true">G</span> Entrar com Google IFMS';toast(error.message||'Não foi possível iniciar o acesso com Google.')}};
+  $('#reservationGoogleLogin').onclick=event=>beginGoogleAuth(event.currentTarget,'reservation');
+  $('#myReservationsGoogleLogin').onclick=event=>beginGoogleAuth(event.currentTarget,'my-reservations');
+  if(googleAuthReturn==='my-reservations'){
+    togglePublicReservationForm(false);toggleMyReservationsForm(true);
+  }else if(googleAuthReturn==='reservation'){
+    togglePublicReservationForm(true);toggleMyReservationsForm(false);
+  }
 
   async function applyReservationInstitutionalAuth(authState){
     const identity=authState?.identity||null,error=authState?.error||null;
