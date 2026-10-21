@@ -22,8 +22,8 @@
       <form id="softwareRequestForm" class="software-request-form" hidden>
         <div class="section-title"><span>1</span><div><h2>Identificação</h2><p>Use sua conta Gmail @ifms.edu.br para validação imediata</p></div></div>
         <div class="institutional-auth-panel"><button id="softwareGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br</button><div id="softwareGoogleIdentity" class="institutional-auth-identity" hidden></div></div>
-        <div id="softwareSiapeFallback"><div class="auth-divider"><span>ou continue com SIAPE e confirmação por e-mail</span></div><label>SIAPE<input id="softwareRequestSiape" inputmode="numeric" autocomplete="off" placeholder="0000000" required></label></div>
-        <p id="softwareRequestIdentity" class="field-hint">Digite seu SIAPE para validação.</p>
+        <input id="softwareRequestSiape" type="hidden">
+        <p id="softwareRequestIdentity" class="field-hint pending">Entre com seu Gmail institucional para enviar a solicitação.</p>
         <div class="section-title"><span>2</span><div><h2>Turma e laboratório</h2></div></div>
         <div class="field-row"><label>Laboratório<select id="softwareRequestLab" required><option value="">Selecione</option></select></label><label>Disciplina, curso ou atividade<input id="softwareRequestSubject" maxlength="160" required placeholder="Ex.: Programação Web — ADS 3º semestre"></label></div>
         <section id="softwareInstalledPanel" class="software-installed-panel">
@@ -136,34 +136,24 @@
     renderInstalledSoftware();
   }
 
-  async function identify(){
-    const siape=$('#softwareRequestSiape').value.trim(),hint=$('#softwareRequestIdentity');identifiedServer=null;
-    if(siape.length<5){hint.textContent='Digite seu SIAPE para validação.';hint.className='field-hint';return}
-    hint.textContent='Validando cadastro…';
-    const {data,error}=await db().rpc('identify_server',{p_siape:siape});
-    identifiedServer=data?.[0]||null;
-    hint.textContent=error||!identifiedServer?'Servidor não localizado ou cadastro inativo.':`${identifiedServer.full_name} • confirmação em ${identifiedServer.email}`;
-    hint.className='field-hint '+(identifiedServer?'found':'pending');
-  }
-
   async function applyInstitutionalAuth(authState){
     const identity=authState?.identity||null,error=authState?.error||null;
     institutionalIdentity=identity;
-    const login=$('#softwareGoogleLogin'),identityBox=$('#softwareGoogleIdentity'),fallback=$('#softwareSiapeFallback'),siape=$('#softwareRequestSiape'),hint=$('#softwareRequestIdentity'),note=$('#softwareSecurityNote'),submit=$('#softwareRequestForm button[type="submit"]');
-    if(!login||!identityBox||!fallback||!siape)return;
+    const login=$('#softwareGoogleLogin'),identityBox=$('#softwareGoogleIdentity'),siape=$('#softwareRequestSiape'),hint=$('#softwareRequestIdentity'),note=$('#softwareSecurityNote'),submit=$('#softwareRequestForm button[type="submit"]');
+    if(!login||!identityBox||!siape)return;
     if(identity){
       identifiedServer=identity;login.hidden=true;identityBox.hidden=false;
       identityBox.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)} · SIAPE ${safe(identity.siape)}</small></span><button type="button" data-software-google-signout>Sair</button>`;
       identityBox.querySelector('[data-software-google-signout]').onclick=()=>window.labinfoInstitutionalAuth?.signOut();
-      fallback.hidden=true;siape.required=false;siape.value=identity.siape;
+      siape.value=identity.siape;
       hint.textContent='Identidade confirmada pelo Gmail @ifms.edu.br.';hint.className='field-hint found';
       if(note)note.innerHTML='<span class="software-security-icon" aria-hidden="true">✓</span><div><strong>Identidade institucional confirmada</strong><span>A solicitação será criada imediatamente e encaminhada à equipe, sem uma nova confirmação por e-mail.</span></div>';
-      if(submit)submit.innerHTML='Criar solicitação <span>→</span>';
+      if(submit){submit.disabled=false;submit.innerHTML='Criar solicitação <span>→</span>'}
     }else{
-      identifiedServer=null;login.hidden=false;login.disabled=false;login.innerHTML='<span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br';identityBox.hidden=true;fallback.hidden=false;siape.required=true;
-      hint.textContent=error&&authState?.session?error:'Digite seu SIAPE para validação.';hint.className='field-hint '+(error&&authState?.session?'pending':'');
-      if(note)note.innerHTML='<span class="software-security-icon" aria-hidden="true">✉</span><div><strong>Confirmação obrigatória por e-mail</strong><span>O chamado só será criado depois que você confirmar a solicitação pelo e-mail institucional cadastrado no sistema.</span></div>';
-      if(submit)submit.innerHTML='Enviar para confirmação por e-mail <span>→</span>';
+      identifiedServer=null;login.hidden=false;login.disabled=false;login.innerHTML='<span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br';identityBox.hidden=true;
+      hint.textContent=error&&authState?.session?error:'Entre com seu Gmail institucional para enviar a solicitação.';hint.className='field-hint pending';
+      if(note)note.innerHTML='<span class="software-security-icon" aria-hidden="true">🔒</span><div><strong>Login institucional obrigatório</strong><span>A identidade será validada pela conta Gmail @ifms.edu.br vinculada ao cadastro ativo.</span></div>';
+      if(submit){submit.disabled=true;submit.innerHTML='Entre com Gmail para continuar <span>→</span>'}
     }
   }
 
@@ -171,7 +161,7 @@
     event.preventDefault();
     const form=event.currentTarget;
     if(!activeCycle)return notify('O período de solicitações foi encerrado.');
-    if(!identifiedServer)return notify('Valide um SIAPE ativo antes de enviar.');
+    if(!institutionalIdentity||!identifiedServer)return notify('Entre com seu Gmail @ifms.edu.br antes de enviar.');
     const items=collectItems();if(items.some(item=>item.name.length<2))return notify('Informe o nome de todos os softwares.');
     const scope=document.querySelector('input[name="softwareScope"]:checked').value;
     const button=form.querySelector('button[type="submit"]'),result=$('#softwareRequestResult');
@@ -181,19 +171,19 @@
         p_course_subject:$('#softwareRequestSubject').value.trim(),p_computer_scope:scope,
         p_machines:scope==='specific'?$('#softwareRequestMachines').value.trim():null,p_items:items,p_notes:$('#softwareRequestNotes').value.trim()||null
       };
-      const request=institutionalIdentity?db().rpc('submit_my_software_request',common):db().rpc('submit_software_request',{p_siape:$('#softwareRequestSiape').value.trim(),...common});
+      const request=db().rpc('submit_my_software_request',common);
       const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('O servidor demorou para responder. Verifique sua conexão e tente novamente.')),20000));
       const {error}=await Promise.race([request,timeout]);
       if(error)throw error;
       form.reset();identifiedServer=institutionalIdentity;$('#softwareRequestItems').innerHTML='';addItem();renderInstalledSoftware();applyInstitutionalAuth(window.labinfoInstitutionalAuth?.getState()||{});
-      result.classList.add('success');result.hidden=false;result.innerHTML=institutionalIdentity?'<strong>✓ Solicitação criada</strong><p>Sua identidade foi confirmada pelo Gmail @ifms.edu.br e o chamado já foi encaminhado à equipe técnica.</p>':'<strong>✓ Verifique seu e-mail institucional</strong><p>Enviamos os botões para confirmar ou cancelar a solicitação. O chamado só será criado depois da confirmação.</p>';
+      result.classList.add('success');result.hidden=false;result.innerHTML='<strong>✓ Solicitação criada</strong><p>Sua identidade foi confirmada pelo Gmail @ifms.edu.br e o chamado já foi encaminhado à equipe técnica.</p>';
       result.scrollIntoView({behavior:'smooth',block:'center'});
     }catch(error){
       console.error('Falha ao enviar solicitação de software',error);
       result.classList.add('error');result.hidden=false;result.innerHTML=`<strong>Não foi possível enviar</strong><p>${safe(error?.message||'Tente novamente em alguns instantes.')}</p>`;
       result.scrollIntoView({behavior:'smooth',block:'center'});
     }finally{
-      button.disabled=false;button.innerHTML=institutionalIdentity?'Criar solicitação <span>→</span>':'Enviar para confirmação por e-mail <span>→</span>';
+      button.disabled=!institutionalIdentity;button.innerHTML=institutionalIdentity?'Criar solicitação <span>→</span>':'Entre com Gmail para continuar <span>→</span>';
     }
   }
 
@@ -268,7 +258,6 @@
     $('#addSoftwareRequestItem')?.addEventListener('click',()=>addItem());
     $('#softwareGoogleLogin')?.addEventListener('click',async event=>{const button=event.currentTarget;button.disabled=true;button.textContent='Abrindo Gmail institucional…';try{await window.labinfoInstitutionalAuth?.signIn(location.pathname)}catch(error){button.disabled=false;button.innerHTML='<span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br';notify(error.message||'Não foi possível iniciar o acesso com Gmail institucional.')}});
     $('#toggleSoftwareRequestForm')?.addEventListener('click',()=>{const form=$('#softwareRequestForm'),open=form.hidden;form.hidden=!open;$('#toggleSoftwareRequestForm').textContent=open?'Fechar formulário':'Fazer solicitação';$('#toggleSoftwareRequestForm').setAttribute('aria-expanded',String(open));if(open)form.scrollIntoView({behavior:'smooth',block:'start'})});
-    let identityTimer;$('#softwareRequestSiape')?.addEventListener('input',()=>{clearTimeout(identityTimer);identityTimer=setTimeout(identify,350)});
     $('#softwareRequestLab')?.addEventListener('change',()=>{if($('#softwareInstalledSearch'))$('#softwareInstalledSearch').value='';renderInstalledSoftware()});
     $('#softwareInstalledSearch')?.addEventListener('input',renderInstalledSoftware);
     document.querySelectorAll('input[name="softwareScope"]').forEach(input=>input.onchange=()=>{const specific=input.value==='specific'&&input.checked;$('#softwareMachinesLabel').hidden=!specific;$('#softwareRequestMachines').required=specific});

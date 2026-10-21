@@ -82,11 +82,10 @@
             </div>
           </div>
           <form id="chatPublicForm">
+            <button id="chatGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br</button>
             <div id="chatGmailIdentity" class="institutional-auth-identity" hidden></div>
-            <div id="chatSiapeFallback" class="institutional-auth-fallback"><div class="auth-divider"><span>ou use o SIAPE como contingência</span></div><label>SIAPE
-              <input id="chatSiape" inputmode="numeric" autocomplete="off" placeholder="0000000" required />
-            </label></div>
-            <p id="chatIdentity" class="field-hint">Digite seu SIAPE para validação automática.</p>
+            <input id="chatSiape" type="hidden" />
+            <p id="chatIdentity" class="field-hint pending">Entre com seu Gmail institucional para iniciar o atendimento.</p>
             <label>Qual é a sua dúvida ou solicitação inicial?
               <input id="chatSubject" maxlength="140" placeholder="Ex.: Problema com o projetor do Lab 02 ou dúvida de software..." required />
             </label>
@@ -180,15 +179,6 @@
             <p style="margin: 0 0 16px; font-size: 13.5px; line-height: 1.5; color: var(--muted);">Entre com sua conta institucional para consultar e solicitar cancelamentos imediatamente.</p>
             <button id="myReservationsGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br</button>
             <div id="myReservationsGoogleIdentity" class="institutional-auth-identity" hidden></div>
-            <div id="myReservationsFallback" class="institutional-auth-fallback">
-            <div class="auth-divider"><span>ou use o acesso por e-mail</span></div>
-            <ol class="reservation-steps-list" style="padding-left: 0; margin: 0 0 20px; color: var(--ink); font-size: 13.5px; line-height: 1.5; list-style: none; display: flex; flex-direction: column; gap: 10px;">
-              <li style="display: flex; gap: 10px; align-items: flex-start;"><b style="display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #087d3e; color: #fff; font-size: 11px; flex-shrink: 0;">1</b> <span>Informe seu <strong>SIAPE</strong> abaixo e clique em Enviar.</span></li>
-              <li style="display: flex; gap: 10px; align-items: flex-start;"><b style="display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #087d3e; color: #fff; font-size: 11px; flex-shrink: 0;">2</b> <span>Acesse seu <strong>e-mail institucional</strong> e abra a mensagem enviada.</span></li>
-              <li style="display: flex; gap: 10px; align-items: flex-start;"><b style="display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #087d3e; color: #fff; font-size: 11px; flex-shrink: 0;">3</b> <span>Clique no link seguro para <strong>ver e cancelar</strong> suas reservas.</span></li>
-            </ol>
-            <div class="protocol-search"><input id="reservationSearchSiape" inputmode="numeric" autocomplete="off" placeholder="Digite seu SIAPE"><button id="searchReservations" type="button">Enviar link</button></div>
-            </div>
             <div id="myReservationsResult"></div>
           </section>
         </aside>
@@ -201,8 +191,8 @@
               <button id="reservationGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br</button>
               <div id="reservationGoogleIdentity" class="institutional-auth-identity" hidden></div>
             </div>
-            <div id="reservationSiapeFallback"><div class="auth-divider"><span>ou continue com SIAPE e confirmação por e-mail</span></div><label>SIAPE<input id="reservationSiape" inputmode="numeric" autocomplete="off" placeholder="0000000" required></label></div>
-            <p id="reservationIdentity" class="field-hint">Digite seu SIAPE para validação.</p>
+            <input id="reservationSiape" type="hidden">
+            <p id="reservationIdentity" class="field-hint pending">Entre com seu Gmail institucional para solicitar uma reserva.</p>
             <div class="section-title"><span>2</span><div><h2>Data e laboratório</h2><p>Blocos de aula com 45 minutos</p></div></div>
             <div id="reservationSelectedLab" class="reservation-selected-lab"><strong>Laboratório</strong><span>Selecione um dos espaços nos cards acima.</span></div><select id="reservationLab" hidden><option value="">Selecione o laboratório</option></select>
             <div class="field-row reservation-time-row"><label>Data<input id="reservationDate" type="date" required></label><label>Início<input id="reservationTime" type="time" step="300" required></label><label>Fim<input id="reservationEndTime" type="time" step="300" required></label></div>
@@ -229,11 +219,9 @@
         <div class="teacher-grid">
           <form id="ticketForm" class="card ticket-form">
             <div class="section-title"><span>1</span><div><h2>Identificação</h2><p>Sua conta Gmail institucional identifica você em todo o LabInfo</p></div></div>
+            <button id="ticketGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br</button>
             <div id="ticketGmailIdentity" class="institutional-auth-identity" hidden></div>
-            <div id="ticketSiapeFallback" class="institutional-auth-fallback"><div class="auth-divider"><span>ou use os dados funcionais como contingência</span></div><div class="field-row">
-              <label>SIAPE<input id="siape" inputmode="numeric" autocomplete="off" placeholder="0000000" required /></label>
-              <label>E-mail institucional<input id="email" type="email" autocomplete="email" placeholder="nome@ifms.edu.br" required /></label>
-            </div></div>
+            <input id="siape" type="hidden" /><input id="email" type="hidden" />
             <div class="section-title"><span>2</span><div><h2>Como podemos ajudar?</h2><p>Conte o que está acontecendo</p></div></div>
             <label>Categoria<select id="category" required disabled><option value="">Carregando categorias…</option></select></label>
             <label>Laboratório<select id="lab" required disabled><option value="">Carregando laboratórios…</option></select></label>
@@ -248,7 +236,8 @@
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
               </span>
               <h2>Minhas solicitações</h2><p id="myTicketsHelp">Entre com seu Gmail @ifms.edu.br para acompanhar automaticamente suas solicitações.</p>
-              <div id="myTicketsFallback" class="protocol-search"><input id="protocolInput" inputmode="numeric" placeholder="Digite seu SIAPE" /><button id="protocolButton" type="button">Buscar</button></div>
+              <button id="myTicketsGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br</button>
+              <input id="protocolInput" type="hidden" /><button id="protocolButton" type="button" hidden>Buscar</button>
               <div id="protocolResult" class="protocol-result" aria-live="polite"></div>
             </div>
           </aside>

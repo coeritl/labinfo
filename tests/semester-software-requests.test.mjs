@@ -30,7 +30,8 @@ test('interface possui campanha pública, administração e confirmação instit
   ]);
   assert.match(html,/software-requests(?:\.min)?\.js/);
   assert.match(js,/softwareRequestCampaign/);
-  assert.match(js,/submit_software_request/);
+  assert.match(js,/submit_my_software_request/);
+  assert.doesNotMatch(js,/\bsubmit_software_request\b/);
   assert.match(js,/confirm_software_request/);
   assert.match(js,/staff_save_software_request_cycle/);
   assert.match(js,/Promise\.race\(\[request,timeout\]\)/);

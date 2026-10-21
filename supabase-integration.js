@@ -79,46 +79,52 @@
     if(identityText)identityText.textContent=identity?.full_name||email||'Conta IFMS conectada';
     if(avatar)avatar.textContent=(identity?.full_name||email||'IF').trim().slice(0,2).toUpperCase();
 
-    const ticketIdentity=$('#ticketGmailIdentity'),ticketFallback=$('#ticketSiapeFallback'),siape=$('#siape'),ticketEmail=$('#email');
+    const ticketIdentity=$('#ticketGmailIdentity'),ticketLogin=$('#ticketGoogleLogin'),siape=$('#siape'),ticketEmail=$('#email'),ticketSubmit=$('#ticketForm button[type="submit"]');
     if(identity){
       if(ticketIdentity){ticketIdentity.hidden=false;ticketIdentity.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)} · SIAPE ${safe(identity.siape)}</small></span><b>✓ Identidade confirmada</b>`}
-      if(ticketFallback)ticketFallback.hidden=true;
-      if(siape){siape.value=identity.siape;siape.required=false}
-      if(ticketEmail){ticketEmail.value=identity.email;ticketEmail.required=false;ticketEmail.readOnly=true}
+      if(ticketLogin)ticketLogin.hidden=true;
+      if(ticketSubmit)ticketSubmit.disabled=false;
+      if(siape)siape.value=identity.siape;
+      if(ticketEmail)ticketEmail.value=identity.email;
       const teacherIdentity=$('#teacherIdentity');if(teacherIdentity){teacherIdentity.textContent=identity.full_name;teacherIdentity.className='field-hint found'}
     }else{
       if(ticketIdentity)ticketIdentity.hidden=true;
-      if(ticketFallback)ticketFallback.hidden=false;
-      if(siape)siape.required=true;
-      if(ticketEmail)ticketEmail.required=true;
+      if(ticketLogin){ticketLogin.hidden=false;ticketLogin.disabled=false}
+      if(ticketSubmit)ticketSubmit.disabled=true;
     }
 
-    const chatIdentityBox=$('#chatGmailIdentity'),chatFallback=$('#chatSiapeFallback'),chatSiape=$('#chatSiape'),chatHint=$('#chatIdentity');
+    const chatIdentityBox=$('#chatGmailIdentity'),chatLogin=$('#chatGoogleLogin'),chatSiape=$('#chatSiape'),chatHint=$('#chatIdentity'),chatSubmit=$('#startChatButton');
     if(identity){
       currentPublicServer={id:identity.id,siape:identity.siape,full_name:identity.full_name,email:identity.email};
       if(chatIdentityBox){chatIdentityBox.hidden=false;chatIdentityBox.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)} · SIAPE ${safe(identity.siape)}</small></span><b>✓ Gmail validado</b>`}
-      if(chatFallback)chatFallback.hidden=true;
-      if(chatSiape){chatSiape.value=identity.siape;chatSiape.required=false}
+      if(chatLogin)chatLogin.hidden=true;
+      if(chatSubmit)chatSubmit.disabled=false;
+      if(chatSiape)chatSiape.value=identity.siape;
       if(chatHint){chatHint.textContent='Identidade institucional confirmada para este atendimento.';chatHint.className='field-hint found'}
     }else{
+      currentPublicServer=null;
       if(chatIdentityBox)chatIdentityBox.hidden=true;
-      if(chatFallback)chatFallback.hidden=false;
-      if(chatSiape)chatSiape.required=true;
+      if(chatLogin){chatLogin.hidden=false;chatLogin.disabled=false}
+      if(chatSubmit)chatSubmit.disabled=true;
+      if(chatHint){chatHint.textContent=authState?.error||'Entre com seu Gmail institucional para iniciar o atendimento.';chatHint.className='field-hint pending'}
     }
 
-    const ticketSearchFallback=$('#myTicketsFallback'),ticketHelp=$('#myTicketsHelp'),protocolInput=$('#protocolInput');
+    const ticketSearchLogin=$('#myTicketsGoogleLogin'),ticketHelp=$('#myTicketsHelp'),protocolInput=$('#protocolInput'),protocolResult=$('#protocolResult');
     if(identity){
-      if(ticketSearchFallback)ticketSearchFallback.hidden=true;
+      if(ticketSearchLogin)ticketSearchLogin.hidden=true;
       if(ticketHelp)ticketHelp.textContent=`Solicitações de ${identity.full_name}, identificadas pela sessão Gmail institucional.`;
       if(protocolInput)protocolInput.value=identity.siape;
       if(publicTicketsLoadedFor!==identity.id){publicTicketsLoadedFor=identity.id;setTimeout(()=>$('#protocolButton')?.click(),0)}
     }else{
       publicTicketsLoadedFor=null;
-      if(ticketSearchFallback)ticketSearchFallback.hidden=false;
-      if(ticketHelp)ticketHelp.textContent='Entre com seu Gmail @ifms.edu.br para acompanhar automaticamente suas solicitações, ou use o SIAPE como contingência.';
+      if(ticketSearchLogin){ticketSearchLogin.hidden=false;ticketSearchLogin.disabled=false}
+      if(ticketHelp)ticketHelp.textContent='Entre com seu Gmail @ifms.edu.br para acompanhar automaticamente suas solicitações.';
+      if(protocolResult)protocolResult.innerHTML='';
     }
   }
-  $('#publicSessionLogin')?.addEventListener('click',async event=>{const button=event.currentTarget;button.disabled=true;try{await signInWithGoogle(location.pathname+location.search)}catch(error){button.disabled=false;fail(error,'Não foi possível iniciar o login institucional.')}});
+  const startPublicGoogleLogin=async button=>{button.disabled=true;try{await signInWithGoogle(location.pathname+location.search)}catch(error){button.disabled=false;fail(error,'Não foi possível iniciar o login institucional.')}};
+  $('#publicSessionLogin')?.addEventListener('click',event=>startPublicGoogleLogin(event.currentTarget));
+  ['#ticketGoogleLogin','#chatGoogleLogin','#myTicketsGoogleLogin'].forEach(selector=>$(selector)?.addEventListener('click',event=>startPublicGoogleLogin(event.currentTarget)));
   $('#publicSessionLogout')?.addEventListener('click',()=>signOutInstitutional());
   window.addEventListener('labinfo:institutional-auth',event=>applySharedInstitutionalIdentity(event.detail));
   document.body.insertAdjacentHTML('beforeend','<div id="adminProcessing" class="admin-processing" hidden role="status" aria-live="assertive"><div><i></i><strong>Processando…</strong><span>Aguarde a atualização dos dados.</span></div></div>');
@@ -164,7 +170,7 @@
     }
   }
 
-  document.body.insertAdjacentHTML('beforeend',`<div id="loginModal" class="modal-backdrop" hidden><div class="card login-card"><div class="modal-heading"><div><span class="eyebrow">ACESSO RESTRITO</span><h2>Entrar no painel</h2><p>Use sua conta institucional ou as credenciais técnicas.</p></div><button id="closeLogin" class="modal-close">×</button></div><button id="googleStaffLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br</button><div class="auth-divider"><span>ou</span></div><form id="loginForm"><label>E-mail do usuário<input id="loginEmail" type="email" autocomplete="username" required></label><label>Senha<input id="loginPassword" type="password" autocomplete="current-password" required></label><p id="loginError" class="login-error"></p><button class="primary" type="submit">Entrar com senha</button></form></div></div>`);
+  document.body.insertAdjacentHTML('beforeend',`<div id="loginModal" class="modal-backdrop" hidden><div class="card login-card"><div class="modal-heading"><div><span class="eyebrow">ACESSO RESTRITO</span><h2>Entrar no painel</h2><p>O painel técnico exige uma conta Gmail @ifms.edu.br com perfil ativo.</p></div><button id="closeLogin" class="modal-close">×</button></div><button id="googleStaffLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br</button><p id="loginError" class="login-error"></p></div></div>`);
   const loginModal=$('#loginModal');
   const loginIsRequired=()=>location.pathname.includes('/admin')||new URLSearchParams(location.search).get('route')==='admin';
   const openLogin=()=>{loginModal.hidden=false;document.body.classList.add('modal-open')};
@@ -183,7 +189,6 @@
   };
   $('#closeLogin').onclick=()=>closeLogin();
   $('#googleStaffLogin').onclick=async event=>{const button=event.currentTarget;button.disabled=true;$('#loginError').textContent='';try{await signInWithGoogle(location.pathname)}catch(error){button.disabled=false;$('#loginError').textContent=error.message||'Não foi possível iniciar o acesso com Google.'}};
-  $('#loginForm').onsubmit=async e=>{e.preventDefault();$('#loginError').textContent='';const button=e.submitter||e.target.querySelector('[type="submit"]');button.disabled=true;button.textContent='Entrando…';const {data:auth,error}=await sb.auth.signInWithPassword({email:$('#loginEmail').value.trim(),password:$('#loginPassword').value});if(error){button.disabled=false;button.textContent='Entrar';$('#loginError').textContent='Usuário ou senha inválidos.';return}state.session=auth.session;closeLogin(true);await enterAdmin();button.disabled=false;button.textContent='Entrar'};
 
   async function performLogout(){
     try {
@@ -233,21 +238,15 @@
       <button id="accountButton" class="account-button" type="button" aria-expanded="false"><span id="accountAvatar">U</span><span><strong id="accountName">Usuário</strong><small id="accountRole">Perfil</small></span><b>▾</b></button>
       <div id="accountDropdown" class="account-dropdown" hidden>
         <div><strong id="accountMenuName"></strong><small id="accountEmail"></small></div>
-        <button id="changePasswordButton" type="button">Alterar senha</button>
         <button id="accountLogout" type="button">Sair do sistema</button>
       </div>
     </div>
   `);
   $('.topbar').insertBefore(accountActions,$('#adminToggle'));
-  document.body.insertAdjacentHTML('beforeend','<div id="passwordModal" class="modal-backdrop" hidden><div class="card login-card"><div class="modal-heading"><div><span class="eyebrow">SEGURANÇA DA CONTA</span><h2>Alterar senha</h2><p>Confirme sua senha atual antes de definir uma nova.</p></div><button id="closePasswordModal" class="modal-close" type="button" aria-label="Fechar">×</button></div><form id="passwordForm"><label>Senha atual<input id="currentPassword" type="password" autocomplete="current-password" required></label><label>Nova senha<input id="newPassword" type="password" autocomplete="new-password" minlength="8" required></label><label>Confirmar nova senha<input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required></label><p id="passwordError" class="login-error"></p><button class="primary" type="submit">Atualizar senha</button></form></div></div>');
   new MutationObserver(()=>{accountActions.hidden=$('#adminView').hidden}).observe($('#adminView'),{attributes:true,attributeFilter:['hidden']});
-  const accountDropdown=$('#accountDropdown'),passwordModal=$('#passwordModal');
-  const closePasswordModal=()=>{passwordModal.hidden=true;document.body.classList.remove('modal-open');$('#passwordForm').reset();$('#passwordError').textContent=''};
+  const accountDropdown=$('#accountDropdown');
   $('#accountButton').onclick=()=>{accountDropdown.hidden=!accountDropdown.hidden;$('#accountButton').setAttribute('aria-expanded',String(!accountDropdown.hidden))};
-  $('#changePasswordButton').onclick=()=>{accountDropdown.hidden=true;passwordModal.hidden=false;document.body.classList.add('modal-open');$('#currentPassword').focus()};
-  $('#closePasswordModal').onclick=closePasswordModal;passwordModal.onclick=e=>{if(e.target===passwordModal)closePasswordModal()};
   $('#accountLogout').onclick=performLogout;
-  $('#passwordForm').onsubmit=async e=>{e.preventDefault();const current=$('#currentPassword').value,next=$('#newPassword').value,confirm=$('#confirmPassword').value,errorBox=$('#passwordError');errorBox.textContent='';if(next!==confirm){errorBox.textContent='A confirmação não corresponde à nova senha.';return}if(next===current){errorBox.textContent='A nova senha deve ser diferente da senha atual.';return}const email=state.session?.user?.email;const {error:authError}=await sb.auth.signInWithPassword({email,password:current});if(authError){errorBox.textContent='A senha atual está incorreta.';return}const {error:updateError}=await sb.auth.updateUser({password:next});if(updateError){errorBox.textContent=updateError.message;return}closePasswordModal();toast('Senha atualizada com sucesso.')};
 
   $('#adminMenuDropdown').querySelector('[data-section="tickets"]')?.remove();$('#adminMenuDropdown').querySelector('[data-section="analytics"]').textContent='Relatórios';$('#adminMenuDropdown').querySelector('[data-section="supervisor"]').textContent='Supervisor';$('#adminMenuDropdown').insertAdjacentHTML('beforeend','<button id="chatMenuButton" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg> Chat ao vivo <span id="chatMenuBadge" class="chat-menu-badge" hidden>0</span></button><button id="hoursMenuButton">Horários</button><button id="maintenanceMenuButton">Manutenção</button><button id="softwareRequestsMenuButton" type="button">Solicitações de software</button><button id="reservationsMenuButton" type="button">Reservas</button>');
   const adminMenuDropdown=$('#adminMenuDropdown'),analyticsMenuButton=adminMenuDropdown.querySelector('[data-section="analytics"]'),registrationsMenuButton=adminMenuDropdown.querySelector('[data-section="registrations"]'),supervisorMenuButton=adminMenuDropdown.querySelector('[data-section="supervisor"]'),reservationsMenuButton=$('#reservationsMenuButton'),chatMenuButton=$('#chatMenuButton'),softwareRequestsMenuButton=$('#softwareRequestsMenuButton');
@@ -428,23 +427,19 @@
     replace(data.categories,cats.map(x=>({id:x.id,name:x.name})));sortCategories();
     replace(data.labs,labs.map(x=>({id:x.id,name:x.name,location:x.location,code:x.code,computerCount:x.computer_count||0,operatingSystem:x.operating_system||'',softwareInventory:Array.isArray(x.software_inventory)?x.software_inventory:[],active:true})));options();$('#category').disabled=false;$('#lab').disabled=false;
   }
-  identify=async function(){const siape=$('#siape').value.trim(),hint=$('#siapeHint'),email=$('#email');email.value='';email.readOnly=true;email.required=true;$('#teacherIdentity').textContent='';if(siape.length<5){hint.textContent='Digite seu SIAPE para identificação automática';hint.className='field-hint';return}const {data:rows,error}=await sb.rpc('identify_server',{p_siape:siape});const server=rows?.[0];if(error||!server){email.readOnly=false;email.placeholder='seu.email@ifms.edu.br';hint.textContent='SIAPE não localizado. Informe seu e-mail institucional para abrir o chamado.';hint.className='field-hint pending';$('#teacherIdentity').textContent='O cadastro será regularizado posteriormente pela equipe técnica.';return}replace(data.teachers,[...data.teachers.filter(x=>x.siape!==siape),{id:server.id,siape,name:server.full_name,email:server.email}]);email.value=server.email;email.placeholder='';$('#teacherIdentity').textContent=server.full_name;$('#teacherIdentity').className='field-hint found';hint.textContent='Cadastro localizado';hint.className='field-hint found'};
-  $('#siape').oninput=()=>{clearTimeout(window.siapeTimer);window.siapeTimer=setTimeout(identify,350)};
-
-  async function uploadFiles(ticketId,siape,prefix,useInstitutionalIdentity=false){
-    for(const item of attachmentState[prefix]){const safe=item.name.replace(/[^a-zA-Z0-9._-]/g,'_'),path=`tickets/${ticketId}/${crypto.randomUUID()}-${safe}`;const {error}=await sb.storage.from('ticket-attachments').upload(path,item.file,{contentType:item.file.type,upsert:false});if(error)throw error;const common={p_ticket:ticketId,p_path:path,p_name:item.name,p_type:item.file.type,p_size:item.size};let registration=useInstitutionalIdentity?await sb.rpc('register_my_ticket_attachment',common):await sb.rpc('register_public_attachment',{...common,p_siape:siape});if(useInstitutionalIdentity&&registration.error?.code==='PGRST202')registration=await sb.rpc('register_public_attachment',{...common,p_siape:siape});if(registration.error){await sb.storage.from('ticket-attachments').remove([path]);throw registration.error}}clearPendingAttachments(prefix)
+  async function uploadFiles(ticketId,siape,prefix){
+    for(const item of attachmentState[prefix]){const safe=item.name.replace(/[^a-zA-Z0-9._-]/g,'_'),path=`tickets/${ticketId}/${crypto.randomUUID()}-${safe}`;const {error}=await sb.storage.from('ticket-attachments').upload(path,item.file,{contentType:item.file.type,upsert:false});if(error)throw error;const row={ticket_id:ticketId,storage_path:path,file_name:item.name,mime_type:item.file.type,size_bytes:item.size};const registration=prefix==='admin'?await sb.from('attachments').insert(row):await sb.rpc('register_my_ticket_attachment',{p_ticket:ticketId,p_path:path,p_name:item.name,p_type:item.file.type,p_size:item.size});if(registration.error){await sb.storage.from('ticket-attachments').remove([path]);throw registration.error}}clearPendingAttachments(prefix)
   }
   $('#ticketForm').onsubmit=async e=>{
     e.preventDefault();
+    if(!institutionalAuth.identity)return toast('Entre com seu Gmail @ifms.edu.br para abrir um chamado.');
     const siape=$('#siape').value.trim(),email=$('#email').value.trim().toLowerCase(),lab=data.labs.find(x=>x.name===$('#lab').value),cat=data.categories.find(x=>x.name===$('#category').value);
-    if(!$('#email').readOnly&&!/^[^\s@]+@ifms\.edu\.br$/i.test(email))return toast('Informe um e-mail institucional @ifms.edu.br.');
     const common={p_lab:lab?.id||null,p_category:cat?.id||null,p_title:cat?.name||'Chamado',p_description:$('#description').value.trim()};
-    let creation=institutionalAuth.identity?await sb.rpc('create_my_ticket',common):await sb.rpc('create_public_ticket',{p_siape:siape,p_email:email,...common});
-    if(institutionalAuth.identity&&creation.error?.code==='PGRST202')creation=await sb.rpc('create_public_ticket',{p_siape:siape,p_email:email,...common});
+    const creation=await sb.rpc('create_my_ticket',common);
     const {data:created,error}=creation;
     if(error)return fail(error);
     const row=created?.[0];
-    try{await uploadFiles(row.id,siape,'public',Boolean(institutionalAuth.identity))}catch(err){fail(err,'Chamado criado, mas houve erro nos anexos.')}
+    try{await uploadFiles(row.id,siape,'public')}catch(err){fail(err,'Chamado criado, mas houve erro nos anexos.')}
     
     // Disparo imediato via broadcast para todos os técnicos online
     try {
@@ -470,9 +465,18 @@
 
     toast('Chamado '+row.protocol+' aberto com sucesso!');
     e.target.reset();
-    if(institutionalAuth.identity)applySharedInstitutionalIdentity(institutionalAuth);else identify();
+    applySharedInstitutionalIdentity(institutionalAuth);
   };
-  $('#protocolButton').onclick=async()=>{const siape=$('#protocolInput').value.trim(),result=$('#protocolResult');result.innerHTML='<p class="my-tickets-empty">Buscando chamados…</p>';const [{data:who},{data:rows,error}]=await Promise.all([sb.rpc('identify_server',{p_siape:siape}),sb.rpc('my_tickets',{p_siape:siape})]);if(error||(!who?.length&&!rows?.length)){result.innerHTML='<p class="my-tickets-empty error-text">Nenhum chamado encontrado para este SIAPE.</p>';return}const owner=who?.[0]?.full_name||`SIAPE ${safe(siape)} — cadastro pendente`;result.innerHTML=`<div class="my-tickets-owner"><div class="owner-avatar">${safe(owner.charAt(0))}</div><div><span>CHAMADOS DE</span><strong>${safe(owner)}</strong></div><em>${rows.length} chamado(s)</em></div>`+(rows.length?`<div class="my-tickets-list">${rows.map(t=>{const events=t.timeline||[],last=events[events.length-1];return `<article class="my-ticket-card"><header><strong>${safe(t.protocol)}</strong>${badge(t.status)}</header><h3>${safe(t.title)}</h3><div class="my-ticket-meta"><span><i>Local</i>${safe(t.lab||'Não informado')}</span><span><i>Categoria</i>${safe(t.category||'Sem categoria')}</span><span><i>Abertura</i>${fmt(t.created_at)}</span></div><div class="ticket-latest-event"><span>Último andamento</span><strong>${last?.label||'Chamado aberto'}</strong><time>${fmt(last?.at||t.updated_at)}</time></div><button class="ticket-details-toggle" type="button" aria-expanded="false">Ver detalhes</button><div class="public-ticket-timeline" hidden>${events.map(e=>`<div><i></i><span><strong>${safe(e.label)}</strong><time>${fmt(e.at)}</time></span></div>`).join('')}</div></article>`}).join('')}</div>`:'<div class="my-tickets-empty"><strong>Nenhum chamado encontrado</strong></div>');result.querySelectorAll('.ticket-details-toggle').forEach(button=>button.onclick=()=>{const timeline=button.nextElementSibling,open=timeline.hidden;timeline.hidden=!open;button.textContent=open?'Ocultar detalhes':'Ver detalhes';button.setAttribute('aria-expanded',open)})};
+  $('#protocolButton').onclick=async()=>{
+    const result=$('#protocolResult');
+    if(!institutionalAuth.identity){result.innerHTML='<p class="my-tickets-empty error-text">Entre com seu Gmail institucional para consultar os chamados.</p>';return}
+    result.innerHTML='<p class="my-tickets-empty">Buscando chamados…</p>';
+    const {data:rows,error}=await sb.rpc('my_tickets_authenticated');
+    if(error){result.innerHTML=`<p class="my-tickets-empty error-text">${safe(error.message)}</p>`;return}
+    const owner=institutionalAuth.identity.full_name;
+    result.innerHTML=`<div class="my-tickets-owner"><div class="owner-avatar">${safe(owner.charAt(0))}</div><div><span>CHAMADOS DE</span><strong>${safe(owner)}</strong></div><em>${rows.length} chamado(s)</em></div>`+(rows.length?`<div class="my-tickets-list">${rows.map(t=>{const events=t.timeline||[],last=events[events.length-1];return `<article class="my-ticket-card"><header><strong>${safe(t.protocol)}</strong>${badge(t.status)}</header><h3>${safe(t.title)}</h3><div class="my-ticket-meta"><span><i>Local</i>${safe(t.lab||'Não informado')}</span><span><i>Categoria</i>${safe(t.category||'Sem categoria')}</span><span><i>Abertura</i>${fmt(t.created_at)}</span></div><div class="ticket-latest-event"><span>Último andamento</span><strong>${last?.label||'Chamado aberto'}</strong><time>${fmt(last?.at||t.updated_at)}</time></div><button class="ticket-details-toggle" type="button" aria-expanded="false">Ver detalhes</button><div class="public-ticket-timeline" hidden>${events.map(e=>`<div><i></i><span><strong>${safe(e.label)}</strong><time>${fmt(e.at)}</time></span></div>`).join('')}</div></article>`}).join('')}</div>`:'<div class="my-tickets-empty"><strong>Nenhum chamado encontrado</strong></div>');
+    result.querySelectorAll('.ticket-details-toggle').forEach(button=>button.onclick=()=>{const timeline=button.nextElementSibling,open=timeline.hidden;timeline.hidden=!open;button.textContent=open?'Ocultar detalhes':'Ver detalhes';button.setAttribute('aria-expanded',open)});
+  };
 
   async function getProfile(){const {data:{session}}=await sb.auth.getSession();state.session=session||null;if(!session)return null;const {data:p,error}=await sb.from('profiles').select('*').eq('id',session.user.id).single();if(error||!p?.active){state.profile=null;return null}state.profile=p;return p}
   async function loadAdmin(){
@@ -599,6 +603,7 @@
     return {items:items.slice(0,1000),errors};
   }
   const formatSoftwareInventory=items=>(Array.isArray(items)?items:[]).map(item=>`${item?.name||''};${item?.version||''}`).join('\n');
+  const saveRegistration=()=>{};
   function setupLabSoftwareEditor(){
     const textarea=$('#labSoftwareInventory'),file=$('#labSoftwareFile'),status=$('#labSoftwareStatus'),errorsBox=$('#labSoftwareErrors'),download=$('#downloadLabSoftwareModel');
     if(!textarea||!file||!status||!errorsBox||!download)return;
@@ -615,13 +620,10 @@
   $('#serverCsvFile').onchange=async e=>{const file=e.target.files[0];if(!file)return;if(file.size>2*1024*1024){e.target.value='';return toast('O CSV deve ter no máximo 2 MB.')}try{csvServerRows=prepareServerCsv(await file.text());renderServerCsv()}catch(error){csvServerRows=[];$('#serverCsvPreview').hidden=true;toast(error.message)}};
   document.querySelectorAll('[data-reg]').forEach(button=>button.addEventListener('click',()=>{$('#serverCsvImport').hidden=button.dataset.reg!=='teachers'}));
 
-  async function saveRegistration(e){e.preventDefault();const entry=Object.fromEntries(new FormData(e.target));let error,reactivatedEmail='';if(regType==='teachers')({error}=await sb.from('servers').insert({siape:entry.siape,full_name:entry.name,email:entry.email}));else if(regType==='categories')({error}=await sb.from('categories').insert({name:entry.name}));else if(regType==='labs')({error}=await sb.from('labs').insert({name:entry.name,location:entry.location,code:entry.code||null,operating_system:entry.operating_system||null}));else {const role=entry.role||'tecnico',email=entry.email.trim().toLowerCase(),siape=entry.siape.trim(),{data:matches,error:lookupError}=await sb.from('profiles').select('id,email,siape,active').or(`email.eq.${email},siape.eq.${siape}`);if(lookupError)error=lookupError;else {const bySiape=matches?.find(x=>x.siape===siape),byEmail=matches?.find(x=>x.email.toLowerCase()===email);if(bySiape){if(bySiape.active)error=new Error('Este SIAPE já pertence a um usuário ativo.');else {({error}=await sb.from('profiles').update({full_name:entry.name,role,active:true}).eq('id',bySiape.id));if(!error)reactivatedEmail=bySiape.email}}else if(byEmail){if(byEmail.active)error=new Error('Este e-mail já pertence a um usuário ativo.');else {({error}=await sb.from('profiles').update({full_name:entry.name,role,active:true}).eq('id',byEmail.id));if(!error)reactivatedEmail=byEmail.email}}else {const response=await sb.functions.invoke('create-staff',{body:{siape,full_name:entry.name,email,password:entry.password,role}});if(response.error){let message=response.error.message;try{const body=await response.error.context?.json();message=body?.error||message}catch{}error=new Error(message)}else if(!response.data?.ok)error=new Error(response.data?.error||'Não foi possível cadastrar o usuário.')}}}if(error)return fail(error);e.target.reset();await loadAdmin();registration();toast(reactivatedEmail?'Usuário reativado. Login mantido: '+reactivatedEmail:'Cadastro salvo.')}
-  $('#registrationForm').onsubmit=saveRegistration;
   document.body.insertAdjacentHTML('beforeend','<div id="staffEmailModal" class="modal-backdrop" hidden><div class="card login-card"><div class="modal-heading"><div><span class="eyebrow">LOGIN DO USUÁRIO</span><h2>Alterar e-mail</h2><p id="staffEmailIdentity"></p></div><button id="closeStaffEmail" class="modal-close" type="button">×</button></div><form id="staffEmailForm"><input id="staffEmailUserId" type="hidden"><label>Novo e-mail institucional<input id="staffNewEmail" type="email" placeholder="nome@ifms.edu.br" required></label><p id="staffEmailError" class="login-error"></p><button class="primary" type="submit">Atualizar e-mail de login</button></form></div></div>');
   const staffEmailModal=$('#staffEmailModal'),closeStaffEmail=()=>{staffEmailModal.hidden=true;document.body.classList.remove('modal-open');$('#staffEmailForm').reset();$('#staffEmailError').textContent=''};$('#closeStaffEmail').onclick=closeStaffEmail;staffEmailModal.onclick=e=>{if(e.target===staffEmailModal)closeStaffEmail()};
   $('#staffEmailForm').onsubmit=async e=>{e.preventDefault();const email=$('#staffNewEmail').value.trim().toLowerCase(),errorBox=$('#staffEmailError');errorBox.textContent='';setProcessing(true,'Atualizando usuário…');try{if(!/^[^\s@]+@ifms\.edu\.br$/i.test(email)){errorBox.textContent='Informe um e-mail institucional @ifms.edu.br.';return}const response=await sb.functions.invoke('create-staff',{body:{action:'update-email',user_id:$('#staffEmailUserId').value,email}});if(response.error||!response.data?.ok){let message=response.data?.error||response.error?.message||'Não foi possível alterar o e-mail.';try{const body=await response.error?.context?.json();message=body?.error||message}catch{}errorBox.textContent=message;return}closeStaffEmail();await loadAdmin();registration();toast('E-mail de login atualizado com sucesso.')}catch(error){errorBox.textContent=error?.message||'Não foi possível alterar o e-mail.'}finally{setProcessing(false)}};
-  const originalRegistration=registration;registration=function(){originalRegistration();if(regType==='technicians')$('#registrationFields').insertAdjacentHTML('beforeend','<input name="staff_user_id" type="hidden"><label>Perfil<select name="role"><option value="tecnico">Técnico</option><option value="supervisor">Supervisor</option></select></label><label id="staffPasswordLabel">Senha inicial<input name="password" type="password" minlength="8" required></label><button id="cancelStaffEdit" class="secondary cancel-staff-edit" type="button" hidden>Cancelar edição</button>');if(regType==='labs'){$('#registrationFields').insertAdjacentHTML('beforeend','<input name="lab_id" type="hidden"><label>Código do protocolo<input name="code" placeholder="Ex.: LAB05"></label><label>Quantidade de computadores<input name="computer_count" type="number" min="0" step="1" value="0" required></label><label>Sistema operacional<input name="operating_system" placeholder="Ex.: Windows 11 Pro / Ubuntu 24.04 (Dual Boot)" maxlength="80"></label><section class="lab-software-editor"><div class="lab-software-editor-head"><div><strong>Softwares instalados</strong><small>Uma linha por programa no formato Nome;Versão.</small></div><span id="labSoftwareStatus">0 software(s)</span></div><textarea id="labSoftwareInventory" name="software_inventory" rows="7" placeholder="LibreOffice;24.2&#10;Mozilla Firefox;128.0 ESR"></textarea><div class="lab-software-actions"><label class="secondary lab-software-file">Importar TXT/CSV<input id="labSoftwareFile" type="file" accept=".txt,.csv,text/plain,text/csv" hidden></label><button id="downloadLabSoftwareModel" class="secondary" type="button">Baixar modelo CSV</button></div><div id="labSoftwareErrors" class="lab-software-errors" hidden></div></section><label class="lab-reservation-option"><input name="reservation_enabled" type="checkbox" value="true"><span><strong>Disponível para reservas</strong><small>Exibir este laboratório na agenda e nos formulários públicos de reserva. Desmarcado, ele continuará disponível para chamados.</small></span></label><button id="cancelLabEdit" class="secondary cancel-lab-edit" type="button" hidden>Cancelar edição</button>');setupLabSoftwareEditor()}$('#registrationForm').onsubmit=saveRegistration};
-  const saveRegistrationBase=saveRegistration;saveRegistration=async function(event){await saveRegistrationBase(event);await new Promise(resolve=>setTimeout(resolve,400));await loadAdmin();registration();setProcessing(false)};$('#registrationForm').onsubmit=saveRegistration;
+  const originalRegistration=registration;registration=function(){originalRegistration();if(regType==='technicians')$('#registrationFields').insertAdjacentHTML('beforeend','<input name="staff_user_id" type="hidden"><label>Perfil<select name="role"><option value="tecnico">Técnico</option><option value="supervisor">Supervisor</option></select></label><div class="linked-notice"><strong>Acesso pelo Gmail institucional</strong><span>O usuário entrará exclusivamente com a conta @ifms.edu.br cadastrada.</span></div><button id="cancelStaffEdit" class="secondary cancel-staff-edit" type="button" hidden>Cancelar edição</button>');if(regType==='labs'){$('#registrationFields').insertAdjacentHTML('beforeend','<input name="lab_id" type="hidden"><label>Código do protocolo<input name="code" placeholder="Ex.: LAB05"></label><label>Quantidade de computadores<input name="computer_count" type="number" min="0" step="1" value="0" required></label><label>Sistema operacional<input name="operating_system" placeholder="Ex.: Windows 11 Pro / Ubuntu 24.04 (Dual Boot)" maxlength="80"></label><section class="lab-software-editor"><div class="lab-software-editor-head"><div><strong>Softwares instalados</strong><small>Uma linha por programa no formato Nome;Versão.</small></div><span id="labSoftwareStatus">0 software(s)</span></div><textarea id="labSoftwareInventory" name="software_inventory" rows="7" placeholder="LibreOffice;24.2&#10;Mozilla Firefox;128.0 ESR"></textarea><div class="lab-software-actions"><label class="secondary lab-software-file">Importar TXT/CSV<input id="labSoftwareFile" type="file" accept=".txt,.csv,text/plain,text/csv" hidden></label><button id="downloadLabSoftwareModel" class="secondary" type="button">Baixar modelo CSV</button></div><div id="labSoftwareErrors" class="lab-software-errors" hidden></div></section><label class="lab-reservation-option"><input name="reservation_enabled" type="checkbox" value="true"><span><strong>Disponível para reservas</strong><small>Exibir este laboratório na agenda e nos formulários públicos de reserva. Desmarcado, ele continuará disponível para chamados.</small></span></label><button id="cancelLabEdit" class="secondary cancel-lab-edit" type="button" hidden>Cancelar edição</button>');setupLabSoftwareEditor()}$('#registrationForm').onsubmit=saveRegistration};
   document.addEventListener('submit',event=>{if(event.target.matches('#registrationForm'))setProcessing(true,'Salvando cadastro…')});
   document.addEventListener('click',event=>{if(event.target.closest('.delete-button'))setProcessing(true,'Desativando cadastro…');if(event.target.closest('#importServerCsv'))setProcessing(true,'Importando servidores…')});
   document.addEventListener('submit',async event=>{
@@ -645,7 +647,7 @@
           p_full_name:entry.name.trim(),
           p_siape:entry.siape.trim(),
           p_role:entry.role||'tecnico',
-          p_new_password:entry.password?.trim()||null
+          p_new_password:null
         });
         if(rpcErr){
           const {error:dirErr}=await sb.from('profiles').update({
@@ -658,8 +660,8 @@
         }
         form.reset();await loadAdmin();registration();toast('Cadastro de '+entry.name.trim()+' atualizado com sucesso.');
       } else {
-        const role=entry.role||'tecnico',email=entry.email.trim().toLowerCase(),siape=entry.siape.trim();
-        const response=await sb.functions.invoke('create-staff',{body:{siape,full_name:entry.name.trim(),email,password:entry.password,role}});
+        const role=entry.role||'tecnico',email=entry.email.trim().toLowerCase(),siape=entry.siape.trim(),bootstrapPassword=`${crypto.randomUUID()}${crypto.randomUUID()}Aa1!`;
+        const response=await sb.functions.invoke('create-staff',{body:{siape,full_name:entry.name.trim(),email,password:bootstrapPassword,role}});
         if(response.error||!response.data?.ok){
           let message=response.data?.error||response.error?.message||'Não foi possível cadastrar o usuário.';
           try{const body=await response.error?.context?.json();if(body?.error)message=body.error}catch{}
@@ -717,13 +719,8 @@
       form.elements.email.value=user.email||'';
       form.elements.email.readOnly=true;
       form.elements.role.value=user.role||'tecnico';
-      form.elements.password.value='';
-      form.elements.password.required=false;
-      form.elements.password.placeholder='Deixe em branco para manter a senha atual';
-      const passLabel=$('#staffPasswordLabel');
-      if(passLabel)passLabel.childNodes[0].textContent='Nova senha (opcional)';
       $('#registrationTitle').textContent='Editar '+(user.role==='supervisor'?'supervisor':'técnico');
-      $('#registrationHelp').textContent='Altere nome, SIAPE, perfil de acesso ou redefina a senha.';
+      $('#registrationHelp').textContent='Altere nome, SIAPE ou perfil. O acesso permanece vinculado ao Gmail institucional.';
       $('#cancelStaffEdit').hidden=false;
       form.querySelector('[type="submit"]').textContent='Salvar alterações';
       form.scrollIntoView({behavior:'smooth',block:'start'});
@@ -1941,37 +1938,10 @@
   });
 
   // 4. Lado do Servidor / Docente (Público)
-  let chatIdentifyTimer;
-  $('#chatSiape')?.addEventListener('input', () => {
-    clearTimeout(chatIdentifyTimer);
-    currentPublicServer = null;
-    const hint = $('#chatIdentity');
-    hint.textContent = 'Validando SIAPE…';
-    hint.className = 'field-hint';
-
-    chatIdentifyTimer = setTimeout(async () => {
-      const siape = $('#chatSiape').value.trim();
-      if (siape.length < 5) {
-        hint.textContent = 'Digite seu SIAPE para validação automática.';
-        return;
-      }
-      const { data: rows, error } = await sb.rpc('identify_server', { p_siape: siape });
-      const server = rows?.[0];
-      if (error || !server) {
-        hint.textContent = 'SIAPE não localizado ou inativo. Apenas servidores cadastrados podem iniciar chat.';
-        hint.className = 'field-hint error';
-        return;
-      }
-      currentPublicServer = server;
-      hint.textContent = `${server.full_name} • ${server.email}`;
-      hint.className = 'field-hint found';
-    }, 350);
-  });
-
   $('#chatPublicForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!currentPublicServer) {
-      return toast('Informe um SIAPE válido e cadastrado para continuar.');
+    if (!institutionalAuth.identity || !currentPublicServer) {
+      return toast('Entre com seu Gmail @ifms.edu.br para iniciar o chat.');
     }
     const siape = $('#chatSiape').value.trim();
     const subject = $('#chatSubject').value.trim();
@@ -1980,10 +1950,7 @@
     button.textContent = 'Iniciando atendimento…';
 
     try {
-      let request=institutionalAuth.identity
-        ?await sb.rpc('request_my_chat_session',{p_subject:subject})
-        :await sb.rpc('request_chat_session',{p_siape:siape,p_subject:subject});
-      if(institutionalAuth.identity&&request.error?.code==='PGRST202')request=await sb.rpc('request_chat_session',{p_siape:siape,p_subject:subject});
+      const request=await sb.rpc('request_my_chat_session',{p_subject:subject});
       const { data: res, error } = request;
       if (error) throw error;
 
@@ -2188,8 +2155,7 @@
     $('#chatActiveCard').hidden = true;
     $('#chatEndedCard').hidden = true;
     $('#chatPublicForm')?.reset();
-    $('#chatIdentity').textContent = 'Digite seu SIAPE para validação automática.';
-    $('#chatIdentity').className = 'field-hint';
+    applySharedInstitutionalIdentity(institutionalAuth);
   }
 
   sb.channel('labinfo-chat-status-watch')

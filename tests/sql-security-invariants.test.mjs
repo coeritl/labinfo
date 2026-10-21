@@ -38,24 +38,37 @@ test('create_ticket_from_chat exige técnico/supervisor autenticado no corpo da 
   assert.match(latest, /raise exception/i, 'A definição mais recente de create_ticket_from_chat não interrompe a execução para chamadores não autorizados.');
 });
 
-test('RPCs públicas esperadas continuam acessíveis por anon', () => {
-  // Funções que o site público (visitante não autenticado) precisa poder
-  // chamar. Se um destes falhar, o site quebra para o público mesmo que a
-  // função exista — normalmente sinal de um "revoke" sem o "grant" correspondente.
+test('somente RPCs tokenizadas continuam acessíveis por anon', () => {
+  // O visitante pode usar somente operações protegidas por token aleatório
+  // enviado por e-mail ou pelo identificador secreto da sessão de chat.
   const publicFunctions = [
-    'create_public_ticket',
-    'identify_server',
-    'request_chat_session',
     'send_chat_message',
     'get_public_chat_messages',
-    'create_public_reservation_range',
     'confirm_ticket_feedback',
-    'my_tickets',
   ];
   for (const fn of publicFunctions) {
     const grants = resolveFunctionGrants(corpus, fn);
     assert.ok(grants.seen, `Função pública esperada não encontrada: ${fn}`);
     assert.equal(grants.canExecute('anon'), true, `A função pública ${fn} não está (mais) acessível para o role anon.`);
+  }
+});
+
+test('RPCs antigas de contingência não podem ser chamadas pelo navegador', () => {
+  const legacyFunctions = [
+    'identify_server',
+    'create_public_ticket',
+    'register_public_attachment',
+    'my_tickets',
+    'request_chat_session',
+    'create_public_reservation_range',
+    'request_reservation_access',
+    'submit_software_request',
+  ];
+  for (const fn of legacyFunctions) {
+    const grants = resolveFunctionGrants(corpus, fn);
+    assert.ok(grants.seen, `Função legada não encontrada: ${fn}`);
+    assert.equal(grants.canExecute('anon'), false, `${fn} não pode aceitar anon.`);
+    assert.equal(grants.canExecute('authenticated'), false, `${fn} só pode ser usada internamente pelas wrappers seguras.`);
   }
 });
 
@@ -80,20 +93,14 @@ test('nenhuma policy pública de leitura/escrita irrestrita ("using (true)" para
   );
 });
 
-test('upload público em ticket-attachments exige um chamado existente (achado adicional, verificação ao vivo em 26/08/2026)', () => {
-  // A policy original só checava bucket_id + prefixo "tickets/" — qualquer
-  // pessoa com a anon key pública conseguia subir imagens para caminhos
-  // arbitrários, sem nenhum chamado real por trás, consumindo a cota de
-  // armazenamento do plano gratuito sem rate limit. Pega a ÚLTIMA
-  // "create policy storage_public_upload" do corpus (a mais recente vence,
-  // já que a migration faz "drop policy if exists" antes de recriar).
-  const matches = [...corpus.matchAll(/create policy storage_public_upload on storage\.objects[\s\S]*?;/gi)];
-  assert.ok(matches.length > 0, 'Nenhuma definição de storage_public_upload encontrada.');
+test('upload em ticket-attachments exige sessão autenticada e vínculo com o chamado', () => {
+  const matches = [...corpus.matchAll(/create policy storage_authenticated_ticket_upload on storage\.objects[\s\S]*?;/gi)];
+  assert.ok(matches.length > 0, 'Nenhuma definição de storage_authenticated_ticket_upload encontrada.');
   const latest = matches[matches.length - 1][0];
+  assert.match(latest, /for insert to authenticated/i);
   assert.match(
-    latest, /exists\s*\(\s*select[\s\S]*?public\.tickets[\s\S]*?\(storage\.foldername\(name\)\)\[2\]/i,
-    'A policy storage_public_upload mais recente não exige mais que o segundo segmento do caminho corresponda a um chamado existente — ' +
-    'isto reabriria o vetor de abuso de cota de armazenamento (uploads não vinculados a nenhum chamado real).'
+    latest, /exists\s*\(\s*select[\s\S]*?public\.tickets[\s\S]*?\(storage\.foldername\(name\)\)\[2\][\s\S]*?auth\.jwt\(\)/i,
+    'A policy deve exigir um chamado existente e associar o Gmail autenticado ao servidor solicitante.'
   );
 });
 
