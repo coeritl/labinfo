@@ -25,8 +25,8 @@ test('RPC pública valida campanha, SIAPE ativo, limite e conteúdo dos itens',a
 });
 
 test('interface possui campanha pública, administração e confirmação institucional',async()=>{
-  const [html,js,admin,email]=await Promise.all([
-    read('index.html'),read('software-requests.js'),read('supabase-integration.js'),read('google-apps-script/Code.gs')
+  const [html,js,admin,email,reservationDispatcher]=await Promise.all([
+    read('index.html'),read('software-requests.js'),read('supabase-integration.js'),read('google-apps-script/Code.gs'),read('google-apps-script/EmailsReservas.gs')
   ]);
   assert.match(html,/software-requests(?:\.min)?\.js/);
   assert.match(js,/softwareRequestCampaign/);
@@ -50,4 +50,9 @@ test('interface possui campanha pública, administração e confirmação instit
   assert.match(admin,/softwareRequestsMenuButton/);
   assert.match(email,/Confirmar e criar chamado/);
   assert.match(email,/Cancelar solicitação/);
+  assert.match(email,/reserva_acesso/);
+  assert.match(email,/data\.access_url/);
+  assert.match(email,/Acessar minhas reservas/);
+  assert.match(reservationDispatcher,/montarEmailReserva_\(tipo, payload\)/);
+  assert.doesNotMatch(reservationDispatcher,/montarEmailReservaAtual_/);
 });
