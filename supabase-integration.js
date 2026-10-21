@@ -23,6 +23,36 @@
   const safe=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const sortCategories=()=>data.categories.sort((a,b)=>{const aOther=a.name.trim().toLocaleLowerCase('pt-BR')==='outro',bOther=b.name.trim().toLocaleLowerCase('pt-BR')==='outro';return aOther!==bOther?(aOther?1:-1):a.name.localeCompare(b.name,'pt-BR')});
   const fail=(e,msg='Não foi possível concluir a operação.')=>{console.error(e);toast(e?.message||msg)};
+
+  // Sessao institucional compartilhada pelos modulos publicos. A validacao
+  // efetiva do dominio, do provedor Google e do cadastro ativo acontece nas
+  // RPCs; a interface apenas reflete a identidade devolvida pelo banco.
+  const institutionalAuth={session:null,identity:null,error:null};
+  const emitInstitutionalAuth=()=>window.dispatchEvent(new CustomEvent('labinfo:institutional-auth',{detail:{...institutionalAuth}}));
+  async function refreshInstitutionalAuth(){
+    const {data:{session}}=await sb.auth.getSession();
+    institutionalAuth.session=session||null;institutionalAuth.identity=null;institutionalAuth.error=null;
+    if(session){
+      const {data,error}=await sb.rpc('get_my_ifms_identity');
+      institutionalAuth.identity=data?.[0]||null;
+      if(error)institutionalAuth.error=error.message;
+    }
+    emitInstitutionalAuth();
+    return {...institutionalAuth};
+  }
+  async function signInWithGoogle(returnPath=location.pathname){
+    const redirectTo=new URL(returnPath||sitePath(''),location.origin).href;
+    const {error}=await sb.auth.signInWithOAuth({
+      provider:'google',
+      options:{redirectTo,queryParams:{hd:'ifms.edu.br',prompt:'select_account'}}
+    });
+    if(error)throw error;
+  }
+  async function signOutInstitutional(){await sb.auth.signOut();await refreshInstitutionalAuth()}
+  window.labinfoInstitutionalAuth={
+    signIn:signInWithGoogle,signOut:signOutInstitutional,refresh:refreshInstitutionalAuth,
+    getState:()=>({...institutionalAuth})
+  };
   document.body.insertAdjacentHTML('beforeend','<div id="adminProcessing" class="admin-processing" hidden role="status" aria-live="assertive"><div><i></i><strong>Processando…</strong><span>Aguarde a atualização dos dados.</span></div></div>');
   const processing=$('#adminProcessing'),setProcessing=(active,message='Processando…')=>{processing.hidden=!active;processing.querySelector('strong').textContent=message;document.body.classList.toggle('is-processing',active)};
   const baseToast=toast;toast=function(message){setProcessing(false);baseToast(message)};
@@ -66,7 +96,7 @@
     }
   }
 
-  document.body.insertAdjacentHTML('beforeend',`<div id="loginModal" class="modal-backdrop" hidden><div class="card login-card"><div class="modal-heading"><div><span class="eyebrow">ACESSO RESTRITO</span><h2>Entrar no painel</h2><p>Use as credenciais cadastradas no Supabase.</p></div><button id="closeLogin" class="modal-close">×</button></div><form id="loginForm"><label>E-mail do usuário<input id="loginEmail" type="email" autocomplete="username" required></label><label>Senha<input id="loginPassword" type="password" autocomplete="current-password" required></label><p id="loginError" class="login-error"></p><button class="primary" type="submit">Entrar</button></form></div></div>`);
+  document.body.insertAdjacentHTML('beforeend',`<div id="loginModal" class="modal-backdrop" hidden><div class="card login-card"><div class="modal-heading"><div><span class="eyebrow">ACESSO RESTRITO</span><h2>Entrar no painel</h2><p>Use sua conta institucional ou as credenciais técnicas.</p></div><button id="closeLogin" class="modal-close">×</button></div><button id="googleStaffLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Google IFMS</button><div class="auth-divider"><span>ou</span></div><form id="loginForm"><label>E-mail do usuário<input id="loginEmail" type="email" autocomplete="username" required></label><label>Senha<input id="loginPassword" type="password" autocomplete="current-password" required></label><p id="loginError" class="login-error"></p><button class="primary" type="submit">Entrar com senha</button></form></div></div>`);
   const loginModal=$('#loginModal');
   const loginIsRequired=()=>location.pathname.includes('/admin')||new URLSearchParams(location.search).get('route')==='admin';
   const openLogin=()=>{loginModal.hidden=false;document.body.classList.add('modal-open')};
@@ -84,6 +114,7 @@
     }
   };
   $('#closeLogin').onclick=()=>closeLogin();
+  $('#googleStaffLogin').onclick=async event=>{const button=event.currentTarget;button.disabled=true;$('#loginError').textContent='';try{await signInWithGoogle(location.pathname)}catch(error){button.disabled=false;$('#loginError').textContent=error.message||'Não foi possível iniciar o acesso com Google.'}};
   $('#loginForm').onsubmit=async e=>{e.preventDefault();$('#loginError').textContent='';const button=e.submitter||e.target.querySelector('[type="submit"]');button.disabled=true;button.textContent='Entrando…';const {data:auth,error}=await sb.auth.signInWithPassword({email:$('#loginEmail').value.trim(),password:$('#loginPassword').value});if(error){button.disabled=false;button.textContent='Entrar';$('#loginError').textContent='Usuário ou senha inválidos.';return}state.session=auth.session;closeLogin(true);await enterAdmin();button.disabled=false;button.textContent='Entrar'};
 
   async function performLogout(){
@@ -372,7 +403,7 @@
   };
   $('#protocolButton').onclick=async()=>{const siape=$('#protocolInput').value.trim(),result=$('#protocolResult');result.innerHTML='<p class="my-tickets-empty">Buscando chamados…</p>';const [{data:who},{data:rows,error}]=await Promise.all([sb.rpc('identify_server',{p_siape:siape}),sb.rpc('my_tickets',{p_siape:siape})]);if(error||(!who?.length&&!rows?.length)){result.innerHTML='<p class="my-tickets-empty error-text">Nenhum chamado encontrado para este SIAPE.</p>';return}const owner=who?.[0]?.full_name||`SIAPE ${safe(siape)} — cadastro pendente`;result.innerHTML=`<div class="my-tickets-owner"><div class="owner-avatar">${safe(owner.charAt(0))}</div><div><span>CHAMADOS DE</span><strong>${safe(owner)}</strong></div><em>${rows.length} chamado(s)</em></div>`+(rows.length?`<div class="my-tickets-list">${rows.map(t=>{const events=t.timeline||[],last=events[events.length-1];return `<article class="my-ticket-card"><header><strong>${safe(t.protocol)}</strong>${badge(t.status)}</header><h3>${safe(t.title)}</h3><div class="my-ticket-meta"><span><i>Local</i>${safe(t.lab||'Não informado')}</span><span><i>Categoria</i>${safe(t.category||'Sem categoria')}</span><span><i>Abertura</i>${fmt(t.created_at)}</span></div><div class="ticket-latest-event"><span>Último andamento</span><strong>${last?.label||'Chamado aberto'}</strong><time>${fmt(last?.at||t.updated_at)}</time></div><button class="ticket-details-toggle" type="button" aria-expanded="false">Ver detalhes</button><div class="public-ticket-timeline" hidden>${events.map(e=>`<div><i></i><span><strong>${safe(e.label)}</strong><time>${fmt(e.at)}</time></span></div>`).join('')}</div></article>`}).join('')}</div>`:'<div class="my-tickets-empty"><strong>Nenhum chamado encontrado</strong></div>');result.querySelectorAll('.ticket-details-toggle').forEach(button=>button.onclick=()=>{const timeline=button.nextElementSibling,open=timeline.hidden;timeline.hidden=!open;button.textContent=open?'Ocultar detalhes':'Ver detalhes';button.setAttribute('aria-expanded',open)})};
 
-  async function getProfile(){const {data:{session}}=await sb.auth.getSession();if(!session)return null;state.session=session;const {data:p,error}=await sb.from('profiles').select('*').eq('id',session.user.id).single();if(error||!p?.active)return null;state.profile=p;return p}
+  async function getProfile(){const {data:{session}}=await sb.auth.getSession();state.session=session||null;if(!session)return null;const {data:p,error}=await sb.from('profiles').select('*').eq('id',session.user.id).single();if(error||!p?.active){state.profile=null;return null}state.profile=p;return p}
   async function loadAdmin(){
     const [sv,pr,ca,la,ti,at,ta,up]=await Promise.all([sb.from('servers').select('*').order('full_name'),sb.from('profiles').select('*').eq('active',true).order('full_name'),sb.from('categories').select('*').order('name'),sb.from('labs').select('*').order('name'),sb.from('tickets').select('*,servers(*),categories(*),labs(*),primary_assignee:profiles!tickets_assigned_to_fkey(*)').order('created_at',{ascending:false}),sb.from('attachments').select('*'),sb.from('ticket_assignees').select('ticket_id,profile_id,assignee_profile:profiles!ticket_assignees_profile_id_fkey(full_name)'),sb.from('ticket_updates').select('*,profiles(full_name)').order('created_at')]);
     const err=[sv,pr,ca,la,ti,at,ta,up].find(x=>x.error)?.error;if(err)return fail(err);
@@ -398,7 +429,7 @@
   $('#applyAnalytics').onclick=analytics;
   async function enterAdmin(){
     const p=await getProfile();
-    if(!p){openLogin();return}
+    if(!p){openLogin();if(state.session)$('#loginError').textContent='Esta conta institucional não possui perfil técnico ativo.';return}
     await loadAdmin();
     $('#adminView').hidden=false;
     $('#teacherView').hidden=true;
@@ -2226,5 +2257,7 @@
   loadServiceHours();
   loadChatAvailability();
   confirmFeedbackFromLink();
+  refreshInstitutionalAuth();
+  sb.auth.onAuthStateChange(()=>setTimeout(refreshInstitutionalAuth,0));
   if (isAdminRoute) enterAdmin().then(startAdminSynchronization);
 })();

@@ -716,6 +716,15 @@
   .chat-ended-actions button{width:100%}
 }
 
+/* Autenticação institucional Google Workspace */
+.google-auth-button{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border:1px solid #b8c8be;border-radius:11px;background:#fff;color:#173126;font:inherit;font-weight:800;cursor:pointer;box-shadow:0 5px 15px rgba(20,51,37,.07)}
+.google-auth-button:hover{border-color:var(--green);background:#f7fcf9}.google-auth-button:disabled{cursor:wait;opacity:.65}.google-auth-button>span{display:grid;width:25px;height:25px;place-items:center;border-radius:50%;background:conic-gradient(from -45deg,#4285f4 0 25%,#34a853 0 50%,#fbbc05 0 75%,#ea4335 0);color:#fff;font-weight:900;text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.auth-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:#738078;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}.auth-divider:before,.auth-divider:after{content:'';height:1px;flex:1;background:var(--line)}.auth-divider span{text-align:center}
+.institutional-auth-panel{display:grid;gap:10px}.institutional-auth-identity{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 14px;border:1px solid #9dccb0;border-radius:11px;background:#edf8f1}.institutional-auth-identity>span{display:grid;gap:3px;min-width:0}.institutional-auth-identity strong,.institutional-auth-identity small{overflow-wrap:anywhere}.institutional-auth-identity strong{color:var(--green-dark);font-size:13px}.institutional-auth-identity small{color:#456353;font-size:11px}.institutional-auth-identity button{border:0;background:transparent;color:#a02128;font:inherit;font-size:11px;font-weight:800;cursor:pointer}
+.institutional-auth-fallback[hidden],.institutional-auth-identity[hidden]{display:none!important}
+.login-card>.google-auth-button{margin:8px 0 2px}
+@media(max-width:620px){.institutional-auth-identity{align-items:flex-start}.auth-divider span{max-width:230px}.google-auth-button{min-height:52px}}
+
 /* Painel / Central de Chat Técnico (Admin) */
 .chat-admin-card{padding:28px}
 .chat-admin-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:24px}

@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#11733c" />
     <meta name="description" content="Sistema de chamados dos Laboratórios de Informática do IFMS Campus Três Lagoas" />
     <title>LabInfo | Suporte IFMS</title>
-    <link rel="stylesheet" href="styles.css?v=7923df2502" />
+    <link rel="stylesheet" href="styles.css?v=c97665dd06" />
   </head>
   <body>
     <header class="topbar">
@@ -168,13 +168,18 @@
           <section class="card my-reservations highlight-box">
             <span class="eyebrow" style="color: #087d3e; margin-bottom: 4px; display: block;">GERENCIAR OU CANCELAR</span>
             <h2 style="margin: 0 0 8px;">Minhas reservas</h2>
-            <p style="margin: 0 0 16px; font-size: 13.5px; line-height: 1.5; color: var(--muted);">Para liberar horários que você não vai mais usar ou apenas consultar sua agenda, solicite o link de acesso seguro:</p>
+            <p style="margin: 0 0 16px; font-size: 13.5px; line-height: 1.5; color: var(--muted);">Entre com sua conta institucional para consultar e solicitar cancelamentos imediatamente.</p>
+            <button id="myReservationsGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Google IFMS</button>
+            <div id="myReservationsGoogleIdentity" class="institutional-auth-identity" hidden></div>
+            <div id="myReservationsFallback" class="institutional-auth-fallback">
+            <div class="auth-divider"><span>ou use o acesso por e-mail</span></div>
             <ol class="reservation-steps-list" style="padding-left: 0; margin: 0 0 20px; color: var(--ink); font-size: 13.5px; line-height: 1.5; list-style: none; display: flex; flex-direction: column; gap: 10px;">
               <li style="display: flex; gap: 10px; align-items: flex-start;"><b style="display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #087d3e; color: #fff; font-size: 11px; flex-shrink: 0;">1</b> <span>Informe seu <strong>SIAPE</strong> abaixo e clique em Enviar.</span></li>
               <li style="display: flex; gap: 10px; align-items: flex-start;"><b style="display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #087d3e; color: #fff; font-size: 11px; flex-shrink: 0;">2</b> <span>Acesse seu <strong>e-mail institucional</strong> e abra a mensagem enviada.</span></li>
               <li style="display: flex; gap: 10px; align-items: flex-start;"><b style="display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #087d3e; color: #fff; font-size: 11px; flex-shrink: 0;">3</b> <span>Clique no link seguro para <strong>ver e cancelar</strong> suas reservas.</span></li>
             </ol>
             <div class="protocol-search"><input id="reservationSearchSiape" inputmode="numeric" autocomplete="off" placeholder="Digite seu SIAPE"><button id="searchReservations" type="button">Enviar link</button></div>
+            </div>
             <div id="myReservationsResult"></div>
           </section>
         </aside>
@@ -182,8 +187,12 @@
         <section class="card public-lab-picker"><div class="public-lab-picker-head"><div><span class="eyebrow">ESCOLHA O ESPAÇO</span><h2>Laboratórios disponíveis</h2><p>Selecione um laboratório para consultar sua agenda e utilizá-lo na solicitação.</p></div></div><div id="publicLabCards" class="public-lab-cards"></div></section>
         <div class="reservation-public-grid">
           <form id="publicReservationForm" class="card reservation-form" hidden>
-            <div class="section-title"><span>1</span><div><h2>Identificação</h2><p>Somente servidores cadastrados podem solicitar</p></div></div>
-            <label>SIAPE<input id="reservationSiape" inputmode="numeric" autocomplete="off" placeholder="0000000" required></label>
+            <div class="section-title"><span>1</span><div><h2>Identificação</h2><p>Use sua conta Google institucional para validação imediata</p></div></div>
+            <div id="reservationGoogleAuth" class="institutional-auth-panel">
+              <button id="reservationGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Google IFMS</button>
+              <div id="reservationGoogleIdentity" class="institutional-auth-identity" hidden></div>
+            </div>
+            <div id="reservationSiapeFallback"><div class="auth-divider"><span>ou continue com SIAPE e confirmação por e-mail</span></div><label>SIAPE<input id="reservationSiape" inputmode="numeric" autocomplete="off" placeholder="0000000" required></label></div>
             <p id="reservationIdentity" class="field-hint">Digite seu SIAPE para validação.</p>
             <div class="section-title"><span>2</span><div><h2>Data e laboratório</h2><p>Blocos de aula com 45 minutos</p></div></div>
             <div id="reservationSelectedLab" class="reservation-selected-lab"><strong>Laboratório</strong><span>Selecione um dos espaços nos cards acima.</span></div><select id="reservationLab" hidden><option value="">Selecione o laboratório</option></select>
@@ -439,8 +448,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=862fe46568"></script>
     <script src="app.js?v=a35d215ed1"></script>
-    <script src="supabase-integration.js?v=54d8206fb1"></script>
-<script src="reservations.js?v=11489387d9"></script>
-<script src="software-requests.min.js?v=7b595d1889"></script>
+    <script src="supabase-integration.js?v=43d6d78cac"></script>
+<script src="reservations.js?v=9ce8b26739"></script>
+<script src="software-requests.min.js?v=f4ffbf93ba"></script>
   </body>
 </html>
