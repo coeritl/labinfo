@@ -9,7 +9,11 @@
         var base = location.hostname.endsWith('.github.io') ? '/labinfo' : '';
         var path = location.pathname.slice(base.length).replace(/^\/+|\/+$/g, '');
         var search = location.search ? '&' + location.search.slice(1) : '';
-        var target = base + '/' + (path ? '?route=' + encodeURIComponent(path) + search : (location.search || ''));
+        // Preserve o fragmento usado pelo Supabase Auth (access_token etc.).
+        // Sem isso, uma rota amigavel intermediada pelo 404 conclui o login no
+        // servidor, mas devolve o navegador ao site sem a sessao OAuth.
+        var hash = location.hash || '';
+        var target = base + '/' + (path ? '?route=' + encodeURIComponent(path) + search : (location.search || '')) + hash;
         location.replace(target);
       })();
     </script>

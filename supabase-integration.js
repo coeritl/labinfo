@@ -10,11 +10,16 @@
   const routeParam=new URLSearchParams(location.search).get('route'),
         feedbackParam=new URLSearchParams(location.search).get('feedback'),
         requestedRoute=routeParam||location.pathname.slice(siteBase.length).replace(/^\/+|\/+$/g,'');
+  const oauthReturnDetected=new URLSearchParams(location.search).has('code')||
+    /(?:^|[#&])(access_token|refresh_token|error|error_code)=/.test(location.hash);
   const adminRouteSlug=requestedRoute==='admin'?'chamados':requestedRoute.startsWith('admin/')?requestedRoute.slice(6):'';
   const validAdminRouteSlugs=new Set(['chamados','relatorios','reservas','chat','cadastros','supervisor','horarios','manutencao','softwares']);
   const isAdminRoute=validAdminRouteSlugs.has(adminRouteSlug);
   const isSupportRoute=requestedRoute==='suporte'||Boolean(feedbackParam);
-  if(routeParam&&!feedbackParam)window.addEventListener('load',()=>history.replaceState({},'',sitePath(requestedRoute)),{once:true});
+  // Em retornos OAuth, o codigo PKCE ou os tokens podem estar na URL. Nao os
+  // remova no evento load: o Supabase ainda precisa consumi-los para criar a
+  // sessao local. A limpeza ocorre somente depois de onAuthStateChange.
+  if(routeParam&&!feedbackParam&&!oauthReturnDetected)window.addEventListener('load',()=>history.replaceState({},'',sitePath(requestedRoute)),{once:true});
   if(isAdminRoute){document.body.classList.add('admin-route');$('#homeView').hidden=true;$('#teacherView').hidden=true;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true}
   if(isSupportRoute){$('#homeView').hidden=true;$('#teacherView').hidden=false;$('#reservationsPublicView').hidden=true;const cp=$('#chatPublicView');if(cp)cp.hidden=true}
   window.labinfoDb=sb;
@@ -44,7 +49,14 @@
     // O marcador torna a URL de retorno unica. Assim, depois que o Google
     // redireciona de volta, o navegador nao reaproveita um HTML antigo que
     // ainda possa estar no cache do Pages/CDN.
-    const returnUrl=new URL(returnPath||sitePath(''),location.origin);
+    const requestedReturn=new URL(returnPath||sitePath(''),location.origin);
+    // A raiz existe fisicamente no Pages. Rotas como /admin/ e /reservas/
+    // passam por 404.html e podem perder o fragmento OAuth durante o salto.
+    // Retorne pela raiz e transporte a rota como query string.
+    const returnUrl=new URL(sitePath(''),location.origin);
+    requestedReturn.searchParams.forEach((value,key)=>returnUrl.searchParams.set(key,value));
+    const returnRoute=requestedReturn.pathname.slice(siteBase.length).replace(/^\/+|\/+$/g,'');
+    if(returnRoute&&!returnUrl.searchParams.has('route'))returnUrl.searchParams.set('route',returnRoute);
     returnUrl.searchParams.set('auth_refresh',Date.now().toString());
     const redirectTo=returnUrl.href;
     const {error}=await sb.auth.signInWithOAuth({
@@ -2269,6 +2281,9 @@
   refreshInstitutionalAuth();
   sb.auth.onAuthStateChange((event,session)=>setTimeout(async()=>{
     await refreshInstitutionalAuth();
+    if(session&&oauthReturnDetected){
+      history.replaceState({},'',sitePath(requestedRoute));
+    }
     // A inicialização da rota administrativa pode acontecer antes de o
     // Supabase concluir a troca do código OAuth pela sessão. Retome a entrada
     // assim que SIGNED_IN/INITIAL_SESSION entregar a sessão válida.

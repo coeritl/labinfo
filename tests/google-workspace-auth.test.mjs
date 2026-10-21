@@ -9,6 +9,7 @@ const migration=readFileSync(join(root,'supabase/migrations/20261021_google_work
 const reservations=readFileSync(join(root,'reservations.js'),'utf8');
 const software=readFileSync(join(root,'software-requests.js'),'utf8');
 const integration=readFileSync(join(root,'supabase-integration.js'),'utf8');
+const fallback404=readFileSync(join(root,'404.html'),'utf8');
 const corpus=loadSqlCorpus();
 
 test('identidade institucional exige Google, domínio IFMS e servidor ativo',()=>{
@@ -30,6 +31,9 @@ test('frontend usa OAuth Google e mantém o fluxo SIAPE como contingência',()=>
   assert.match(integration,/signInWithOAuth\(\{[\s\S]*?provider:'google'/);
   assert.match(integration,/hd:'ifms\.edu\.br'/);
   assert.match(integration,/searchParams\.set\('auth_refresh',Date\.now\(\)\.toString\(\)\)/);
+  assert.match(integration,/const returnUrl=new URL\(sitePath\(''\),location\.origin\)/);
+  assert.match(integration,/!oauthReturnDetected\)window\.addEventListener\('load'/);
+  assert.match(fallback404,/var hash = location\.hash \|\| ''/);
   assert.match(integration,/onAuthStateChange\(\(event,session\)=>setTimeout\(async\(\)=>/);
   assert.match(integration,/if\(session&&\(isAdminRoute\|\|document\.body\.classList\.contains\('admin-route'\)\)&&!state\.profile\)/);
   assert.match(reservations,/google_auth_return/);
