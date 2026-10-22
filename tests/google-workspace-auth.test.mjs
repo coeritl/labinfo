@@ -43,7 +43,7 @@ test('frontend usa OAuth Google como única identificação para ações pessoai
   assert.match(integration,/publicSessionLogin/);
   assert.match(integration,/applySharedInstitutionalIdentity/);
   assert.match(integration,/setTimeout\(\(\)=>\$\('#protocolButton'\)\?\.click\(\),0\)/);
-  assert.match(integration,/Entrar com Gmail @ifms\.edu\.br/);
+  assert.match(integration,/Entrar com a conta @ifms\.edu\.br/);
   assert.match(integration,/if\(!force&&!state\.profile\)/);
   assert.doesNotMatch(integration,/id="loginForm"/);
   assert.doesNotMatch(integration,/signInWithPassword|Senha inicial|changePasswordButton/);

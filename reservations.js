@@ -309,7 +309,7 @@
     url.searchParams.set('google_auth_return',context);
     return url.pathname+url.search;
   };
-  const beginGoogleAuth=async(button,context)=>{button.disabled=true;button.textContent='Abrindo Gmail institucional…';sessionStorage.setItem('labinfo_google_auth_return',context);try{await window.labinfoInstitutionalAuth?.signIn(googleReturnPath(context))}catch(error){sessionStorage.removeItem('labinfo_google_auth_return');button.disabled=false;button.innerHTML='<span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br';toast(error.message||'Não foi possível iniciar o acesso com Gmail institucional.')}};
+  const beginGoogleAuth=async(button,context)=>{button.disabled=true;button.textContent='Abrindo Gmail institucional…';sessionStorage.setItem('labinfo_google_auth_return',context);try{await window.labinfoInstitutionalAuth?.signIn(googleReturnPath(context))}catch(error){sessionStorage.removeItem('labinfo_google_auth_return');button.disabled=false;button.innerHTML='<span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br';toast(error.message||'Não foi possível iniciar o acesso com Gmail institucional.')}};
   $('#reservationGoogleLogin').onclick=event=>beginGoogleAuth(event.currentTarget,'reservation');
   $('#myReservationsGoogleLogin').onclick=event=>beginGoogleAuth(event.currentTarget,'my-reservations');
   if(googleAuthReturn==='my-reservations'){
@@ -349,8 +349,8 @@
     }else{
       publicAuthReservationsLoadedFor=null;
       publicServer=null;
-      reservationButton.hidden=false;reservationButton.disabled=false;reservationButton.innerHTML='<span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br';
-      myButton.hidden=false;myButton.disabled=false;myButton.innerHTML='<span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br';
+      reservationButton.hidden=false;reservationButton.disabled=false;reservationButton.innerHTML='<span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br';
+      myButton.hidden=false;myButton.disabled=false;myButton.innerHTML='<span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br';
       reservationIdentity.hidden=true;myIdentity.hidden=true;reservationSubmit.disabled=true;
       $('#reservationIdentity').textContent=error&&authState?.session?error:'Entre com seu Gmail institucional para solicitar uma reserva.';$('#reservationIdentity').className='field-hint pending';
       if(error&&authState?.session){

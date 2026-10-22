@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#11733c" />
     <meta name="description" content="Sistema de chamados dos Laboratórios de Informática do IFMS Campus Três Lagoas" />
     <title>LabInfo | Suporte IFMS</title>
-    <link rel="stylesheet" href="styles.css?v=7923e0ebd5" />
+    <link rel="stylesheet" href="styles.css?v=405f0fbdc3" />
   </head>
   <body>
     <header class="topbar">
@@ -15,7 +15,7 @@
         <span class="brand-system-name">Suporte</span>
       </a>
       <div id="publicAuthHeader" class="public-auth-header" aria-live="polite">
-        <button id="publicSessionLogin" class="public-session-login" type="button"><span aria-hidden="true">G</span><b>Entrar com Gmail</b><small>@ifms.edu.br</small></button>
+        <button id="publicSessionLogin" class="public-session-login" type="button"><span aria-hidden="true">G</span><b>Entrar com a conta @ifms.edu.br</b></button>
         <div id="publicSessionStatus" class="public-session-status" hidden>
           <span id="publicSessionAvatar" class="public-session-avatar" aria-hidden="true">IF</span>
           <span class="public-session-copy"><strong>Sessão institucional</strong><small id="publicSessionIdentity"></small></span>
@@ -82,7 +82,7 @@
             </div>
           </div>
           <form id="chatPublicForm">
-            <button id="chatGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br</button>
+            <button id="chatGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br</button>
             <div id="chatGmailIdentity" class="institutional-auth-identity" hidden></div>
             <input id="chatSiape" type="hidden" />
             <p id="chatIdentity" class="field-hint pending">Entre com seu Gmail institucional para iniciar o atendimento.</p>
@@ -177,7 +177,7 @@
             <span class="eyebrow" style="color: #087d3e; margin-bottom: 4px; display: block;">GERENCIAR OU CANCELAR</span>
             <h2 style="margin: 0 0 8px;">Minhas reservas</h2>
             <p style="margin: 0 0 16px; font-size: 13.5px; line-height: 1.5; color: var(--muted);">Entre com sua conta institucional para consultar e solicitar cancelamentos imediatamente.</p>
-            <button id="myReservationsGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br</button>
+            <button id="myReservationsGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br</button>
             <div id="myReservationsGoogleIdentity" class="institutional-auth-identity" hidden></div>
             <div id="myReservationsResult"></div>
           </section>
@@ -188,7 +188,7 @@
           <form id="publicReservationForm" class="card reservation-form" hidden>
             <div class="section-title"><span>1</span><div><h2>Identificação</h2><p>Use sua conta Gmail @ifms.edu.br para validação imediata</p></div></div>
             <div id="reservationGoogleAuth" class="institutional-auth-panel">
-              <button id="reservationGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br</button>
+              <button id="reservationGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br</button>
               <div id="reservationGoogleIdentity" class="institutional-auth-identity" hidden></div>
             </div>
             <input id="reservationSiape" type="hidden">
@@ -219,7 +219,7 @@
         <div class="teacher-grid">
           <form id="ticketForm" class="card ticket-form">
             <div class="section-title"><span>1</span><div><h2>Identificação</h2><p>Sua conta Gmail institucional identifica você em todo o LabInfo</p></div></div>
-            <button id="ticketGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br</button>
+            <button id="ticketGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br</button>
             <div id="ticketGmailIdentity" class="institutional-auth-identity" hidden></div>
             <input id="siape" type="hidden" /><input id="email" type="hidden" />
             <div class="section-title"><span>2</span><div><h2>Como podemos ajudar?</h2><p>Conte o que está acontecendo</p></div></div>
@@ -236,7 +236,7 @@
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/></svg>
               </span>
               <h2>Minhas solicitações</h2><p id="myTicketsHelp">Entre com seu Gmail @ifms.edu.br para acompanhar automaticamente suas solicitações.</p>
-              <button id="myTicketsGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br</button>
+              <button id="myTicketsGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br</button>
               <input id="protocolInput" type="hidden" /><button id="protocolButton" type="button" hidden>Buscar</button>
               <div id="protocolResult" class="protocol-result" aria-live="polite"></div>
             </div>
@@ -446,9 +446,9 @@
     <footer><span>SISLAB - Sistema Integrado de Gestão dos Laboratórios de Informática - TL</span></footer>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase-config.js?v=862fe46568"></script>
-    <script src="app.js?v=c172253bff"></script>
-    <script src="supabase-integration.js?v=74d5ddbc22"></script>
-<script src="reservations.js?v=9012b9630f"></script>
-<script src="software-requests.min.js?v=549873e80b"></script>
+    <script src="app.js?v=f6756b883e"></script>
+    <script src="supabase-integration.js?v=9637e59b96"></script>
+<script src="reservations.js?v=a95b5374da"></script>
+<script src="software-requests.min.js?v=4c2f9e9921"></script>
   </body>
 </html>

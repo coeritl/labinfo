@@ -21,7 +21,7 @@
       <div id="softwareRequestResult" class="software-request-result" hidden aria-live="polite"></div>
       <form id="softwareRequestForm" class="software-request-form" hidden>
         <div class="section-title"><span>1</span><div><h2>Identificação</h2><p>Use sua conta Gmail @ifms.edu.br para validação imediata</p></div></div>
-        <div class="institutional-auth-panel"><button id="softwareGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br</button><div id="softwareGoogleIdentity" class="institutional-auth-identity" hidden></div></div>
+        <div class="institutional-auth-panel"><button id="softwareGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br</button><div id="softwareGoogleIdentity" class="institutional-auth-identity" hidden></div></div>
         <input id="softwareRequestSiape" type="hidden">
         <p id="softwareRequestIdentity" class="field-hint pending">Entre com seu Gmail institucional para enviar a solicitação.</p>
         <div class="section-title"><span>2</span><div><h2>Turma e laboratório</h2></div></div>
@@ -150,7 +150,7 @@
       if(note)note.innerHTML='<span class="software-security-icon" aria-hidden="true">✓</span><div><strong>Identidade institucional confirmada</strong><span>A solicitação será criada imediatamente e encaminhada à equipe, sem uma nova confirmação por e-mail.</span></div>';
       if(submit){submit.disabled=false;submit.innerHTML='Criar solicitação <span>→</span>'}
     }else{
-      identifiedServer=null;login.hidden=false;login.disabled=false;login.innerHTML='<span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br';identityBox.hidden=true;
+      identifiedServer=null;login.hidden=false;login.disabled=false;login.innerHTML='<span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br';identityBox.hidden=true;
       hint.textContent=error&&authState?.session?error:'Entre com seu Gmail institucional para enviar a solicitação.';hint.className='field-hint pending';
       if(note)note.innerHTML='<span class="software-security-icon" aria-hidden="true">🔒</span><div><strong>Login institucional obrigatório</strong><span>A identidade será validada pela conta Gmail @ifms.edu.br vinculada ao cadastro ativo.</span></div>';
       if(submit){submit.disabled=true;submit.innerHTML='Entre com Gmail para continuar <span>→</span>'}
@@ -256,7 +256,7 @@
     const admin=$('#adminView');if(admin)admin.insertAdjacentHTML('beforeend',adminMarkup());
     if($('#softwareRequestItems'))addItem();
     $('#addSoftwareRequestItem')?.addEventListener('click',()=>addItem());
-    $('#softwareGoogleLogin')?.addEventListener('click',async event=>{const button=event.currentTarget;button.disabled=true;button.textContent='Abrindo Gmail institucional…';try{await window.labinfoInstitutionalAuth?.signIn(location.pathname)}catch(error){button.disabled=false;button.innerHTML='<span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br';notify(error.message||'Não foi possível iniciar o acesso com Gmail institucional.')}});
+    $('#softwareGoogleLogin')?.addEventListener('click',async event=>{const button=event.currentTarget;button.disabled=true;button.textContent='Abrindo Gmail institucional…';try{await window.labinfoInstitutionalAuth?.signIn(location.pathname)}catch(error){button.disabled=false;button.innerHTML='<span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br';notify(error.message||'Não foi possível iniciar o acesso com Gmail institucional.')}});
     $('#toggleSoftwareRequestForm')?.addEventListener('click',()=>{const form=$('#softwareRequestForm'),open=form.hidden;form.hidden=!open;$('#toggleSoftwareRequestForm').textContent=open?'Fechar formulário':'Fazer solicitação';$('#toggleSoftwareRequestForm').setAttribute('aria-expanded',String(open));if(open)form.scrollIntoView({behavior:'smooth',block:'start'})});
     $('#softwareRequestLab')?.addEventListener('change',()=>{if($('#softwareInstalledSearch'))$('#softwareInstalledSearch').value='';renderInstalledSoftware()});
     $('#softwareInstalledSearch')?.addEventListener('input',renderInstalledSoftware);

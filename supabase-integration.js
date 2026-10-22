@@ -170,7 +170,7 @@
     }
   }
 
-  document.body.insertAdjacentHTML('beforeend',`<div id="loginModal" class="modal-backdrop" hidden><div class="card login-card"><div class="modal-heading"><div><span class="eyebrow">ACESSO RESTRITO</span><h2>Entrar no painel</h2><p>O painel técnico exige uma conta Gmail @ifms.edu.br com perfil ativo.</p></div><button id="closeLogin" class="modal-close">×</button></div><button id="googleStaffLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com Gmail @ifms.edu.br</button><p id="loginError" class="login-error"></p></div></div>`);
+  document.body.insertAdjacentHTML('beforeend',`<div id="loginModal" class="modal-backdrop" hidden><div class="card login-card"><div class="modal-heading"><div><span class="eyebrow">ACESSO RESTRITO</span><h2>Entrar no painel</h2><p>O painel técnico exige uma conta Gmail @ifms.edu.br com perfil ativo.</p></div><button id="closeLogin" class="modal-close">×</button></div><button id="googleStaffLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br</button><p id="loginError" class="login-error"></p></div></div>`);
   const loginModal=$('#loginModal');
   const loginIsRequired=()=>location.pathname.includes('/admin')||new URLSearchParams(location.search).get('route')==='admin';
   const openLogin=()=>{loginModal.hidden=false;document.body.classList.add('modal-open')};
