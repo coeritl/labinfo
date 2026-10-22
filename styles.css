@@ -969,6 +969,23 @@ body.detail-open:before{
   display: block;
 }
 
+.metrics article.metric-action {
+  cursor: pointer;
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.metrics article.metric-action:hover {
+  border-color: #9fcab0;
+  box-shadow: 0 14px 34px rgba(24, 57, 36, .13);
+  transform: translateY(-1px);
+}
+.metrics article.metric-action:focus-visible {
+  outline: 3px solid rgba(17, 115, 60, .2);
+  outline-offset: 2px;
+}
+.metrics article.metric-action.has-stale {
+  border-color: #e7c36f;
+}
+
 .status-icon svg {
   width: 22px;
   height: 22px;
