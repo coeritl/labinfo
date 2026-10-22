@@ -40,7 +40,9 @@ test('frontend usa OAuth Google como única identificação para ações pessoai
   assert.match(integration,/if\(session&&\(isAdminRoute\|\|document\.body\.classList\.contains\('admin-route'\)\)&&!state\.profile\)/);
   assert.match(reservations,/google_auth_return/);
   assert.match(reservations,/sessionStorage\.setItem\('labinfo_google_auth_return',context\)/);
-  assert.match(reservations,/if\(googleAuthReturn\)\{[\s\S]*?showPublic\('reservations',false\)[\s\S]*?history\.replaceState\(\{\},'',sitePath\('reservas'\)\)/);
+  assert.match(reservations,/const isReservationGoogleReturn=googleAuthReturn==='reservation'\|\|googleAuthReturn==='my-reservations'/);
+  assert.match(reservations,/if\(isReservationGoogleReturn\)\{[\s\S]*?showPublic\('reservations',false\)[\s\S]*?history\.replaceState\(\{\},'',sitePath\('reservas'\)\)/);
+  assert.doesNotMatch(reservations,/isReservationGoogleReturn[^;=]*=.*software-request/);
   assert.match(integration,/publicSessionLogin/);
   assert.match(integration,/applySharedInstitutionalIdentity/);
   assert.match(integration,/labinfoRequireInstitutionalAccess/);

@@ -302,6 +302,7 @@
   $('#confirmPublicReservationNotice').onclick=closePublicReservationNotice;
   publicNotice.addEventListener('click',event=>{if(event.target===publicNotice)closePublicReservationNotice()});
   const googleAuthReturn=new URLSearchParams(location.search).get('google_auth_return')||sessionStorage.getItem('labinfo_google_auth_return');
+  const isReservationGoogleReturn=googleAuthReturn==='reservation'||googleAuthReturn==='my-reservations';
   const googleReturnPath=context=>{
     const url=new URL(location.href);url.search='';url.hash='';
     url.searchParams.set('google_auth_return',context);
@@ -333,7 +334,7 @@
       // O retorno OAuth acontece na raiz física do Pages. Reaplique a rota
       // pública antes de limpar o contexto para que o primeiro acesso já abra
       // a agenda, sem depender de uma segunda navegação para /reservas/.
-      if(googleAuthReturn){
+      if(isReservationGoogleReturn){
         showPublic('reservations',false);
         history.replaceState({},'',sitePath('reservas'));
         if(googleAuthReturn==='my-reservations'){
@@ -342,7 +343,7 @@
           togglePublicReservationForm(true);toggleMyReservationsForm(false);
         }
       }
-      sessionStorage.removeItem('labinfo_google_auth_return');
+      if(isReservationGoogleReturn)sessionStorage.removeItem('labinfo_google_auth_return');
       publicServer=identity;
       reservationIdentity.hidden=false;
       reservationIdentity.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)} · SIAPE ${safe(identity.siape)}</small></span><b>✓ Identidade confirmada</b>`;
@@ -357,7 +358,7 @@
       reservationIdentity.hidden=true;myIdentity.hidden=true;reservationSubmit.disabled=true;
       $('#reservationIdentity').textContent=error&&authState?.session?error:'Entre com seu Gmail institucional para solicitar uma reserva.';$('#reservationIdentity').className='field-hint pending';
       if(error&&authState?.session){
-        sessionStorage.removeItem('labinfo_google_auth_return');
+        if(isReservationGoogleReturn)sessionStorage.removeItem('labinfo_google_auth_return');
         $('#reservationIdentity').textContent=error;$('#reservationIdentity').className='field-hint pending';
         $('#myReservationsResult').innerHTML=`<p class="error-text">${safe(error)}</p>`;
       }
