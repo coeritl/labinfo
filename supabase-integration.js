@@ -813,7 +813,7 @@
   }
   $('#adminTeacherSearch').oninput=filterAdminTeachers;$('#adminOpenTicket').addEventListener('click',()=>{$('#adminTeacherSearch').value='';filterAdminTeachers();syncAdminTicketReferences();setTimeout(()=>$('#adminTeacherSearch').focus(),0)});
   const expandedDetailRender=renderDetail;renderDetail=function(){expandedDetailRender();if(!selected)return;$('#ticketDetail').querySelector('.detail-close')?.remove();$('#ticketDetail').insertAdjacentHTML('afterbegin','<button class="detail-close" type="button" aria-label="Voltar para a fila">←</button>');$('.detail-close').onclick=()=>{$('#ticketDetail').classList.remove('detail-expanded');document.body.classList.remove('detail-open')};const reply=$('#reply'),send=$('#sendReply');if(reply)reply.closest('label').hidden=true;if(send){send.textContent='Enviar atualização';send.onclick=()=>{const label=reply.closest('label');if(label.hidden){label.hidden=false;send.textContent='Registrar e enviar atualização';reply.focus();return}const msg=reply.value.trim();if(!msg)return toast('Digite a atualização antes de enviar.');sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:msg}).then(async({error})=>{if(error)return fail(error);reply.value='';label.hidden=true;send.textContent='Enviar atualização';toast('Atualização registrada para envio ao servidor.')})}}};
-  const detailWithMessages=renderDetail;renderDetail=function(){detailWithMessages();if(!selected)return;if(selected.serverReplyPending)$('#ticketDetail .detail-top')?.insertAdjacentHTML('afterend','<div class="server-reply-alert"><strong>! Nova resposta do servidor</strong><span>Verifique o histórico de mensagens abaixo.</span></div>');const history=(selected.updates||[]).filter(u=>['atualizacao','resposta_servidor'].includes(u.kind));if(!history.length)return;const anchor=$('#ticketDetail .detail-actions')||$('#ticketDetail .resolution-box');anchor?.insertAdjacentHTML('beforebegin',`<section class="ticket-history"><h3>Histórico de mensagens</h3>${history.map(u=>`<article class="${u.kind==='resposta_servidor'?'server-reply':'staff-update'}"><header><strong>${safe(u.author)}</strong><time>${fmt(u.createdAt)}</time></header><p class="history-message collapsed">${safe(u.message)}</p><button class="history-toggle" type="button" aria-expanded="false">Ver tudo</button></article>`).join('')}</section>`);$('#ticketDetail').querySelectorAll('.ticket-history article').forEach(card=>{const message=card.querySelector('.history-message'),toggle=card.querySelector('.history-toggle');if(message.scrollHeight<=message.clientHeight+2){toggle.hidden=true;message.classList.remove('collapsed');return}toggle.onclick=()=>{const expanding=message.classList.contains('collapsed');message.classList.toggle('collapsed',!expanding);toggle.textContent=expanding?'Recolher':'Ver tudo';toggle.setAttribute('aria-expanded',expanding)}})};
+  const detailWithMessages=renderDetail;renderDetail=function(){detailWithMessages();if(!selected)return;if(selected.serverReplyPending)$('#ticketDetail .detail-top')?.insertAdjacentHTML('afterend','<div class="server-reply-alert"><strong>! Nova resposta do servidor</strong><span>Verifique o histórico de mensagens abaixo.</span></div>');const history=(selected.updates||[]).filter(u=>['atualizacao','resposta_servidor','classificacao'].includes(u.kind));if(!history.length)return;const anchor=$('#ticketDetail .detail-actions')||$('#ticketDetail .resolution-box');anchor?.insertAdjacentHTML('beforebegin',`<section class="ticket-history"><h3>Histórico de mensagens e correções</h3>${history.map(u=>`<article class="${u.kind==='resposta_servidor'?'server-reply':u.kind==='classificacao'?'classification-update':'staff-update'}"><header><strong>${safe(u.author)}</strong><time>${fmt(u.createdAt)}</time></header><p class="history-message collapsed">${safe(u.message)}</p><button class="history-toggle" type="button" aria-expanded="false">Ver tudo</button></article>`).join('')}</section>`);$('#ticketDetail').querySelectorAll('.ticket-history article').forEach(card=>{const message=card.querySelector('.history-message'),toggle=card.querySelector('.history-toggle');if(message.scrollHeight<=message.clientHeight+2){toggle.hidden=true;message.classList.remove('collapsed');return}toggle.onclick=()=>{const expanding=message.classList.contains('collapsed');message.classList.toggle('collapsed',!expanding);toggle.textContent=expanding?'Recolher':'Ver tudo';toggle.setAttribute('aria-expanded',expanding)}})};
   const detailWithReliableClose=renderDetail;renderDetail=function(){detailWithReliableClose();const close=$('#closeTicket');if(!close||!selected||state.profile?.role!=='tecnico')return;close.onclick=async()=>{if(close.disabled)return;const reply=$('#reply'),label=reply?.closest('label');if(label?.hidden){label.hidden=false;label.childNodes[0].textContent='Solução realizada (será enviada ao servidor)';close.textContent='Confirmar conclusão e enviar';reply.placeholder='Descreva objetivamente o que foi realizado e testado...';reply.focus();return toast('Registre a solução antes de concluir o chamado.')}const resolution=reply?.value.trim()||'';if(resolution.length<5){reply?.focus();return toast('Descreva a solução realizada com pelo menos 5 caracteres.')}close.disabled=true;close.textContent='Concluindo…';const ticket=selected,closedAt=new Date().toISOString(),{error}=await sb.from('tickets').update({status:'Concluído',resolution,closed_at:closedAt,server_reply_pending:false,updated_at:closedAt}).eq('id',ticket.dbId);if(error){close.disabled=false;close.textContent='Confirmar conclusão e enviar';return fail(error,'Não foi possível concluir o chamado.')}const updateResult=await sb.from('ticket_updates').insert({ticket_id:ticket.dbId,author_id:state.profile.id,message:resolution,kind:'fechamento'});if(updateResult.error)console.error('Falha ao registrar histórico de fechamento',updateResult.error);let cleanupFailed=false;if(ticket.attachments?.length){const storageResult=await sb.storage.from('ticket-attachments').remove(ticket.attachments.map(item=>item.path));if(storageResult.error){cleanupFailed=true;console.error('Falha ao remover anexos',storageResult.error)}else{const attachmentResult=await sb.from('attachments').delete().eq('ticket_id',ticket.dbId);if(attachmentResult.error){cleanupFailed=true;console.error('Falha ao remover registros de anexos',attachmentResult.error)}}}await loadAdmin();selected=null;$('#ticketDetail').classList.remove('detail-expanded');document.body.classList.remove('detail-open');renderDetail();toast(cleanupFailed?'Chamado concluído e servidor notificado. Alguns anexos exigem limpeza manual.':'Chamado concluído. O servidor receberá a solução e o pedido de confirmação.')}};
   const detailWithClosingAuthor=renderDetail;renderDetail=function(){detailWithClosingAuthor();if(selected?.status!=='Concluído')return;const meta=$('#ticketDetail .resolution-box span');if(meta)meta.textContent=`Fechado por ${selected.closedBy||selected.technician||'Equipe técnica'} • ${selected.closedAt||'Data não informada'}`};
   // O clique das linhas é associado pela renderização definitiva abaixo.
@@ -2329,9 +2329,9 @@
     })
     .subscribe();
 
-  // Permite ao técnico complementar chamados recebidos por e-mail antes de
-  // iniciar o atendimento. A categoria é obrigatória para manter os relatórios
-  // consistentes; o laboratório continua opcional para atendimentos gerais.
+  // Permite ao técnico corrigir somente a classificação do chamado. O relato
+  // original (solicitante, título e descrição) permanece imutável na interface
+  // para preservar a integridade do registro recebido.
   const renderDetailWithTicketEditor = renderDetail;
   renderDetail = function () {
     renderDetailWithTicketEditor();
@@ -2350,7 +2350,7 @@
     details.insertAdjacentHTML('afterend', `
       <section class="ticket-edit-panel ${missingCategory ? 'is-required' : ''}">
         <button id="toggleTicketEditor" class="ticket-edit-toggle" type="button" aria-expanded="${missingCategory}">
-          <span><strong>${missingCategory ? 'Complete as informações para iniciar' : 'Editar informações do chamado'}</strong><small>${missingCategory ? 'Selecione ao menos uma categoria.' : 'Título, descrição, categoria e laboratório.'}</small></span>
+          <span><strong>${missingCategory ? 'Classifique o chamado para iniciar' : 'Corrigir classificação'}</strong><small>${missingCategory ? 'Selecione ao menos uma categoria.' : 'Altere somente a categoria ou o laboratório.'}</small></span>
           <b>${missingCategory ? '−' : '+'}</b>
         </button>
         <form id="ticketEditForm" ${missingCategory ? '' : 'hidden'}>
@@ -2358,9 +2358,8 @@
             <label>Categoria <select id="ticketEditCategory" required><option value="">Selecione</option>${categoryOptions}</select></label>
             <label>Laboratório <select id="ticketEditLab"><option value="">Não informado</option>${labOptions}</select></label>
           </div>
-          <label>Título do chamado<input id="ticketEditTitle" maxlength="100" value="${safe(selected.title)}" required></label>
-          <label>Descrição<textarea id="ticketEditDescription" maxlength="2000" rows="4" required>${safe(selected.description || '')}</textarea></label>
-          <div class="ticket-edit-actions"><button id="cancelTicketEdit" class="secondary" type="button">Cancelar</button><button class="primary" type="submit">Salvar informações</button></div>
+          <p class="ticket-edit-integrity"><strong>Registro original preservado</strong><span>Solicitante, título, descrição, origem e datas não podem ser alterados nesta correção.</span></p>
+          <div class="ticket-edit-actions"><button id="cancelTicketEdit" class="secondary" type="button">Cancelar</button><button class="primary" type="submit">Salvar correção</button></div>
         </form>
       </section>`);
 
@@ -2379,21 +2378,34 @@
       const categoryId = $('#ticketEditCategory').value;
       if (!categoryId) return toast('Selecione uma categoria para o chamado.');
       const labId = $('#ticketEditLab').value || null;
-      const title = $('#ticketEditTitle').value.trim();
-      const description = $('#ticketEditDescription').value.trim();
+      const previousCategoryId = selected.categoryId || null;
+      const previousLabId = selected.labId || null;
+      if (categoryId === previousCategoryId && labId === previousLabId) return toast('Nenhuma alteração de classificação foi feita.');
+      const previousCategory = selected.category || 'Sem categoria';
+      const previousLab = selected.lab || 'Não informado';
       const save = form.querySelector('.primary');
       save.disabled = true; save.textContent = 'Salvando…';
       const now = new Date().toISOString();
-      const result = await sb.from('tickets').update({category_id:categoryId,lab_id:labId,title,description,updated_at:now}).eq('id',selected.dbId);
-      if (result.error) { save.disabled = false; save.textContent = 'Salvar informações'; return fail(result.error, 'Não foi possível atualizar o chamado.'); }
+      const result = await sb.from('tickets').update({category_id:categoryId,lab_id:labId,updated_at:now}).eq('id',selected.dbId);
+      if (result.error) { save.disabled = false; save.textContent = 'Salvar correção'; return fail(result.error, 'Não foi possível corrigir a classificação.'); }
       const category = data.categories.find(item => item.id === categoryId);
       const lab = data.labs.find(item => item.id === labId);
+      const changed = [];
+      if (categoryId !== previousCategoryId) changed.push(`Categoria: “${previousCategory}” → “${category?.name || 'Sem categoria'}”`);
+      if (labId !== previousLabId) changed.push(`Laboratório: “${previousLab}” → “${lab?.name || 'Não informado'}”`);
+      const auditMessage = `Classificação corrigida pela equipe técnica. ${changed.join('. ')}.`;
+      const history = await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:auditMessage,kind:'classificacao',visible_to_server:false});
+      if (history.error) {
+        const rollback = await sb.from('tickets').update({category_id:previousCategoryId,lab_id:previousLabId,updated_at:selected.updatedAt || now}).eq('id',selected.dbId);
+        save.disabled = false; save.textContent = 'Salvar correção';
+        if (rollback.error) console.error('Falha ao reverter correção sem histórico', rollback.error);
+        return fail(history.error, rollback.error ? 'A classificação mudou, mas o registro de auditoria falhou. Atualize a página e contate o administrador.' : 'A correção foi cancelada porque não foi possível registrar a auditoria.');
+      }
       selected.categoryId = categoryId; selected.category = category?.name || 'Sem categoria';
       selected.labId = labId; selected.lab = lab?.name || 'Não informado';
-      selected.title = title; selected.description = description;
-      const history = await sb.from('ticket_updates').insert({ticket_id:selected.dbId,author_id:state.profile.id,message:'Informações do chamado atualizadas pela equipe técnica.',kind:'status'});
-      if (history.error) console.error('Chamado atualizado, mas o histórico não foi registrado', history.error);
-      renderTickets(); renderDetail(); toast('Informações do chamado atualizadas.');
+      selected.updatedAt = now;
+      selected.updates = [...(selected.updates || []), {message:auditMessage,kind:'classificacao',author:state.profile.full_name,createdAt:now}];
+      renderTickets(); renderDetail(); toast('Classificação corrigida e registrada no histórico.');
     };
 
     const assign = $('#assign');
