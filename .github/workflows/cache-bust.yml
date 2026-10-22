@@ -75,4 +75,20 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add index.html app.min.js supabase-integration.min.js reservations.min.js software-requests.min.js styles.min.css
           git commit -m "chore: atualiza build (minificação + cache-busting) [skip ci]"
-          git push
+          if git push origin HEAD:main; then
+            exit 0
+          fi
+
+          # Outro processo pode publicar exatamente o mesmo commit entre o
+          # checkout e o push. Nesse caso o resultado já está na main e a
+          # execução deve terminar com sucesso, sem disparar um alerta falso.
+          git fetch origin main
+          if git merge-base --is-ancestor HEAD origin/main; then
+            echo "O commit de build já está publicado na main."
+            exit 0
+          fi
+
+          # Se a main avançou por outro commit, reaplica o build sobre ela e
+          # tenta o envio uma única vez.
+          git rebase origin/main
+          git push origin HEAD:main
