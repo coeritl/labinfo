@@ -141,11 +141,26 @@
     box.hidden=!items.length;count.textContent=`${items.length} ${items.length===1?'item':'itens'}`;
     list.innerHTML=items.map(item=>`<span><strong>${safe(item?.name||'Software')}</strong><small>${safe(item?.version||'Versão não informada')}</small></span>`).join('');
   }
+  function ensurePublicSoftwareModal(){
+    if($('#publicSoftwareModal'))return;
+    document.body.insertAdjacentHTML('beforeend',`<div id="publicSoftwareModal" class="modal-backdrop" hidden><section class="card public-software-modal" role="dialog" aria-modal="true" aria-labelledby="publicSoftwareModalTitle"><div class="modal-heading"><div><span class="eyebrow">SOFTWARES DISPONÍVEIS</span><h2 id="publicSoftwareModalTitle"></h2><p id="publicSoftwareModalMeta"></p></div><button id="closePublicSoftwareModal" class="modal-close" type="button" aria-label="Fechar">×</button></div><label class="public-software-modal-search">Buscar software<input id="publicSoftwareModalSearch" type="search" placeholder="Digite o nome ou a versão"></label><div id="publicSoftwareModalList" class="public-software-modal-list"></div></section></div>`);
+    const modal=$('#publicSoftwareModal'),close=()=>{modal.hidden=true;document.body.classList.remove('modal-open');$('#publicSoftwareModalSearch').value=''};
+    $('#closePublicSoftwareModal').onclick=close;
+    modal.onclick=event=>{if(event.target===modal)close()};
+  }
+  function openPublicSoftwareModal(lab){
+    ensurePublicSoftwareModal();
+    const items=Array.isArray(lab?.software_inventory)?lab.software_inventory:[],modal=$('#publicSoftwareModal'),list=$('#publicSoftwareModalList'),search=$('#publicSoftwareModalSearch');
+    $('#publicSoftwareModalTitle').textContent=lab.name;
+    $('#publicSoftwareModalMeta').textContent=`${lab.location||'Localização não informada'} • ${items.length} ${items.length===1?'software cadastrado':'softwares cadastrados'}`;
+    const render=()=>{const query=search.value.trim().toLocaleLowerCase('pt-BR'),filtered=items.filter(item=>`${item?.name||''} ${item?.version||''}`.toLocaleLowerCase('pt-BR').includes(query));list.innerHTML=filtered.map(item=>`<article><strong>${safe(item?.name||'Software')}</strong><span>Versão ${safe(item?.version||'não informada')}</span></article>`).join('')||'<p class="empty">Nenhum software encontrado para esta busca.</p>'};
+    search.oninput=render;render();modal.hidden=false;document.body.classList.add('modal-open');setTimeout(()=>search.focus(),0);
+  }
   function renderPublicLabCards(){
     const selected=$('#publicScheduleLab').value;
     $('#publicLabCards').innerHTML=publicLabs.map(lab=>{
       const isSel=selected===lab.id,count=Number(lab.computer_count)||0,os=lab.operating_system?safe(lab.operating_system):'',softwareCount=Array.isArray(lab.software_inventory)?lab.software_inventory.length:0;
-      return `<button class="public-lab-card ${isSel?'selected':''}" type="button" data-lab="${lab.id}" aria-pressed="${isSel}">
+      return `<article class="public-lab-card ${isSel?'selected':''}" data-lab="${lab.id}">
         <div class="lab-card-header">
           <div class="public-lab-icon" aria-hidden="true">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
@@ -169,14 +184,15 @@
             ${softwareCount} software${softwareCount===1?'':'s'}
           </span>`:''}
         </div>
+        ${softwareCount?`<button class="lab-software-direct" type="button" data-software-lab="${lab.id}"><span><strong>Ver softwares disponíveis</strong><small>Clique para conferir nomes e versões</small></span><b>${softwareCount} →</b></button>`:'<div class="lab-software-unavailable"><strong>Softwares ainda não informados</strong><small>Consulte a equipe antes de solicitar este laboratório.</small></div>'}
         <div class="lab-card-footer">
           <span class="lab-card-status-badge ${isSel?'active':'available'}">${isSel?'● Aberto':'● Disponível'}</span>
-          <span class="lab-card-action">${isSel?'Agenda selecionada ✓':'Ver agenda →'}</span>
+          <button class="lab-card-action" type="button" data-select-lab="${lab.id}">${isSel?'Agenda selecionada ✓':'Ver agenda →'}</button>
         </div>
-      </button>`;
+      </article>`;
     }).join('')||'<p class="empty">Nenhum laboratório disponível.</p>';
-    $('#publicLabCards').querySelectorAll('[data-lab]').forEach(button=>button.onclick=async()=>{
-      const lab=publicLabs.find(item=>item.id===button.dataset.lab);
+    $('#publicLabCards').querySelectorAll('[data-select-lab]').forEach(button=>button.onclick=async()=>{
+      const lab=publicLabs.find(item=>item.id===button.dataset.selectLab);
       if(!lab)return;
       $('#publicScheduleLab').value=lab.id;
       $('#reservationLab').value=lab.id;
@@ -189,6 +205,10 @@
       renderPublicLabCards();
       await loadPublicSchedule();
       setTimeout(()=>$('#publicScheduleCard').scrollIntoView({behavior:'smooth',block:'start'}),50);
+    });
+    $('#publicLabCards').querySelectorAll('[data-software-lab]').forEach(button=>button.onclick=()=>{
+      const lab=publicLabs.find(item=>item.id===button.dataset.softwareLab);
+      if(lab)openPublicSoftwareModal(lab);
     });
   }
   async function loadPublicLabs(){const {data,error}=await sb.from('labs').select('id,name,code,location,computer_count,operating_system,software_inventory').eq('active',true).eq('reservation_enabled',true).order('name');if(error)return;publicLabs=data||[];const options=publicLabs.map(lab=>`<option value="${lab.id}">${safe(lab.name)}</option>`).join('');$('#reservationLab').innerHTML='<option value="">Selecione o laboratório</option>'+options;$('#publicScheduleLab').innerHTML='<option value=""></option>'+options;renderPublicLabCards()}
