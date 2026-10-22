@@ -718,6 +718,21 @@
   .chat-ended-actions button{width:100%}
 }
 
+/* Acesso institucional único nas áreas públicas */
+.topbar>.admin-link,body:has(#homeView:not([hidden])) .topbar>.admin-link{display:inline-flex;min-height:42px;align-items:center;justify-content:center;padding:7px 14px;border:1px solid #0a6a36;border-radius:10px;background:var(--green);color:#fff;font-size:11px;box-shadow:0 6px 15px rgba(17,115,60,.2);transition:background .18s,border-color .18s,box-shadow .18s,transform .18s}
+.topbar>.admin-link:hover{border-color:var(--green-dark);background:var(--green-dark);color:#fff;box-shadow:0 8px 18px rgba(7,92,46,.25);transform:translateY(-1px)}
+.topbar>.admin-link:focus-visible{outline:3px solid rgba(17,115,60,.24);outline-offset:3px}
+.institutional-access-backdrop{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:20px;background:rgba(7,35,20,.62);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px)}
+.institutional-access-backdrop[hidden]{display:none!important}
+.institutional-access-open{overflow:hidden}
+.institutional-access-card{width:min(460px,100%);padding:30px;text-align:center;border-top:5px solid var(--green);box-shadow:0 24px 70px rgba(7,35,20,.28)}
+.institutional-access-icon{display:grid;width:54px;height:54px;margin:0 auto 15px;place-items:center;border-radius:15px;background:var(--green-soft);color:var(--green-dark);font-size:18px;font-weight:900;letter-spacing:-.5px}
+.institutional-access-card h2{margin:7px 0 8px;font-size:26px;letter-spacing:-.5px}.institutional-access-card>p{margin:0 auto 20px;max-width:370px;color:var(--muted)}
+.institutional-access-card>.google-auth-button{margin-top:22px}.institutional-access-card>small{display:block;margin:16px auto 0;max-width:350px;color:var(--muted);font-size:10px;line-height:1.45}
+.institutional-access-error{margin:12px 0 0!important;padding:10px 12px;border:1px solid #efb8bc;border-radius:9px;background:#fff1f2;color:#9d1d22!important;font-size:12px;font-weight:700}
+.institutional-access-back{margin-top:11px;border:0;background:transparent;color:var(--green-dark);font-size:12px;font-weight:800;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:620px){.topbar>.admin-link{min-height:38px;padding:6px 9px}.institutional-access-backdrop{align-items:end;padding:10px}.institutional-access-card{padding:25px 18px 20px;border-radius:18px}.institutional-access-card h2{font-size:23px}}
+
 /* Autenticação institucional Google Workspace */
 .google-auth-button{display:flex;align-items:center;justify-content:center;gap:11px;width:100%;min-height:52px;border:1px solid #0a6a36;border-radius:10px;background:var(--green);color:#fff;font:inherit;font-weight:800;cursor:pointer;box-shadow:0 8px 18px rgba(17,115,60,.22);transition:background .18s,border-color .18s,box-shadow .18s,transform .18s}
 .google-auth-button:hover{border-color:var(--green-dark);background:var(--green-dark);box-shadow:0 10px 22px rgba(7,92,46,.27);transform:translateY(-1px)}.google-auth-button:focus-visible{outline:3px solid rgba(17,115,60,.24);outline-offset:3px}.google-auth-button:disabled{cursor:wait;opacity:.65;transform:none}.google-auth-button>span,.public-session-login>span{display:block;flex:0 0 27px;width:27px;height:27px;border-radius:6px;background-color:#fff;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 18'%3E%3Cpath fill='%234285F4' d='M17.64 9.205c0-.638-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 0 1-1.797 2.716v2.258h2.909c1.702-1.567 2.684-3.874 2.684-6.614Z'/%3E%3Cpath fill='%2334A853' d='M9 18c2.43 0 4.468-.806 5.956-2.181l-2.909-2.258c-.806.54-1.836.859-3.047.859-2.344 0-4.328-1.585-5.037-3.714H.956v2.332A9 9 0 0 0 9 18Z'/%3E%3Cpath fill='%23FBBC05' d='M3.963 10.706A5.41 5.41 0 0 1 3.681 9c0-.592.102-1.167.282-1.706V4.962H.956A9 9 0 0 0 0 9c0 1.452.347 2.827.956 4.038l3.007-2.332Z'/%3E%3Cpath fill='%23EA4335' d='M9 3.58c1.321 0 2.507.454 3.441 1.346l2.581-2.581C13.464.892 11.426 0 9 0A9 9 0 0 0 .956 4.962l3.007 2.332C4.672 5.165 6.656 3.58 9 3.58Z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:center;background-size:19px;color:transparent;font-size:0;box-shadow:0 1px 3px rgba(0,0,0,.16)}
@@ -1394,3 +1409,8 @@ body:has(#homeView:not([hidden])) .home-hero{margin-bottom:22px}
   .software-request-form .field-row,.software-request-item .field-row{grid-template-columns:1fr}.software-scope{flex-direction:column;gap:12px}.software-add-item{width:100%}
   .software-admin-grid{grid-template-columns:1fr}.software-cycle-form,.software-cycle-history,.software-requests-list-card{padding:17px 14px}.software-admin-request{flex-direction:column}.software-admin-request>div:last-child{text-align:left;justify-items:start}.software-requests-list-card .registry-head{align-items:stretch}.software-requests-list-card .registry-head select{max-width:none;width:100%}
 }
+
+/* Mantém os dois acessos do cabeçalho com o mesmo acabamento também na home. */
+body:has(#homeView:not([hidden])) .topbar>.admin-link{min-height:42px;padding:7px 14px;border:1px solid #0a6a36;background:var(--green);color:#fff;font-size:11px;box-shadow:0 6px 15px rgba(17,115,60,.2)}
+body:has(#homeView:not([hidden])) .topbar>.admin-link:hover{border-color:var(--green-dark);background:var(--green-dark);color:#fff}
+@media(max-width:620px){body:has(#homeView:not([hidden])) .topbar>.admin-link{min-height:38px;padding:6px 9px;font-size:10px}}

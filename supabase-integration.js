@@ -70,61 +70,115 @@
     signIn:signInWithGoogle,signOut:signOutInstitutional,refresh:refreshInstitutionalAuth,
     getState:()=>({...institutionalAuth})
   };
+  document.body.insertAdjacentHTML('beforeend',`
+    <div id="institutionalAccessModal" class="institutional-access-backdrop" hidden>
+      <section class="card institutional-access-card" role="dialog" aria-modal="true" aria-labelledby="institutionalAccessTitle" aria-describedby="institutionalAccessMessage">
+        <span class="institutional-access-icon" aria-hidden="true">IF</span>
+        <span class="eyebrow">ACESSO INSTITUCIONAL</span>
+        <h2 id="institutionalAccessTitle">Entre uma única vez</h2>
+        <p id="institutionalAccessMessage">Sua sessão @ifms.edu.br identifica você em todas as áreas do LabInfo.</p>
+        <button id="institutionalAccessLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br</button>
+        <p id="institutionalAccessError" class="institutional-access-error" hidden></p>
+        <button id="institutionalAccessBack" class="institutional-access-back" type="button">Agora não</button>
+        <small>O acesso é liberado somente para contas institucionais vinculadas a um servidor ativo.</small>
+      </section>
+    </div>`);
+  const institutionalAccessModal=$('#institutionalAccessModal'),institutionalAccessLogin=$('#institutionalAccessLogin'),institutionalAccessError=$('#institutionalAccessError');
+  let institutionalAccessReturnPath=location.pathname+location.search,institutionalAccessContext='default';
+  const institutionalAccessCopy={
+    support:['Abra seu chamado com a conta IFMS','A mesma sessão também libera suas solicitações, reservas e o chat, sem novos pedidos de login.'],
+    chat:['Identifique-se para iniciar o chat','A conta IFMS confirma sua identidade e permanece válida nas demais áreas do LabInfo.'],
+    reservation:['Identifique-se para fazer a reserva','Depois de entrar, o formulário será aberto automaticamente e sua agenda continuará vinculada à mesma sessão.'],
+    'my-reservations':['Identifique-se para ver suas reservas','Depois de entrar, suas reservas e opções de cancelamento serão carregadas automaticamente.'],
+    software:['Identifique-se para solicitar softwares','Depois de entrar, o formulário do próximo semestre será aberto e usará a mesma sessão das demais áreas.'],
+    default:['Entre uma única vez','Sua sessão @ifms.edu.br identifica você em todas as áreas do LabInfo.']
+  };
+  function closeInstitutionalAccess(){institutionalAccessModal.hidden=true;document.body.classList.remove('institutional-access-open')}
+  function openInstitutionalAccess({context='default',returnPath=location.pathname+location.search}={}){
+    if(institutionalAuth.identity)return true;
+    institutionalAccessContext=context;institutionalAccessReturnPath=returnPath;
+    const copy=institutionalAccessCopy[context]||institutionalAccessCopy.default;
+    $('#institutionalAccessTitle').textContent=copy[0];$('#institutionalAccessMessage').textContent=copy[1];
+    institutionalAccessError.hidden=!institutionalAuth.error;institutionalAccessError.textContent=institutionalAuth.error||'';
+    institutionalAccessLogin.disabled=false;institutionalAccessLogin.innerHTML='<span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br';
+    institutionalAccessModal.hidden=false;document.body.classList.add('institutional-access-open');
+    setTimeout(()=>institutionalAccessLogin.focus(),30);
+    return false;
+  }
+  function requireInstitutionalAccess(options={}){return institutionalAuth.identity?true:openInstitutionalAccess(options)}
+  function syncInstitutionalAccessGate(){
+    if(institutionalAuth.identity){closeInstitutionalAccess();return}
+    const chatVisible=$('#chatPublicView')&&!$('#chatPublicView').hidden,supportVisible=$('#teacherView')&&!$('#teacherView').hidden;
+    if(chatVisible)openInstitutionalAccess({context:'chat',returnPath:sitePath('chat')});
+    else if(supportVisible&&!feedbackParam)openInstitutionalAccess({context:'support',returnPath:sitePath('suporte')});
+  }
+  window.labinfoRequireInstitutionalAccess=requireInstitutionalAccess;
+  institutionalAccessLogin.onclick=async()=>{
+    institutionalAccessLogin.disabled=true;institutionalAccessLogin.textContent='Abrindo acesso institucional…';institutionalAccessError.hidden=true;
+    try{
+      if(institutionalAuth.session&&!institutionalAuth.identity)await sb.auth.signOut();
+      await signInWithGoogle(institutionalAccessReturnPath);
+    }catch(error){
+      institutionalAccessLogin.disabled=false;institutionalAccessLogin.innerHTML='<span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br';
+      institutionalAccessError.textContent=error?.message||'Não foi possível iniciar o acesso institucional.';institutionalAccessError.hidden=false;
+    }
+  };
+  $('#institutionalAccessBack').onclick=()=>{
+    closeInstitutionalAccess();
+    if(['support','chat'].includes(institutionalAccessContext)){
+      if(window.labinfoShowPublic)window.labinfoShowPublic('home');
+      else location.href=sitePath('');
+    }
+  };
   let publicTicketsLoadedFor=null;
   function applySharedInstitutionalIdentity(authState=institutionalAuth){
     const session=authState?.session||null,identity=authState?.identity||null,email=identity?.email||session?.user?.email||'';
     const login=$('#publicSessionLogin'),status=$('#publicSessionStatus'),identityText=$('#publicSessionIdentity'),avatar=$('#publicSessionAvatar');
-    if(login)login.hidden=Boolean(session);
-    if(status)status.hidden=!session;
+    if(login)login.hidden=Boolean(identity);
+    if(status)status.hidden=!identity;
     if(identityText)identityText.textContent=identity?.full_name||email||'Conta IFMS conectada';
     if(avatar)avatar.textContent=(identity?.full_name||email||'IF').trim().slice(0,2).toUpperCase();
 
-    const ticketIdentity=$('#ticketGmailIdentity'),ticketLogin=$('#ticketGoogleLogin'),siape=$('#siape'),ticketEmail=$('#email'),ticketSubmit=$('#ticketForm button[type="submit"]');
+    const ticketIdentity=$('#ticketGmailIdentity'),siape=$('#siape'),ticketEmail=$('#email'),ticketSubmit=$('#ticketForm button[type="submit"]');
     if(identity){
       if(ticketIdentity){ticketIdentity.hidden=false;ticketIdentity.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)} · SIAPE ${safe(identity.siape)}</small></span><b>✓ Identidade confirmada</b>`}
-      if(ticketLogin)ticketLogin.hidden=true;
       if(ticketSubmit)ticketSubmit.disabled=false;
       if(siape)siape.value=identity.siape;
       if(ticketEmail)ticketEmail.value=identity.email;
       const teacherIdentity=$('#teacherIdentity');if(teacherIdentity){teacherIdentity.textContent=identity.full_name;teacherIdentity.className='field-hint found'}
     }else{
       if(ticketIdentity)ticketIdentity.hidden=true;
-      if(ticketLogin){ticketLogin.hidden=false;ticketLogin.disabled=false}
       if(ticketSubmit)ticketSubmit.disabled=true;
     }
 
-    const chatIdentityBox=$('#chatGmailIdentity'),chatLogin=$('#chatGoogleLogin'),chatSiape=$('#chatSiape'),chatHint=$('#chatIdentity'),chatSubmit=$('#startChatButton');
+    const chatIdentityBox=$('#chatGmailIdentity'),chatSiape=$('#chatSiape'),chatHint=$('#chatIdentity'),chatSubmit=$('#startChatButton');
     if(identity){
       currentPublicServer={id:identity.id,siape:identity.siape,full_name:identity.full_name,email:identity.email};
       if(chatIdentityBox){chatIdentityBox.hidden=false;chatIdentityBox.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)} · SIAPE ${safe(identity.siape)}</small></span><b>✓ Gmail validado</b>`}
-      if(chatLogin)chatLogin.hidden=true;
       if(chatSubmit)chatSubmit.disabled=false;
       if(chatSiape)chatSiape.value=identity.siape;
       if(chatHint){chatHint.textContent='Identidade institucional confirmada para este atendimento.';chatHint.className='field-hint found'}
     }else{
       currentPublicServer=null;
       if(chatIdentityBox)chatIdentityBox.hidden=true;
-      if(chatLogin){chatLogin.hidden=false;chatLogin.disabled=false}
       if(chatSubmit)chatSubmit.disabled=true;
       if(chatHint){chatHint.textContent=authState?.error||'Entre com seu Gmail institucional para iniciar o atendimento.';chatHint.className='field-hint pending'}
     }
 
-    const ticketSearchLogin=$('#myTicketsGoogleLogin'),ticketHelp=$('#myTicketsHelp'),protocolInput=$('#protocolInput'),protocolResult=$('#protocolResult');
+    const ticketHelp=$('#myTicketsHelp'),protocolInput=$('#protocolInput'),protocolResult=$('#protocolResult');
     if(identity){
-      if(ticketSearchLogin)ticketSearchLogin.hidden=true;
       if(ticketHelp)ticketHelp.textContent=`Solicitações de ${identity.full_name}, identificadas pela sessão Gmail institucional.`;
       if(protocolInput)protocolInput.value=identity.siape;
       if(publicTicketsLoadedFor!==identity.id){publicTicketsLoadedFor=identity.id;setTimeout(()=>$('#protocolButton')?.click(),0)}
     }else{
       publicTicketsLoadedFor=null;
-      if(ticketSearchLogin){ticketSearchLogin.hidden=false;ticketSearchLogin.disabled=false}
-      if(ticketHelp)ticketHelp.textContent='Entre com seu Gmail @ifms.edu.br para acompanhar automaticamente suas solicitações.';
+      if(ticketHelp)ticketHelp.textContent='Entre pelo botão no topo para acompanhar automaticamente suas solicitações.';
       if(protocolResult)protocolResult.innerHTML='';
     }
+    syncInstitutionalAccessGate();
   }
   const startPublicGoogleLogin=async button=>{button.disabled=true;try{await signInWithGoogle(location.pathname+location.search)}catch(error){button.disabled=false;fail(error,'Não foi possível iniciar o login institucional.')}};
   $('#publicSessionLogin')?.addEventListener('click',event=>startPublicGoogleLogin(event.currentTarget));
-  ['#ticketGoogleLogin','#chatGoogleLogin','#myTicketsGoogleLogin'].forEach(selector=>$(selector)?.addEventListener('click',event=>startPublicGoogleLogin(event.currentTarget)));
   $('#publicSessionLogout')?.addEventListener('click',()=>signOutInstitutional());
   window.addEventListener('labinfo:institutional-auth',event=>applySharedInstitutionalIdentity(event.detail));
   document.body.insertAdjacentHTML('beforeend','<div id="adminProcessing" class="admin-processing" hidden role="status" aria-live="assertive"><div><i></i><strong>Processando…</strong><span>Aguarde a atualização dos dados.</span></div></div>');

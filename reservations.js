@@ -114,10 +114,10 @@
   // Delegação global de navegação no documento inteiro
   document.addEventListener('click',event=>{
     if(event.target.closest('#openReservations')){event.preventDefault();showPublic('reservations');return}
-    if(event.target.closest('#openSupport')){event.preventDefault();showPublic('support');return}
-    if(event.target.closest('#openLiveChat')){event.preventDefault();showPublic('chat');return}
+    if(event.target.closest('#openSupport')){event.preventDefault();showPublic('support');requestInstitutionalAccess('support',sitePath('suporte'));return}
+    if(event.target.closest('#openLiveChat')){event.preventDefault();showPublic('chat');requestInstitutionalAccess('chat',sitePath('chat'));return}
     if(event.target.closest('#backHome, #backHomeFromChat, #backHomeFromSupport')){event.preventDefault();showPublic('home');return}
-    if(event.target.closest('#chatGoToSupport')){event.preventDefault();showPublic('support');return}
+    if(event.target.closest('#chatGoToSupport')){event.preventDefault();showPublic('support');requestInstitutionalAccess('support',sitePath('suporte'));return}
     if(event.target.closest('#reservationsMenuButton, [data-section="reservations"], #reviewReservationsButton')){
       event.preventDefault();
       openReservationsAdmin();
@@ -130,7 +130,7 @@
     }
   });
 
-  window.addEventListener('popstate',()=>{const path=location.pathname,isAdmin=path.includes('/admin');if(!isAdmin&&path.includes('/reservas'))showPublic('reservations',false);else if(!isAdmin&&path.includes('/chat'))showPublic('chat',false);else if(!isAdmin&&path.includes('/suporte'))showPublic('support',false);else if(!isAdmin)showPublic('home',false)});
+  window.addEventListener('popstate',()=>{const path=location.pathname,isAdmin=path.includes('/admin');if(!isAdmin&&path.includes('/reservas'))showPublic('reservations',false);else if(!isAdmin&&path.includes('/chat')){showPublic('chat',false);requestInstitutionalAccess('chat',sitePath('chat'))}else if(!isAdmin&&path.includes('/suporte')){showPublic('support',false);requestInstitutionalAccess('support',sitePath('suporte'))}else if(!isAdmin)showPublic('home',false)});
   const initialParams=new URLSearchParams(location.search),initialPublicRoute=initialParams.get('route'),initialIsAdmin=initialPublicRoute?.startsWith('admin')||location.pathname.includes('/admin');if(!initialIsAdmin&&(location.pathname.includes('/reservas')||initialPublicRoute==='reservas'||initialParams.has('confirm_reservation')||initialParams.has('cancel_reservation')||initialParams.has('manage_reservations')||initialParams.has('confirm_cancel_request')))showPublic('reservations',false);else if(!initialIsAdmin&&(location.pathname.includes('/chat')||initialPublicRoute==='chat'))showPublic('chat',false);else if(!initialIsAdmin&&(location.pathname.includes('/suporte')||initialPublicRoute==='suporte'||initialParams.has('feedback')))showPublic('support',false);
 
   function publicMonday(value){const date=new Date(value);date.setHours(12,0,0,0);const day=date.getDay()||7;date.setDate(date.getDate()-day+1);return date}
@@ -264,7 +264,7 @@
   }
 
   $('#publicScheduleLab').onchange=loadPublicSchedule;$('#publicSchedulePrev').onclick=()=>{publicWeekStart=publicAddDays(publicWeekStart,-7);loadPublicSchedule()};$('#publicScheduleNext').onclick=()=>{publicWeekStart=publicAddDays(publicWeekStart,7);loadPublicSchedule()};
-  const publicReservationForm=$('#publicReservationForm'),publicReservationToggle=$('#togglePublicReservationForm');function togglePublicReservationForm(open){publicReservationForm.hidden=!open;publicReservationToggle.setAttribute('aria-expanded',open);publicReservationToggle.querySelector('i').textContent=open?'−':'+';publicReservationToggle.querySelector('b').textContent=open?'Recolher ↑':'Expandir ↓';if(open)setTimeout(()=>publicReservationForm.scrollIntoView({behavior:'smooth',block:'start'}),50)}publicReservationToggle.onclick=()=>togglePublicReservationForm(publicReservationForm.hidden);
+  const publicReservationForm=$('#publicReservationForm'),publicReservationToggle=$('#togglePublicReservationForm');function togglePublicReservationForm(open){publicReservationForm.hidden=!open;publicReservationToggle.setAttribute('aria-expanded',open);publicReservationToggle.querySelector('i').textContent=open?'−':'+';publicReservationToggle.querySelector('b').textContent=open?'Recolher ↑':'Expandir ↓';if(open)setTimeout(()=>publicReservationForm.scrollIntoView({behavior:'smooth',block:'start'}),50)}
   
   const myReservationsSide=$('#myReservationsSide'),myReservationsToggle=$('#toggleMyReservationsForm');
   function toggleMyReservationsForm(open){
@@ -283,8 +283,6 @@
     myReservationsToggle.querySelector('b').textContent=open?'Recolher ↑':'Expandir ↓';
     if(open)setTimeout(()=>myReservationsSide.scrollIntoView({behavior:'smooth',block:'start'}),50);
   }
-  if(myReservationsToggle&&myReservationsSide)myReservationsToggle.onclick=()=>toggleMyReservationsForm(myReservationsSide.hidden);
-
   const publicNotice=$('#publicReservationNotice');
   function closePublicReservationNotice(){modal('publicReservationNotice',false)}
   function showPublicReservationNotice({type='info',eyebrow='ATENÇÃO',title,message,protocol=''}){
@@ -309,20 +307,28 @@
     url.searchParams.set('google_auth_return',context);
     return url.pathname+url.search;
   };
-  const beginGoogleAuth=async(button,context)=>{button.disabled=true;button.textContent='Abrindo Gmail institucional…';sessionStorage.setItem('labinfo_google_auth_return',context);try{await window.labinfoInstitutionalAuth?.signIn(googleReturnPath(context))}catch(error){sessionStorage.removeItem('labinfo_google_auth_return');button.disabled=false;button.innerHTML='<span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br';toast(error.message||'Não foi possível iniciar o acesso com Gmail institucional.')}};
-  $('#reservationGoogleLogin').onclick=event=>beginGoogleAuth(event.currentTarget,'reservation');
-  $('#myReservationsGoogleLogin').onclick=event=>beginGoogleAuth(event.currentTarget,'my-reservations');
-  if(googleAuthReturn==='my-reservations'){
-    togglePublicReservationForm(false);toggleMyReservationsForm(true);
-  }else if(googleAuthReturn==='reservation'){
-    togglePublicReservationForm(true);toggleMyReservationsForm(false);
-  }
+  const requestInstitutionalAccess=(context,returnPath=location.pathname+location.search)=>{
+    if(window.labinfoInstitutionalAuth?.getState()?.identity)return true;
+    if(context==='reservation'||context==='my-reservations')sessionStorage.setItem('labinfo_google_auth_return',context);
+    window.labinfoRequireInstitutionalAccess?.({context,returnPath});
+    return false;
+  };
+  publicReservationToggle.onclick=()=>{
+    const open=publicReservationForm.hidden;
+    if(open&&!requestInstitutionalAccess('reservation',googleReturnPath('reservation')))return;
+    togglePublicReservationForm(open);
+  };
+  if(myReservationsToggle&&myReservationsSide)myReservationsToggle.onclick=()=>{
+    const open=myReservationsSide.hidden;
+    if(open&&!requestInstitutionalAccess('my-reservations',googleReturnPath('my-reservations')))return;
+    toggleMyReservationsForm(open);
+  };
 
   async function applyReservationInstitutionalAuth(authState){
     const identity=authState?.identity||null,error=authState?.error||null;
     publicAuthIdentity=identity;
-    const reservationButton=$('#reservationGoogleLogin'),reservationIdentity=$('#reservationGoogleIdentity'),siapeInput=$('#reservationSiape'),reservationSubmit=$('#publicReservationForm button[type="submit"]');
-    const myButton=$('#myReservationsGoogleLogin'),myIdentity=$('#myReservationsGoogleIdentity');
+    const reservationIdentity=$('#reservationGoogleIdentity'),siapeInput=$('#reservationSiape'),reservationSubmit=$('#publicReservationForm button[type="submit"]');
+    const myIdentity=$('#myReservationsGoogleIdentity');
     if(identity){
       // O retorno OAuth acontece na raiz física do Pages. Reaplique a rota
       // pública antes de limpar o contexto para que o primeiro acesso já abra
@@ -338,19 +344,16 @@
       }
       sessionStorage.removeItem('labinfo_google_auth_return');
       publicServer=identity;
-      reservationButton.hidden=true;reservationIdentity.hidden=false;
-      reservationIdentity.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)} · SIAPE ${safe(identity.siape)}</small></span><button type="button" data-google-signout>Sair</button>`;
+      reservationIdentity.hidden=false;
+      reservationIdentity.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)} · SIAPE ${safe(identity.siape)}</small></span><b>✓ Identidade confirmada</b>`;
       siapeInput.value=identity.siape;reservationSubmit.disabled=false;
       $('#reservationIdentity').textContent='Identidade confirmada pelo Gmail @ifms.edu.br.';$('#reservationIdentity').className='field-hint found';
-      myButton.hidden=true;myIdentity.hidden=false;
-      myIdentity.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)}</small></span><button type="button" data-google-signout>Sair</button>`;
-      document.querySelectorAll('[data-google-signout]').forEach(button=>button.onclick=()=>window.labinfoInstitutionalAuth?.signOut());
+      myIdentity.hidden=false;
+      myIdentity.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)}</small></span><b>✓ Sessão ativa</b>`;
       if(publicAuthReservationsLoadedFor!==identity.id){publicAuthReservationsLoadedFor=identity.id;await loadSecureReservations(null,true)}
     }else{
       publicAuthReservationsLoadedFor=null;
       publicServer=null;
-      reservationButton.hidden=false;reservationButton.disabled=false;reservationButton.innerHTML='<span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br';
-      myButton.hidden=false;myButton.disabled=false;myButton.innerHTML='<span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br';
       reservationIdentity.hidden=true;myIdentity.hidden=true;reservationSubmit.disabled=true;
       $('#reservationIdentity').textContent=error&&authState?.session?error:'Entre com seu Gmail institucional para solicitar uma reserva.';$('#reservationIdentity').className='field-hint pending';
       if(error&&authState?.session){

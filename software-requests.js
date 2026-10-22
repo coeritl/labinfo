@@ -21,7 +21,7 @@
       <div id="softwareRequestResult" class="software-request-result" hidden aria-live="polite"></div>
       <form id="softwareRequestForm" class="software-request-form" hidden>
         <div class="section-title"><span>1</span><div><h2>Identificação</h2><p>Use sua conta Gmail @ifms.edu.br para validação imediata</p></div></div>
-        <div class="institutional-auth-panel"><button id="softwareGoogleLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br</button><div id="softwareGoogleIdentity" class="institutional-auth-identity" hidden></div></div>
+        <div class="institutional-auth-panel"><div id="softwareGoogleIdentity" class="institutional-auth-identity" hidden></div></div>
         <input id="softwareRequestSiape" type="hidden">
         <p id="softwareRequestIdentity" class="field-hint pending">Entre com seu Gmail institucional para enviar a solicitação.</p>
         <div class="section-title"><span>2</span><div><h2>Turma e laboratório</h2></div></div>
@@ -139,18 +139,17 @@
   async function applyInstitutionalAuth(authState){
     const identity=authState?.identity||null,error=authState?.error||null;
     institutionalIdentity=identity;
-    const login=$('#softwareGoogleLogin'),identityBox=$('#softwareGoogleIdentity'),siape=$('#softwareRequestSiape'),hint=$('#softwareRequestIdentity'),note=$('#softwareSecurityNote'),submit=$('#softwareRequestForm button[type="submit"]');
-    if(!login||!identityBox||!siape)return;
+    const identityBox=$('#softwareGoogleIdentity'),siape=$('#softwareRequestSiape'),hint=$('#softwareRequestIdentity'),note=$('#softwareSecurityNote'),submit=$('#softwareRequestForm button[type="submit"]');
+    if(!identityBox||!siape)return;
     if(identity){
-      identifiedServer=identity;login.hidden=true;identityBox.hidden=false;
-      identityBox.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)} · SIAPE ${safe(identity.siape)}</small></span><button type="button" data-software-google-signout>Sair</button>`;
-      identityBox.querySelector('[data-software-google-signout]').onclick=()=>window.labinfoInstitutionalAuth?.signOut();
+      identifiedServer=identity;identityBox.hidden=false;
+      identityBox.innerHTML=`<span><strong>${safe(identity.full_name)}</strong><small>${safe(identity.email)} · SIAPE ${safe(identity.siape)}</small></span><b>✓ Sessão ativa</b>`;
       siape.value=identity.siape;
       hint.textContent='Identidade confirmada pelo Gmail @ifms.edu.br.';hint.className='field-hint found';
       if(note)note.innerHTML='<span class="software-security-icon" aria-hidden="true">✓</span><div><strong>Identidade institucional confirmada</strong><span>A solicitação será criada imediatamente e encaminhada à equipe, sem uma nova confirmação por e-mail.</span></div>';
       if(submit){submit.disabled=false;submit.innerHTML='Criar solicitação <span>→</span>'}
     }else{
-      identifiedServer=null;login.hidden=false;login.disabled=false;login.innerHTML='<span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br';identityBox.hidden=true;
+      identifiedServer=null;identityBox.hidden=true;
       hint.textContent=error&&authState?.session?error:'Entre com seu Gmail institucional para enviar a solicitação.';hint.className='field-hint pending';
       if(note)note.innerHTML='<span class="software-security-icon" aria-hidden="true">🔒</span><div><strong>Login institucional obrigatório</strong><span>A identidade será validada pela conta Gmail @ifms.edu.br vinculada ao cadastro ativo.</span></div>';
       if(submit){submit.disabled=true;submit.innerHTML='Entre com Gmail para continuar <span>→</span>'}
@@ -256,8 +255,7 @@
     const admin=$('#adminView');if(admin)admin.insertAdjacentHTML('beforeend',adminMarkup());
     if($('#softwareRequestItems'))addItem();
     $('#addSoftwareRequestItem')?.addEventListener('click',()=>addItem());
-    $('#softwareGoogleLogin')?.addEventListener('click',async event=>{const button=event.currentTarget;button.disabled=true;button.textContent='Abrindo Gmail institucional…';try{await window.labinfoInstitutionalAuth?.signIn(location.pathname)}catch(error){button.disabled=false;button.innerHTML='<span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br';notify(error.message||'Não foi possível iniciar o acesso com Gmail institucional.')}});
-    $('#toggleSoftwareRequestForm')?.addEventListener('click',()=>{const form=$('#softwareRequestForm'),open=form.hidden;form.hidden=!open;$('#toggleSoftwareRequestForm').textContent=open?'Fechar formulário':'Fazer solicitação';$('#toggleSoftwareRequestForm').setAttribute('aria-expanded',String(open));if(open)form.scrollIntoView({behavior:'smooth',block:'start'})});
+    $('#toggleSoftwareRequestForm')?.addEventListener('click',()=>{const form=$('#softwareRequestForm'),open=form.hidden;if(open&&!institutionalIdentity){sessionStorage.setItem('labinfo_google_auth_return','software-request');window.labinfoRequireInstitutionalAccess?.({context:'software',returnPath:sitePath('')+'?google_auth_return=software-request'});return}form.hidden=!open;$('#toggleSoftwareRequestForm').textContent=open?'Fechar formulário':'Fazer solicitação';$('#toggleSoftwareRequestForm').setAttribute('aria-expanded',String(open));if(open)form.scrollIntoView({behavior:'smooth',block:'start'})});
     $('#softwareRequestLab')?.addEventListener('change',()=>{if($('#softwareInstalledSearch'))$('#softwareInstalledSearch').value='';renderInstalledSoftware()});
     $('#softwareInstalledSearch')?.addEventListener('input',renderInstalledSoftware);
     document.querySelectorAll('input[name="softwareScope"]').forEach(input=>input.onchange=()=>{const specific=input.value==='specific'&&input.checked;$('#softwareMachinesLabel').hidden=!specific;$('#softwareRequestMachines').required=specific});
@@ -266,7 +264,14 @@
     $('#softwareRequestsStatus')?.addEventListener('change',renderAdmin);
     $('#softwareCycleForm')?.addEventListener('submit',async event=>{event.preventDefault();const button=event.currentTarget.querySelector('button[type="submit"]');button.disabled=true;const {error}=await db().rpc('staff_save_software_request_cycle',{p_id:$('#softwareCycleId').value||null,p_semester_label:$('#softwareCycleLabel').value.trim(),p_opens_at:new Date($('#softwareCycleOpens').value).toISOString(),p_closes_at:new Date($('#softwareCycleCloses').value).toISOString(),p_target_date:$('#softwareCycleTarget').value||null,p_instructions:$('#softwareCycleInstructions').value.trim()||null,p_active:$('#softwareCycleActive').checked});button.disabled=false;if(error)return notify(error.message);notify('Campanha salva.');await loadAdmin();await loadPublicCampaign()});
     window.addEventListener('labinfo:institutional-auth',event=>applyInstitutionalAuth(event.detail));
-    applyInstitutionalAuth(window.labinfoInstitutionalAuth?.getState()||{});
+    const currentInstitutionalAuth=window.labinfoInstitutionalAuth?.getState()||{};
+    applyInstitutionalAuth(currentInstitutionalAuth);
+    const softwareAuthReturn=new URLSearchParams(location.search).get('google_auth_return')||sessionStorage.getItem('labinfo_google_auth_return');
+    if(softwareAuthReturn==='software-request'){
+      const openReturnedSoftwareForm=()=>{sessionStorage.removeItem('labinfo_google_auth_return');const form=$('#softwareRequestForm'),toggle=$('#toggleSoftwareRequestForm');form.hidden=false;toggle.textContent='Fechar formulário';toggle.setAttribute('aria-expanded','true');history.replaceState({},'',sitePath(''));setTimeout(()=>form.scrollIntoView({behavior:'smooth',block:'start'}),50)};
+      if(currentInstitutionalAuth.identity)openReturnedSoftwareForm();
+      else{const onSoftwareAuth=event=>{if(!event.detail?.identity)return;window.removeEventListener('labinfo:institutional-auth',onSoftwareAuth);openReturnedSoftwareForm()};window.addEventListener('labinfo:institutional-auth',onSoftwareAuth)}
+    }
     resetCycleForm();loadPublicCampaign();handleToken();resolveReady();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();

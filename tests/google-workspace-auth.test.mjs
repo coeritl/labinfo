@@ -10,6 +10,7 @@ const reservations=readFileSync(join(root,'reservations.js'),'utf8');
 const software=readFileSync(join(root,'software-requests.js'),'utf8');
 const integration=readFileSync(join(root,'supabase-integration.js'),'utf8');
 const html=readFileSync(join(root,'index.html'),'utf8');
+const styles=readFileSync(join(root,'styles.css'),'utf8');
 const fallback404=readFileSync(join(root,'404.html'),'utf8');
 const corpus=loadSqlCorpus();
 
@@ -42,6 +43,13 @@ test('frontend usa OAuth Google como única identificação para ações pessoai
   assert.match(reservations,/if\(googleAuthReturn\)\{[\s\S]*?showPublic\('reservations',false\)[\s\S]*?history\.replaceState\(\{\},'',sitePath\('reservas'\)\)/);
   assert.match(integration,/publicSessionLogin/);
   assert.match(integration,/applySharedInstitutionalIdentity/);
+  assert.match(integration,/labinfoRequireInstitutionalAccess/);
+  assert.match(integration,/id="institutionalAccessModal"/);
+  assert.match(reservations,/requestInstitutionalAccess\('support'/);
+  assert.match(reservations,/requestInstitutionalAccess\('reservation',googleReturnPath\('reservation'\)\)/);
+  assert.doesNotMatch(html,/(?:chat|ticket|reservation|myReservations|myTickets)GoogleLogin/);
+  assert.doesNotMatch(software,/softwareGoogleLogin/);
+  assert.match(styles,/\.topbar>\.admin-link[^\{]*\{[^}]*min-height:42px[^}]*background:var\(--green\)/);
   assert.match(integration,/setTimeout\(\(\)=>\$\('#protocolButton'\)\?\.click\(\),0\)/);
   assert.match(integration,/Entrar com a conta @ifms\.edu\.br/);
   assert.match(integration,/if\(!force&&!state\.profile\)/);
