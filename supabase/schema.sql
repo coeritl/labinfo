@@ -2,7 +2,7 @@
 create extension if not exists pgcrypto;
 
 create type public.app_role as enum ('tecnico','supervisor');
-create type public.ticket_status as enum ('Recebido','Em atendimento','Concluído');
+create type public.ticket_status as enum ('Recebido','Em atendimento','Aguardando','Concluído');
 
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -49,7 +49,9 @@ create table public.tickets (
   source text not null default 'Formulario' check (source in ('Formulario','Tecnico','Email')),
   assigned_to uuid references public.profiles(id),
   resolution text, created_at timestamptz not null default now(),
-  started_at timestamptz, closed_at timestamptz, updated_at timestamptz not null default now()
+  started_at timestamptz, closed_at timestamptz, updated_at timestamptz not null default now(),
+  waiting_reason text, waiting_note text, waiting_review_on date,
+  waiting_started_at timestamptz, waiting_total_seconds bigint not null default 0
 );
 create table public.ticket_updates (
   id bigint generated always as identity primary key,
