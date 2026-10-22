@@ -26,6 +26,7 @@ test('agenda pública consulta e apresenta o inventário de software', async () 
   assert.match(reservations, /renderPublicSoftwareInventory\(lab\)/);
   assert.match(reservations, /data-software-lab/);
   assert.match(reservations, /Ver softwares disponíveis/);
+  assert.doesNotMatch(reservations, /<b>\$\{softwareCount\} →<\/b>/);
   assert.match(reservations, /openPublicSoftwareModal\(lab\)/);
   assert.match(reservations, /safe\(item\?\.name/);
   assert.match(reservations, /safe\(item\?\.version/);

@@ -184,7 +184,7 @@
             ${softwareCount} software${softwareCount===1?'':'s'}
           </span>`:''}
         </div>
-        ${softwareCount?`<button class="lab-software-direct" type="button" data-software-lab="${lab.id}"><span><strong>Ver softwares disponíveis</strong><small>Clique para conferir nomes e versões</small></span><b>${softwareCount} →</b></button>`:'<div class="lab-software-unavailable"><strong>Softwares ainda não informados</strong><small>Consulte a equipe antes de solicitar este laboratório.</small></div>'}
+        ${softwareCount?`<button class="lab-software-direct" type="button" data-software-lab="${lab.id}"><span><strong>Ver softwares disponíveis</strong><small>Clique para conferir nomes e versões</small></span></button>`:'<div class="lab-software-unavailable"><strong>Softwares ainda não informados</strong><small>Consulte a equipe antes de solicitar este laboratório.</small></div>'}
         <div class="lab-card-footer">
           <span class="lab-card-status-badge ${isSel?'active':'available'}">${isSel?'● Aberto':'● Disponível'}</span>
           <button class="lab-card-action" type="button" data-select-lab="${lab.id}">${isSel?'Agenda selecionada ✓':'Ver agenda →'}</button>
