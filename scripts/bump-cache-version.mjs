@@ -30,8 +30,11 @@ function hashFile(relativePath) {
   if (!existsSync(absolutePath)) {
     throw new Error(`Arquivo referenciado em index.html não encontrado: ${relativePath}`);
   }
-  const content = readFileSync(absolutePath);
-  return createHash('sha256').update(content).digest('hex').slice(0, 10);
+  // Git pode materializar os mesmos arquivos com CRLF no Windows e LF no
+  // runner Linux. Normalize a quebra de linha antes do hash para que o cache
+  // tenha a mesma versão em desenvolvimento e no GitHub Actions.
+  const content = readFileSync(absolutePath, 'utf8').replace(/\r\n/g, '\n');
+  return createHash('sha256').update(content, 'utf8').digest('hex').slice(0, 10);
 }
 
 function bump() {

@@ -5,6 +5,7 @@
     return;
   }
   const sb=window.supabase.createClient(cfg.url,cfg.anonKey), state={profile:null,session:null};tickets.splice(0,tickets.length);selected=null;
+  let reportChats=[],reportPresenceEvents=[],reportPresenceAvailable=false,reportDataLoaded=false,reportDataPromise=null,reportServerNames=new Map(),reportTechnicianNames=new Map(),currentSupervisorReport={tickets:[],chats:[],range:null};
   const siteBase=location.hostname.endsWith('.github.io')?'/labinfo':'';
   const sitePath=route=>`${siteBase}/${route?String(route).replace(/^\/+|\/+$/g,'')+'/':''}`;
   const routeParam=new URLSearchParams(location.search).get('route'),
@@ -305,11 +306,11 @@
   $('#accountButton').onclick=()=>{accountDropdown.hidden=!accountDropdown.hidden;$('#accountButton').setAttribute('aria-expanded',String(!accountDropdown.hidden))};
   $('#accountLogout').onclick=performLogout;
 
-  $('#adminMenuDropdown').querySelector('[data-section="tickets"]')?.remove();$('#adminMenuDropdown').querySelector('[data-section="analytics"]').textContent='Relatórios';$('#adminMenuDropdown').querySelector('[data-section="supervisor"]').textContent='Supervisor';$('#adminMenuDropdown').insertAdjacentHTML('beforeend','<button id="chatMenuButton" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg> Chat ao vivo <span id="chatMenuBadge" class="chat-menu-badge" hidden>0</span></button><button id="hoursMenuButton">Horários</button><button id="maintenanceMenuButton">Manutenção</button><button id="softwareRequestsMenuButton" type="button">Solicitações de software</button><button id="reservationsMenuButton" type="button">Reservas</button>');
-  const adminMenuDropdown=$('#adminMenuDropdown'),analyticsMenuButton=adminMenuDropdown.querySelector('[data-section="analytics"]'),registrationsMenuButton=adminMenuDropdown.querySelector('[data-section="registrations"]'),supervisorMenuButton=adminMenuDropdown.querySelector('[data-section="supervisor"]'),reservationsMenuButton=$('#reservationsMenuButton'),chatMenuButton=$('#chatMenuButton'),softwareRequestsMenuButton=$('#softwareRequestsMenuButton');
+  $('#adminMenuDropdown').querySelector('[data-section="tickets"]')?.remove();$('#adminMenuDropdown').querySelector('[data-section="analytics"]')?.remove();$('#adminMenuDropdown').querySelector('[data-section="supervisor"]').textContent='Relatórios';$('#adminMenuDropdown').insertAdjacentHTML('beforeend','<button id="chatMenuButton" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg> Chat ao vivo <span id="chatMenuBadge" class="chat-menu-badge" hidden>0</span></button><button id="hoursMenuButton">Horários</button><button id="maintenanceMenuButton">Manutenção</button><button id="softwareRequestsMenuButton" type="button">Solicitações de software</button><button id="reservationsMenuButton" type="button">Reservas</button>');
+  const adminMenuDropdown=$('#adminMenuDropdown'),registrationsMenuButton=adminMenuDropdown.querySelector('[data-section="registrations"]'),supervisorMenuButton=adminMenuDropdown.querySelector('[data-section="supervisor"]'),reservationsMenuButton=$('#reservationsMenuButton'),chatMenuButton=$('#chatMenuButton'),softwareRequestsMenuButton=$('#softwareRequestsMenuButton');
   const primaryAdminNav=document.createElement('nav');primaryAdminNav.className='primary-admin-nav';primaryAdminNav.setAttribute('aria-label','Navegação principal do painel');
-  [analyticsMenuButton,reservationsMenuButton,chatMenuButton].forEach(button=>{button.dataset.adminNav='primary';primaryAdminNav.append(button)});
-  [registrationsMenuButton,supervisorMenuButton,$('#hoursMenuButton'),$('#maintenanceMenuButton'),softwareRequestsMenuButton].forEach(button=>button.dataset.adminNav='management');
+  [supervisorMenuButton,reservationsMenuButton,chatMenuButton].forEach(button=>{button.dataset.adminNav='primary';primaryAdminNav.append(button)});
+  [registrationsMenuButton,$('#hoursMenuButton'),$('#maintenanceMenuButton'),softwareRequestsMenuButton].forEach(button=>button.dataset.adminNav='management');
   $('#adminMenuButton').textContent='Administração ▾';
   const mobileAdminMenuButton=document.createElement('button');mobileAdminMenuButton.id='mobileAdminMenuButton';mobileAdminMenuButton.className='mobile-admin-menu-button';mobileAdminMenuButton.type='button';mobileAdminMenuButton.setAttribute('aria-label','Abrir menu do painel');mobileAdminMenuButton.setAttribute('aria-expanded','false');mobileAdminMenuButton.innerHTML='<span></span><span></span><span></span>';
   const mobileAdminBackdrop=document.createElement('button');mobileAdminBackdrop.id='mobileAdminBackdrop';mobileAdminBackdrop.className='mobile-admin-backdrop';mobileAdminBackdrop.type='button';mobileAdminBackdrop.setAttribute('aria-label','Fechar menu do painel');
@@ -428,16 +429,16 @@
   async function openSoftwareRequestsWhenReady(attempt=0){const ready=window.labinfoSoftwareRequestsReady;if(ready?.then)await ready;if(window.labinfoOpenSoftwareRequests)return window.labinfoOpenSoftwareRequests();if(attempt<20)return new Promise(resolve=>setTimeout(resolve,25)).then(()=>openSoftwareRequestsWhenReady(attempt+1));toast('O módulo de softwares ainda está sendo preparado. Tente novamente.')}
   $('#softwareRequestsMenuButton').onclick=()=>{void openSoftwareRequestsWhenReady()};
   const adminRouteByTarget={
-    analytics:'relatorios',registrations:'cadastros',supervisor:'supervisor',
+    registrations:'cadastros',supervisor:'relatorios',
     reservationsMenuButton:'reservas',chatMenuButton:'chat',hoursMenuButton:'horarios',maintenanceMenuButton:'manutencao',softwareRequestsMenuButton:'softwares'
   };
   function openAdminRoute(slug,{push=false}={}){
-    const route=validAdminRouteSlugs.has(slug)?slug:'chamados';
+    const requested=validAdminRouteSlugs.has(slug)?slug:'chamados',route=requested==='supervisor'?'relatorios':requested;
+    if(requested==='supervisor'&&location.pathname!==sitePath('admin/relatorios'))history.replaceState({},'',sitePath('admin/relatorios'));
     if(push&&location.pathname!==sitePath('admin/'+route))history.pushState({},'',sitePath('admin/'+route));
     if(route==='chamados')showSection('tickets');
-    else if(route==='relatorios')showSection('analytics');
+    else if(route==='relatorios')showSection('supervisor');
     else if(route==='cadastros')showSection('registrations');
-    else if(route==='supervisor')showSection('supervisor');
     else if(route==='reservas')void openReservationsWhenReady();
     else if(route==='chat')$('#chatMenuButton').onclick();
     else if(route==='horarios')$('#hoursMenuButton').onclick();
@@ -541,13 +542,20 @@
     const err=[sv,pr,ca,la,ti,at,ta,up].find(x=>x.error)?.error;if(err)return fail(err);
     replace(data.teachers,sv.data.map(x=>({id:x.id,siape:x.siape,name:x.full_name,email:x.email,active:x.active})));
     replace(data.technicians,pr.data.map(x=>({id:x.id,siape:x.siape,name:x.full_name,email:x.email,role:x.role,active:x.active})));
+    reportServerNames=new Map((sv.data||[]).map(server=>[server.id,server.full_name]));reportTechnicianNames=new Map((pr.data||[]).map(profile=>[profile.id,profile.full_name]));
     replace(data.categories,ca.data.map(x=>({id:x.id,name:x.name,active:x.active})));sortCategories();
     replace(data.labs,la.data.map(x=>({id:x.id,name:x.name,location:x.location,code:x.code,computerCount:x.computer_count||0,operatingSystem:x.operating_system||'',softwareInventory:Array.isArray(x.software_inventory)?x.software_inventory:[],reservationEnabled:x.reservation_enabled===true,active:x.active})));
     const paths=at.data||[],signed={};await Promise.all(paths.map(async a=>{const {data:s}=await sb.storage.from('ticket-attachments').createSignedUrl(a.storage_path,3600);signed[a.id]=s?.signedUrl}));
-    replace(tickets,ti.data.map(x=>{const assigned=(ta.data||[]).filter(a=>a.ticket_id===x.id);return {dbId:x.id,id:x.protocol,title:x.title,category:x.categories?.name||'Sem categoria',categoryId:x.category_id,status:x.status,teacher:x.servers?.full_name||`SIAPE ${x.guest_siape} (cadastro pendente)`,teacherSiape:x.servers?.siape||x.guest_siape,teacherEmail:x.servers?.email||x.guest_email,serverId:x.server_id,registrationPending:!x.server_id,lab:x.labs?.name||'Não informado',labId:x.lab_id,time:fmt(x.created_at),createdAt:x.created_at,updatedAt:x.updated_at,archivedAt:x.archived_at,technician:assigned.length?assigned.map(a=>a.assignee_profile?.full_name).filter(Boolean).join(', '):(x.status==='Recebido'?'Não atribuído':'Toda a equipe'),technicianIds:assigned.map(a=>a.profile_id),technicianId:x.assigned_to,description:x.description,resolution:x.resolution,closedAt:x.closed_at?fmt(x.closed_at):null,closedAtRaw:x.closed_at,attachments:paths.filter(a=>a.ticket_id===x.id).map(a=>({id:a.id,path:a.storage_path,name:a.file_name,url:signed[a.id]}))}}));
+    replace(tickets,ti.data.map(x=>{const assigned=(ta.data||[]).filter(a=>a.ticket_id===x.id);return {dbId:x.id,id:x.protocol,title:x.title,category:x.categories?.name||'Sem categoria',categoryId:x.category_id,status:x.status,source:x.source||'Formulário',teacher:x.servers?.full_name||`SIAPE ${x.guest_siape} (cadastro pendente)`,teacherSiape:x.servers?.siape||x.guest_siape,teacherEmail:x.servers?.email||x.guest_email,serverId:x.server_id,registrationPending:!x.server_id,lab:x.labs?.name||'Não informado',labId:x.lab_id,time:fmt(x.created_at),createdAt:x.created_at,updatedAt:x.updated_at,startedAt:x.started_at,archivedAt:x.archived_at,technician:assigned.length?assigned.map(a=>a.assignee_profile?.full_name).filter(Boolean).join(', '):(x.status==='Recebido'?'Não atribuído':'Toda a equipe'),technicianIds:assigned.map(a=>a.profile_id),technicianId:x.assigned_to,description:x.description,resolution:x.resolution,closedAt:x.closed_at?fmt(x.closed_at):null,closedAtRaw:x.closed_at,attachments:paths.filter(a=>a.ticket_id===x.id).map(a=>({id:a.id,path:a.storage_path,name:a.file_name,url:signed[a.id]}))}}));
     replace(data.teachers,data.teachers.filter(x=>x.active!==false));
     tickets.forEach(t=>{const raw=ti.data.find(x=>x.id===t.dbId);t.deletedAt=raw?.deleted_at;t.deletedBy=raw?.deleted_by_name||(pr.data||[]).find(profile=>profile.id===raw?.deleted_by)?.full_name||null;t.deletionReason=raw?.deletion_reason;t.serverReplyPending=raw?.server_reply_pending===true;t.lastServerReplyAt=raw?.last_server_reply_at;t.feedbackConfirmedAt=raw?.feedback_confirmed_at||null;t.updates=(up.data||[]).filter(u=>u.ticket_id===t.dbId).map(u=>({message:u.message,kind:u.kind,author:u.kind==='resposta_servidor'?'Servidor':(u.profiles?.full_name||'Equipe técnica'),createdAt:u.created_at}));const closing=[...t.updates].reverse().find(update=>update.kind==='fechamento');t.closedBy=closing?.author||null});
     selected=tickets.find(x=>!x.archivedAt&&!x.deletedAt)||null;options();renderTickets();renderArchivedTickets();renderDetail();refreshMetrics();
+  }
+  async function loadReportData(force=false){
+    if(reportDataLoaded&&!force)return;
+    if(reportDataPromise)return reportDataPromise;
+    reportDataPromise=(async()=>{const [chatResult,presenceResult]=await Promise.all([sb.from('chat_sessions').select('*').order('created_at',{ascending:false}).limit(5000),sb.from('staff_chat_presence_events').select('profile_id,is_online,changed_at').order('changed_at',{ascending:true}).limit(10000)]);if(chatResult.error)throw chatResult.error;reportChats=(chatResult.data||[]).map(session=>({id:session.id,subject:session.subject||'Atendimento por chat',status:session.status,serverId:session.server_id,server:reportServerNames.get(session.server_id)||'Servidor',technicianId:session.technician_id,technician:reportTechnicianNames.get(session.technician_id)||'Não atribuído',ticketId:session.ticket_id,createdAt:session.created_at,startedAt:session.started_at,closedAt:session.closed_at,notes:session.notes||''}));reportPresenceAvailable=!presenceResult.error;reportPresenceEvents=presenceResult.data||[];reportDataLoaded=true})().catch(error=>{console.error('Falha ao carregar dados dos relatórios',error);toast('Não foi possível carregar os dados de chat do relatório.')}).finally(()=>{reportDataPromise=null});
+    return reportDataPromise;
   }
   const selectedForArchive=new Set();
   const queueCreate=$('#adminOpenTicket'),queueActions=document.createElement('div');queueActions.className='queue-actions';queueCreate.before(queueActions);queueActions.append(queueCreate);queueActions.insertAdjacentHTML('beforeend','<button id="archiveTickets" class="primary archive-tickets" type="button" disabled>Arquivar selecionados</button>');
@@ -585,7 +593,7 @@
     menuButtons.forEach(b=>b.hidden=false);
     if(p.role==='supervisor'){
       menuButtons.forEach(b=>b.hidden=b.dataset.section!=='supervisor'&&b.id!=='reservationsMenuButton');
-      openAdminRoute(adminRouteSlug==='reservas'?'reservas':'supervisor');
+      openAdminRoute(adminRouteSlug==='reservas'?'reservas':adminRouteSlug==='supervisor'?'supervisor':'relatorios');
     }else{
       openAdminRoute(adminRouteSlug||'chamados');
     }
@@ -823,67 +831,116 @@
   $('#archivedSearch').oninput=renderArchivedTickets;
   const filteredTicketsWithoutDeleted=filteredTickets;filteredTickets=function(){return filteredTicketsWithoutDeleted().filter(ticket=>!ticket.deletedAt)};
 
-  // O supervisor usa a mesma leitura analítica dos relatórios técnicos. A lista
-  // operacional é derivada dos chamados carregados do Supabase e fica recolhida
-  // por padrão para não competir visualmente com os indicadores.
+  const reportDayMs=86400000;
+  const reportDate=value=>{const date=value?new Date(value):null;return date&&Number.isFinite(date.getTime())?date:null};
+  const reportMinutes=(start,end)=>{const first=reportDate(start),last=reportDate(end);if(!first||!last||last<first)return null;return Math.round((last-first)/60000)};
+  const reportMedian=values=>{const rows=values.filter(Number.isFinite).sort((a,b)=>a-b);if(!rows.length)return null;const middle=Math.floor(rows.length/2);return rows.length%2?rows[middle]:Math.round((rows[middle-1]+rows[middle])/2)};
+  const reportDuration=value=>value==null?'—':value<60?`${value} min`:value<1440?`${Math.floor(value/60)}h ${value%60?String(value%60).padStart(2,'0')+'min':''}`.trim():`${Math.floor(value/1440)}d ${Math.floor(value%1440/60)}h`;
+  const reportDateTime=value=>value?fmt(value):'—';
+  const reportDateInput=date=>date?`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`:'';
+  const reportFirstAction=ticket=>{const created=reportDate(ticket.createdAt),candidates=[ticket.startedAt,...(ticket.updates||[]).filter(update=>update.kind!=='resposta_servidor').map(update=>update.createdAt),ticket.closedAtRaw].map(reportDate).filter(date=>date&&(!created||date>=created));return candidates.sort((a,b)=>a-b)[0]?.toISOString()||null};
+  const sameReportDay=(first,last)=>{const a=reportDate(first),b=reportDate(last);return Boolean(a&&b&&a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate())};
+
+  function supervisorRange(){
+    const preset=$('#supervisorPeriod')?.value||'30',now=new Date(),end=new Date(now),start=new Date(now);start.setHours(0,0,0,0);
+    if(preset==='all')return {start:null,end,label:'Todo o período'};
+    if(preset==='custom'){
+      const from=$('#supervisorFrom')?.value,to=$('#supervisorTo')?.value;
+      const customStart=from?new Date(from+'T00:00:00'):null,customEnd=to?new Date(to+'T23:59:59.999'):end;
+      return {start:customStart,end:customEnd,label:`${from||'início'} a ${to||'hoje'}`};
+    }
+    if(preset==='current_semester'){const month=now.getMonth()<6?0:6;start.setMonth(month,1);return {start,end,label:month===0?`${now.getFullYear()}/1`:`${now.getFullYear()}/2`}}
+    if(preset==='previous_semester'){const currentMonth=now.getMonth()<6?0:6,currentStart=new Date(now.getFullYear(),currentMonth,1);if(currentMonth===0)start.setFullYear(now.getFullYear()-1,6,1);else start.setFullYear(now.getFullYear(),0,1);return {start,end:new Date(currentStart.getTime()-1),label:currentMonth===0?`${now.getFullYear()-1}/2`:`${now.getFullYear()}/1`}}
+    if(preset==='current_year'){start.setMonth(0,1);return {start,end,label:String(now.getFullYear())}}
+    if(preset==='previous_year')return {start:new Date(now.getFullYear()-1,0,1),end:new Date(now.getFullYear()-1,11,31,23,59,59,999),label:String(now.getFullYear()-1)};
+    const days=Number(preset)||30;start.setDate(start.getDate()-days+1);return {start,end,label:days===1?'Hoje':`Últimos ${days} dias`};
+  }
+  const reportWithinRange=(value,range)=>{const date=reportDate(value);return Boolean(date&&(!range.start||date>=range.start)&&(!range.end||date<=range.end))};
+
   function ensureSupervisorReportView(){
     const section=$('#supervisorSection');
     if(!section||section.dataset.reportView==='true')return;
     section.dataset.reportView='true';
     section.innerHTML=`
-      <div class="supervisor-banner card">
-        <div><span class="eyebrow">ACESSO SOMENTE LEITURA</span><h2>Relatórios e acompanhamento</h2><p>Indicadores sincronizados com os mesmos chamados exibidos no painel técnico.</p></div>
-        <span class="readonly-badge">Somente consulta</span>
+      <div class="supervisor-banner card report-banner">
+        <div><span class="eyebrow">RELATÓRIOS OPERACIONAIS</span><h2>Demanda, atendimento e cobertura</h2><p>Chamados e chats analisados desde a solicitação até a conclusão, com dados exclusivamente para consulta.</p></div>
+        <div class="report-actions"><button id="exportSupervisorCsv" class="secondary" type="button">Exportar CSV</button><button id="printSupervisorReport" class="primary" type="button">Imprimir / PDF</button></div>
       </div>
       <div class="analytics-filters card supervisor-report-filters">
-        <label>Período<select id="supervisorPeriod"><option value="30">Últimos 30 dias</option><option value="7">Últimos 7 dias</option><option value="1">Hoje</option><option value="all">Todo o período</option></select></label>
+        <label>Período<select id="supervisorPeriod"><option value="30">Últimos 30 dias</option><option value="7">Últimos 7 dias</option><option value="1">Hoje</option><option value="90">Últimos 90 dias</option><option value="180">Últimos 180 dias</option><option value="current_semester">Semestre atual</option><option value="previous_semester">Semestre anterior</option><option value="current_year">Ano atual</option><option value="previous_year">Ano anterior</option><option value="all">Todo o período</option><option value="custom">Período personalizado</option></select></label>
+        <label class="supervisor-custom-date" hidden>De<input id="supervisorFrom" type="date"></label>
+        <label class="supervisor-custom-date" hidden>Até<input id="supervisorTo" type="date"></label>
+        <label>Canal<select id="supervisorChannel"><option value="all">Chamados e chat</option><option value="tickets">Somente chamados</option><option value="chat">Somente chat</option></select></label>
         <label>Laboratório<select id="supervisorLab"><option value="Todos">Todos</option></select></label>
         <label>Categoria<select id="supervisorCategory"><option value="Todas">Todas</option></select></label>
+        <label>Responsável<select id="supervisorTechnician"><option value="Todos">Todos</option></select></label>
         <button id="applySupervisorFilters" class="primary" type="button">Aplicar filtros</button>
       </div>
-      <div class="metrics analytics-metrics supervisor-metrics">
-        <article><div><small>Total no período</small><strong id="supTotal">0</strong><em>Registros reais</em></div></article>
+      <div class="report-period-caption"><strong id="supervisorRangeLabel">Últimos 30 dias</strong><span>Os tempos são corridos e apresentados pela mediana, reduzindo a distorção causada por casos muito antigos.</span></div>
+      <div class="metrics analytics-metrics supervisor-metrics report-metrics">
+        <article><div><small>Chamados abertos</small><strong id="supTotal">0</strong><em id="supTicketOpenHelp">No período</em></div></article>
         <article><div><small>Taxa de resolução</small><strong id="supResolution">0%</strong><em id="supDone">0 concluído(s)</em></div></article>
-        <article><div><small>Pico de abertura</small><strong id="supPeak">—</strong><em id="supPeakHelp">Sem aberturas</em></div></article>
-        <article><div><small>Laboratório crítico</small><strong id="supCriticalLab">—</strong><em id="supCriticalLabHelp">Sem ocorrências</em></div></article>
+        <article><div><small>Até o 1º atendimento</small><strong id="supFirstResponse">—</strong><em>Mediana dos chamados atendidos</em></div></article>
+        <article><div><small>Tempo total</small><strong id="supTotalTime">—</strong><em id="supSameDay">Mediana até a conclusão</em></div></article>
+        <article><div><small>Chats solicitados</small><strong id="supChatTotal">0</strong><em id="supChatClosed">0 encerrado(s)</em></div></article>
+        <article><div><small>Chats atendidos</small><strong id="supChatAnswerRate">0%</strong><em id="supChatAnswered">0 conectado(s)</em></div></article>
+        <article><div><small>Espera no chat</small><strong id="supChatWait">—</strong><em>Mediana até o técnico entrar</em></div></article>
+        <article><div><small>Sem atualização</small><strong id="supStale">0</strong><em>Há 7 dias ou mais</em></div></article>
       </div>
-      <div class="charts-grid supervisor-charts">
-        <article class="card chart-card wide"><div class="chart-head"><div><h2>Chamados por horário</h2><p>Volume de aberturas ao longo do dia</p></div><span class="readonly-badge">Leitura</span></div><div id="supHourChart" class="bar-chart"></div></article>
-        <article class="card chart-card"><h2>Por categoria</h2><div id="supCategoryChart"></div></article>
-        <article class="card chart-card"><h2>Por laboratório</h2><div id="supLabChart"></div></article>
-        <article class="card chart-card wide"><h2>Servidores com solicitações</h2><div id="supTeacherChart" class="teacher-table"></div></article>
+      <div class="charts-grid supervisor-charts report-charts">
+        <article class="card chart-card wide"><div class="chart-head"><div><h2>Demanda e entrega por horário</h2><p>Compare quando os chamados foram abertos, iniciados e concluídos.</p></div><div class="report-legend"><span class="opened">Abertura</span><span class="started">1º atendimento</span><span class="finished">Conclusão</span></div></div><div id="supLifecycleHourChart" class="report-hour-chart"></div></article>
+        <article class="card chart-card wide"><div class="chart-head"><div><h2>Evolução do volume</h2><p>Abertos e concluídos agrupados conforme a extensão do período.</p></div></div><div id="supVolumeTrend" class="report-trend-chart"></div></article>
+        <article class="card chart-card wide"><div class="chart-head"><div><h2>Mapa de calor da demanda</h2><p>Chamados e solicitações de chat por dia da semana e horário.</p></div></div><div class="report-heatmap-scroll"><div id="supDemandHeatmap" class="report-heatmap"></div></div></article>
+        <article class="card chart-card"><h2>Chamados por categoria</h2><div id="supCategoryChart"></div></article>
+        <article class="card chart-card"><h2>Chamados por laboratório</h2><div id="supLabChart"></div></article>
+        <article class="card chart-card wide report-chat-card"><div class="chart-head"><div><h2>Atendimento por chat</h2><p>Fluxo das sessões e conversão em chamados.</p></div><span id="supPresenceAvailability" class="readonly-badge">Cobertura indisponível</span></div><div id="supChatSummary" class="report-chat-summary"></div><p id="supPresenceNote" class="report-data-note"></p></article>
       </div>
-      <details id="supervisorTracking" class="card supervisor-tracking">
-        <summary><span><strong>Acompanhamento dos chamados</strong><small id="supervisorTrackingCount">0 registro(s)</small></span><b aria-hidden="true">⌄</b></summary>
-        <div class="supervisor-tracking-toolbar"><input id="supervisorTicketSearch" type="search" autocomplete="off" placeholder="Buscar protocolo, servidor, laboratório ou categoria..." aria-label="Buscar no acompanhamento"></div>
-        <div id="supervisorTable" class="supervisor-table"></div>
+      <details id="supervisorTracking" class="card supervisor-tracking report-tracking" open>
+        <summary><span><strong>Registros detalhados</strong><small id="supervisorTrackingCount">0 registro(s)</small></span><b aria-hidden="true">⌄</b></summary>
+        <div class="supervisor-tracking-toolbar"><input id="supervisorTicketSearch" type="search" autocomplete="off" placeholder="Buscar protocolo, servidor, assunto, laboratório ou responsável..." aria-label="Buscar nos registros do relatório"></div>
+        <div class="report-table-scroll"><div id="supervisorTable" class="supervisor-report-table"></div></div>
       </details>
       <details id="deletionAudit" class="card supervisor-tracking deletion-audit">
         <summary><span><strong>Auditoria de exclusões</strong><small>Chamados removidos das filas pelos técnicos</small></span><b aria-hidden="true">⌄</b></summary>
         <div id="deletionAuditList"></div>
       </details>`;
-    $('#applySupervisorFilters').onclick=()=>supervisor();
-    $('#supervisorTicketSearch').oninput=()=>renderSupervisorTracking(supervisorFilteredTickets());
+    const syncCustomDates=()=>{const custom=$('#supervisorPeriod').value==='custom';document.querySelectorAll('.supervisor-custom-date').forEach(label=>label.hidden=!custom);if(custom&&!$('#supervisorFrom').value){const today=new Date(),from=new Date(today.getTime()-29*reportDayMs);$('#supervisorFrom').value=reportDateInput(from);$('#supervisorTo').value=reportDateInput(today)}};
+    $('#supervisorPeriod').onchange=syncCustomDates;syncCustomDates();
+    $('#applySupervisorFilters').onclick=()=>void supervisor(true);
+    $('#supervisorTicketSearch').oninput=()=>renderSupervisorTracking();
+    $('#exportSupervisorCsv').onclick=exportSupervisorCsv;
+    $('#printSupervisorReport').onclick=()=>window.print();
   }
 
-  function supervisorFilteredTickets(){
-    const period=$('#supervisorPeriod')?.value||'30',lab=$('#supervisorLab')?.value||'Todos',category=$('#supervisorCategory')?.value||'Todas',now=new Date();
-    return tickets.filter(ticket=>{
-      if(ticket.deletedAt)return false;
-      if(lab!=='Todos'&&ticket.lab!==lab)return false;
-      if(category!=='Todas'&&ticket.category!==category)return false;
-      if(period==='all')return true;
-      if(!ticket.createdAt)return false;
-      const created=new Date(ticket.createdAt);
-      if(period==='1')return created.toDateString()===now.toDateString();
-      return created>=new Date(now.getTime()-Number(period)*86400000);
-    });
+  function supervisorFilteredTickets(range=supervisorRange()){
+    const channel=$('#supervisorChannel')?.value||'all',lab=$('#supervisorLab')?.value||'Todos',category=$('#supervisorCategory')?.value||'Todas',technician=$('#supervisorTechnician')?.value||'Todos';
+    if(channel==='chat')return [];
+    return tickets.filter(ticket=>!ticket.deletedAt&&[ticket.createdAt,reportFirstAction(ticket),ticket.closedAtRaw].some(value=>reportWithinRange(value,range))&&(lab==='Todos'||ticket.lab===lab)&&(category==='Todas'||ticket.category===category)&&(technician==='Todos'||ticket.technicianId===technician||(ticket.technicianIds||[]).includes(technician)));
   }
 
-  function renderSupervisorTracking(rows){
-    const query=normalizeSearch($('#supervisorTicketSearch')?.value),filtered=rows.filter(ticket=>!query||normalizeSearch(Object.values(ticket).join(' ')).includes(query));
-    $('#supervisorTrackingCount').textContent=`${filtered.length} registro(s) • ${filtered.filter(ticket=>ticket.archivedAt).length} arquivado(s)`;
-    $('#supervisorTable').innerHTML='<div class="supervisor-row supervisor-head"><span>Protocolo</span><span>Solicitante</span><span>Laboratório</span><span>Categoria</span><span>Situação</span><span>Técnico</span></div>'+filtered.map(ticket=>`<div class="supervisor-row ${ticket.archivedAt?'is-archived':''}"><strong>${safe(ticket.id)}</strong><span>${safe(ticket.teacher)}</span><span>${safe(ticket.lab)}</span><span>${safe(ticket.category)}</span><span class="supervisor-status-cell">${badge(ticket.status)}${ticket.archivedAt?'<small>Arquivado</small>':'<small>Na fila</small>'}</span><span>${safe(ticket.technician)}</span></div>`).join('')+(filtered.length?'':'<p class="empty">Nenhum chamado encontrado com os filtros selecionados.</p>');
+  function supervisorFilteredChats(range=supervisorRange()){
+    const channel=$('#supervisorChannel')?.value||'all',lab=$('#supervisorLab')?.value||'Todos',category=$('#supervisorCategory')?.value||'Todas',technician=$('#supervisorTechnician')?.value||'Todos';
+    if(channel==='tickets'||lab!=='Todos'||category!=='Todas')return [];
+    return reportChats.filter(chat=>[chat.createdAt,chat.startedAt,chat.closedAt].some(value=>reportWithinRange(value,range))&&(technician==='Todos'||chat.technicianId===technician));
+  }
+
+  function supervisorDetailRows(){
+    const ticketRows=currentSupervisorReport.tickets.map(ticket=>{const first=reportFirstAction(ticket),wait=reportMinutes(ticket.createdAt,first),total=reportMinutes(ticket.createdAt,ticket.closedAtRaw);return {channel:'Chamado',id:ticket.id,subject:ticket.title,person:ticket.teacher,lab:ticket.lab,category:ticket.category,opened:ticket.createdAt,started:first,closed:ticket.closedAtRaw,wait,total,responsible:ticket.technician,status:ticket.status,archived:ticket.archivedAt}});
+    const chatRows=currentSupervisorReport.chats.map(chat=>({channel:'Chat',id:'CHAT-'+chat.id.slice(0,8).toUpperCase(),subject:chat.subject,person:chat.server,lab:'—',category:'Atendimento por chat',opened:chat.createdAt,started:chat.startedAt,closed:chat.closedAt,wait:reportMinutes(chat.createdAt,chat.startedAt),total:reportMinutes(chat.createdAt,chat.closedAt),responsible:chat.technician,status:chat.status==='waiting'?'Aguardando':chat.status==='active'?'Em atendimento':chat.status==='cancelled'?'Cancelado':'Encerrado',archived:null}));
+    return [...ticketRows,...chatRows].sort((a,b)=>new Date(b.opened)-new Date(a.opened));
+  }
+
+  function renderSupervisorTracking(){
+    const query=normalizeSearch($('#supervisorTicketSearch')?.value),rows=supervisorDetailRows(),filtered=rows.filter(row=>!query||normalizeSearch(Object.values(row).join(' ')).includes(query));
+    $('#supervisorTrackingCount').textContent=`${filtered.length} registro(s) • ${currentSupervisorReport.tickets.length} chamado(s) • ${currentSupervisorReport.chats.length} chat(s)`;
+    $('#supervisorTable').innerHTML='<div class="report-table-row report-table-head"><span>Canal / ID</span><span>Solicitante e assunto</span><span>Abertura</span><span>1º atendimento</span><span>Conclusão</span><span>Espera</span><span>Tempo total</span><span>Responsável / situação</span></div>'+filtered.map(row=>`<div class="report-table-row ${row.archived?'is-archived':''}"><span><b class="report-channel ${row.channel==='Chat'?'chat':''}">${row.channel}</b><strong>${safe(row.id)}</strong></span><span><strong>${safe(row.person)}</strong><small>${safe(row.subject)} · ${safe(row.lab)} · ${safe(row.category)}</small></span><time>${reportDateTime(row.opened)}</time><time>${reportDateTime(row.started)}</time><time>${reportDateTime(row.closed)}</time><strong>${reportDuration(row.wait)}</strong><strong>${reportDuration(row.total)}</strong><span><strong>${safe(row.responsible)}</strong><small>${safe(row.status)}${row.archived?' · Arquivado':''}</small></span></div>`).join('')+(filtered.length?'':'<p class="empty">Nenhum registro encontrado com os filtros selecionados.</p>');
+  }
+
+  const reportCsvCell=value=>'"'+String(value??'').replace(/"/g,'""')+'"';
+  function exportSupervisorCsv(){
+    const rows=supervisorDetailRows(),headers=['Canal','Identificador','Solicitante','Assunto','Laboratório','Categoria','Abertura','Primeiro atendimento','Conclusão','Espera (min)','Tempo total (min)','Responsável','Situação'];
+    const lines=[headers,...rows.map(row=>[row.channel,row.id,row.person,row.subject,row.lab,row.category,reportDateTime(row.opened),reportDateTime(row.started),reportDateTime(row.closed),row.wait??'',row.total??'',row.responsible,row.status])].map(row=>row.map(reportCsvCell).join(';'));
+    const blob=new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`relatorio-labinfo-${reportDateInput(new Date())}.csv`;document.body.append(link);link.click();link.remove();URL.revokeObjectURL(url);toast(`${rows.length} registro(s) exportado(s).`);
   }
 
   // Renderizacao unica e definitiva do painel do supervisor (mesmo padrao
@@ -896,17 +953,66 @@
   // variavel global e resolvida em tempo de chamada, nao de definicao.
   // Essas definicoes anteriores (nunca executadas) foram removidas nesta
   // auditoria; o comportamento em producao nao muda.
-  supervisor=function(){
+  function renderLifecycleHourChart(rows,range){
+    const hours=Array.from({length:24},(_,hour)=>({hour,opened:0,started:0,finished:0}));
+    rows.forEach(ticket=>{const opened=reportDate(ticket.createdAt),started=reportDate(reportFirstAction(ticket)),finished=reportDate(ticket.closedAtRaw);if(opened&&reportWithinRange(opened,range))hours[opened.getHours()].opened++;if(started&&reportWithinRange(started,range))hours[started.getHours()].started++;if(finished&&reportWithinRange(finished,range))hours[finished.getHours()].finished++});
+    const max=Math.max(1,...hours.flatMap(item=>[item.opened,item.started,item.finished]));
+    $('#supLifecycleHourChart').innerHTML='<div class="report-hour-columns">'+hours.map(item=>`<div class="report-hour-group"><div><i class="opened" style="height:${item.opened/max*100}%" title="${item.opened} abertura(s)"></i><i class="started" style="height:${item.started/max*100}%" title="${item.started} primeiro(s) atendimento(s)"></i><i class="finished" style="height:${item.finished/max*100}%" title="${item.finished} conclusão(ões)"></i></div><strong>${String(item.hour).padStart(2,'0')}h</strong></div>`).join('')+'</div>';
+  }
+
+  function reportTrendBucket(value,spanDays){
+    const date=reportDate(value);if(!date)return null;
+    if(spanDays>120)return {key:`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`,label:new Intl.DateTimeFormat('pt-BR',{month:'short',year:'2-digit'}).format(date),sort:new Date(date.getFullYear(),date.getMonth(),1)};
+    if(spanDays>35){const monday=new Date(date);monday.setHours(0,0,0,0);monday.setDate(monday.getDate()-((monday.getDay()+6)%7));return {key:reportDateInput(monday),label:new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short'}).format(monday),sort:monday}}
+    return {key:reportDateInput(date),label:new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short'}).format(date),sort:new Date(date.getFullYear(),date.getMonth(),date.getDate())};
+  }
+
+  function renderReportTrend(rows,range){
+    const start=range.start||reportDate(rows.at(-1)?.createdAt)||new Date(),end=range.end||new Date(),spanDays=Math.max(1,Math.ceil((end-start)/reportDayMs)),buckets=new Map();
+    const add=(value,type)=>{const bucket=reportTrendBucket(value,spanDays);if(!bucket)return;const current=buckets.get(bucket.key)||{...bucket,opened:0,finished:0};current[type]++;buckets.set(bucket.key,current)};
+    rows.forEach(ticket=>{if(reportWithinRange(ticket.createdAt,range))add(ticket.createdAt,'opened');if(reportWithinRange(ticket.closedAtRaw,range))add(ticket.closedAtRaw,'finished')});
+    const values=[...buckets.values()].sort((a,b)=>a.sort-b.sort),max=Math.max(1,...values.flatMap(item=>[item.opened,item.finished]));
+    $('#supVolumeTrend').innerHTML=values.length?'<div class="report-trend-columns">'+values.map(item=>`<div class="report-trend-group"><div><i class="opened" style="height:${item.opened/max*100}%" title="${item.opened} aberto(s)"></i><i class="finished" style="height:${item.finished/max*100}%" title="${item.finished} concluído(s)"></i></div><strong>${safe(item.label)}</strong></div>`).join('')+'</div><div class="report-trend-legend"><span class="opened">Abertos</span><span class="finished">Concluídos</span></div>':'<p class="empty">Sem chamados no período selecionado.</p>';
+  }
+
+  function renderDemandHeatmap(ticketRows,chatRows){
+    const days=['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'],matrix=Array.from({length:7},()=>Array(24).fill(0));
+    [...ticketRows.map(item=>item.createdAt),...chatRows.map(item=>item.createdAt)].forEach(value=>{const date=reportDate(value);if(date)matrix[(date.getDay()+6)%7][date.getHours()]++});
+    const max=Math.max(1,...matrix.flat());
+    $('#supDemandHeatmap').innerHTML='<span class="heatmap-corner">Dia</span>'+Array.from({length:24},(_,hour)=>`<strong>${String(hour).padStart(2,'0')}h</strong>`).join('')+matrix.map((row,day)=>`<b>${days[day]}</b>${row.map((value,hour)=>`<i style="background:rgba(17,115,60,${value?(.14+.76*value/max).toFixed(2):.04})" title="${days[day]}, ${String(hour).padStart(2,'0')}h: ${value} solicitação(ões)">${value||''}</i>`).join('')}`).join('');
+  }
+
+  function reportPresenceCoverage(range){
+    if(!reportPresenceAvailable)return null;
+    const events=reportPresenceEvents.map(event=>({...event,date:reportDate(event.changed_at)})).filter(event=>event.date).sort((a,b)=>a.date-b.date);
+    if(!events.length)return {minutes:0,percent:0,empty:true};
+    const start=range.start||events[0].date,end=new Date(Math.min((range.end||new Date()).getTime(),Date.now()));if(end<=start)return {minutes:0,percent:0,empty:true};
+    const groups=Object.groupBy?Object.groupBy(events,event=>event.profile_id):events.reduce((all,event)=>((all[event.profile_id]||=[]).push(event),all),{}),intervals=[];
+    Object.values(groups).forEach(profileEvents=>{let online=false,opened=null;profileEvents.forEach(event=>{if(event.date<start){online=event.is_online;return}if(event.date>end)return;if(event.is_online&&!online){online=true;opened=event.date}else if(!event.is_online&&online){intervals.push([opened||start,event.date]);online=false;opened=null}});if(online)intervals.push([opened||start,end])});
+    intervals.sort((a,b)=>a[0]-b[0]);const merged=[];intervals.forEach(interval=>{const last=merged.at(-1);if(last&&interval[0]<=last[1])last[1]=new Date(Math.max(last[1],interval[1]));else merged.push([...interval])});
+    const minutes=Math.round(merged.reduce((sum,[from,to])=>sum+(to-from)/60000,0)),total=Math.max(1,(end-start)/60000);return {minutes,percent:Math.round(minutes/total*100),empty:false};
+  }
+
+  supervisor=async function(forceReportData=false){
     ensureSupervisorReportView();
-    const labSelect=$('#supervisorLab'),categorySelect=$('#supervisorCategory'),selectedLab=labSelect.value||'Todos',selectedCategory=categorySelect.value||'Todas';
+    $('#supervisorRangeLabel').textContent='Carregando dados…';
+    await loadReportData(forceReportData);
+    const labSelect=$('#supervisorLab'),categorySelect=$('#supervisorCategory'),technicianSelect=$('#supervisorTechnician'),selectedLab=labSelect.value||'Todos',selectedCategory=categorySelect.value||'Todas',selectedTechnician=technicianSelect.value||'Todos';
     labSelect.innerHTML='<option value="Todos">Todos</option>'+data.labs.filter(item=>item.active!==false).map(item=>`<option value="${safe(item.name)}">${safe(item.name)}</option>`).join('');
     categorySelect.innerHTML='<option value="Todas">Todas</option>'+data.categories.filter(item=>item.active!==false).map(item=>`<option value="${safe(item.name)}">${safe(item.name)}</option>`).join('');
+    technicianSelect.innerHTML='<option value="Todos">Todos</option>'+data.technicians.filter(item=>item.active!==false&&item.role==='tecnico').map(item=>`<option value="${item.id}">${safe(item.name)}</option>`).join('');
     if([...labSelect.options].some(option=>option.value===selectedLab))labSelect.value=selectedLab;
     if([...categorySelect.options].some(option=>option.value===selectedCategory))categorySelect.value=selectedCategory;
-    const rows=supervisorFilteredTickets(),hours=Array.from({length:16},(_,index)=>[`${index+7}h`,rows.filter(ticket=>ticket.createdAt&&new Date(ticket.createdAt).getHours()===index+7).length]),max=Math.max(1,...hours.map(item=>item[1])),categories=grouped(rows,'category'),labs=grouped(rows,'lab'),done=rows.filter(ticket=>ticket.status==='Concluído').length,peak=hours.reduce((current,item)=>item[1]>current[1]?item:current,['—',0]),people=grouped(rows,'teacher').map(([name,count])=>[name,grouped(rows.filter(ticket=>ticket.teacher===name),'category')[0]?.[0]||'—',count]);
-    $('#supTotal').textContent=rows.length;$('#supResolution').textContent=rows.length?`${Math.round(done/rows.length*100)}%`:'0%';$('#supDone').textContent=`${done} concluído(s)`;$('#supPeak').textContent=peak[1]?peak[0]:'—';$('#supPeakHelp').textContent=`${peak[1]} abertura(s)`;$('#supCriticalLab').textContent=labs[0]?.[0]||'—';$('#supCriticalLabHelp').textContent=`${labs[0]?.[1]||0} ocorrência(s)`;
-    $('#supHourChart').innerHTML=hours.map(([label,value])=>`<div class="bar-column"><small>${value}</small><i style="height:${value/max*85}%"></i><strong>${label}</strong></div>`).join('');renderRank('#supCategoryChart',categories);renderRank('#supLabChart',labs);$('#supTeacherChart').innerHTML='<div><span>Servidor</span><span>Principal categoria</span><span>Chamados</span></div>'+people.map(item=>`<div><strong>${safe(item[0])}</strong><span>${safe(item[1])}</span><strong>${item[2]}</strong></div>`).join('')+(people.length?'':'<p class="empty">Sem dados no período.</p>');
-    renderSupervisorTracking(rows);
+    if([...technicianSelect.options].some(option=>option.value===selectedTechnician))technicianSelect.value=selectedTechnician;
+    const range=supervisorRange();if(range.start&&range.end&&range.start>range.end)return toast('A data inicial deve ser anterior à data final.');
+    const rows=supervisorFilteredTickets(range),chats=supervisorFilteredChats(range),openedRows=rows.filter(ticket=>reportWithinRange(ticket.createdAt,range)),doneRows=rows.filter(ticket=>reportWithinRange(ticket.closedAtRaw,range)),resolvedOpened=openedRows.filter(ticket=>ticket.closedAtRaw&&(!range.end||reportDate(ticket.closedAtRaw)<=range.end)),respondedOpened=openedRows.filter(ticket=>{const first=reportDate(reportFirstAction(ticket));return first&&(!range.end||first<=range.end)}),chatOpened=chats.filter(chat=>reportWithinRange(chat.createdAt,range)),answeredChats=chatOpened.filter(chat=>chat.startedAt&&(!range.end||reportDate(chat.startedAt)<=range.end)),closedChats=chats.filter(chat=>reportWithinRange(chat.closedAt,range)),firstResponse=reportMedian(respondedOpened.map(ticket=>reportMinutes(ticket.createdAt,reportFirstAction(ticket)))),totalTime=reportMedian(doneRows.map(ticket=>reportMinutes(ticket.createdAt,ticket.closedAtRaw))),chatWait=reportMedian(answeredChats.map(chat=>reportMinutes(chat.createdAt,chat.startedAt))),sameDay=doneRows.filter(ticket=>sameReportDay(ticket.createdAt,ticket.closedAtRaw)).length,stale=openedRows.filter(isTicketStale).length,categories=grouped(openedRows,'category'),labs=grouped(openedRows,'lab');
+    currentSupervisorReport={tickets:rows,chats,range};$('#supervisorRangeLabel').textContent=range.label;
+    $('#supTotal').textContent=openedRows.length;$('#supTicketOpenHelp').textContent=`${openedRows.filter(ticket=>ticket.status!=='Concluído').length} ainda aberto(s)`;$('#supResolution').textContent=openedRows.length?`${Math.round(resolvedOpened.length/openedRows.length*100)}%`:'0%';$('#supDone').textContent=`${resolvedOpened.length} dos abertos concluído(s)`;$('#supFirstResponse').textContent=reportDuration(firstResponse);$('#supTotalTime').textContent=reportDuration(totalTime);$('#supSameDay').textContent=doneRows.length?`${Math.round(sameDay/doneRows.length*100)}% das conclusões no mesmo dia`:'Sem conclusões';$('#supChatTotal').textContent=chatOpened.length;$('#supChatClosed').textContent=`${closedChats.length} encerrado(s) no período`;$('#supChatAnswerRate').textContent=chatOpened.length?`${Math.round(answeredChats.length/chatOpened.length*100)}%`:'0%';$('#supChatAnswered').textContent=`${answeredChats.length} conectado(s)`;$('#supChatWait').textContent=reportDuration(chatWait);$('#supStale').textContent=stale;
+    renderLifecycleHourChart(rows,range);renderReportTrend(rows,range);renderDemandHeatmap(openedRows,chatOpened);renderRank('#supCategoryChart',categories);renderRank('#supLabChart',labs);
+    const waiting=chatOpened.filter(chat=>chat.status==='waiting').length,active=chatOpened.filter(chat=>chat.status==='active').length,cancelled=chatOpened.filter(chat=>chat.status==='cancelled').length,converted=chatOpened.filter(chat=>chat.ticketId).length,chatDuration=reportMedian(closedChats.map(chat=>reportMinutes(chat.startedAt||chat.createdAt,chat.closedAt))),coverage=reportPresenceCoverage(range);
+    $('#supChatSummary').innerHTML=`<article><small>Aguardando</small><strong>${waiting}</strong></article><article><small>Em atendimento</small><strong>${active}</strong></article><article><small>Cancelados/abandonados</small><strong>${cancelled}</strong></article><article><small>Convertidos em chamado</small><strong>${converted}</strong></article><article><small>Duração mediana</small><strong>${reportDuration(chatDuration)}</strong></article>`;
+    if(coverage){$('#supPresenceAvailability').textContent=coverage.empty?'Sem histórico':`${coverage.percent}% com cobertura`;$('#supPresenceNote').textContent=coverage.empty?'O histórico de presença começará quando um técnico alterar seu estado no chat.':`${reportDuration(coverage.minutes)} com ao menos um técnico online no período selecionado.`}else{$('#supPresenceAvailability').textContent='Cobertura indisponível';$('#supPresenceNote').textContent='Aplique a migração de histórico de presença para medir os períodos com técnicos online.'}
+    renderSupervisorTracking();
     const deleted=tickets.filter(ticket=>ticket.deletedAt);$('#deletionAuditList').innerHTML=deleted.map(ticket=>`<article><strong>${safe(ticket.id)}</strong><span>${safe(ticket.title)}</span><span>Excluído por <b>${safe(ticket.deletedBy||'Técnico não identificado')}</b></span><time>${fmt(ticket.deletedAt)}</time><p>${safe(ticket.deletionReason||'Sem justificativa registrada')}</p></article>`).join('')||'<p class="empty">Nenhuma exclusão registrada.</p>';
   };
 
