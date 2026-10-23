@@ -179,10 +179,6 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
             ${os}
           </span>`:''}
-          ${softwareCount?`<span class="lab-spec-chip lab-spec-software" title="${softwareCount} software(s) cadastrado(s)">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
-            ${softwareCount} software${softwareCount===1?'':'s'}
-          </span>`:''}
         </div>
         ${softwareCount?`<button class="lab-software-direct" type="button" data-software-lab="${lab.id}"><span><strong>Ver softwares disponíveis</strong><small>Clique para conferir nomes e versões</small></span></button>`:'<div class="lab-software-unavailable"><strong>Softwares ainda não informados</strong><small>Consulte a equipe antes de solicitar este laboratório.</small></div>'}
         <div class="lab-card-footer">
