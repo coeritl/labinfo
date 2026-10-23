@@ -33,6 +33,13 @@ test('frontend usa OAuth Google como única identificação para ações pessoai
   assert.match(integration,/signInWithOAuth\(\{[\s\S]*?provider:'google'/);
   assert.match(integration,/hd:'ifms\.edu\.br'/);
   assert.match(integration,/searchParams\.set\('auth_refresh',Date\.now\(\)\.toString\(\)\)/);
+  assert.match(integration,/const oauthReturnPathKey='labinfo_oauth_return_path'/);
+  assert.match(integration,/sessionStorage\.setItem\(oauthReturnPathKey,JSON\.stringify\(\{path:requestedReturn\.pathname\+requestedReturn\.search,createdAt:Date\.now\(\)\}\)\)/);
+  assert.match(integration,/requestedRoute=routeParam\|\|routeFromPath\(pendingOAuthReturnPath\)\|\|location\.pathname/);
+  assert.match(integration,/new URLSearchParams\(location\.search\)\.has\('auth_refresh'\)\|\|Boolean\(pendingOAuthReturnPath\)/);
+  assert.match(integration,/const target=new URL\(pendingOAuthReturnPath\|\|sitePath\(requestedRoute\),location\.origin\)/);
+  assert.match(integration,/for\(const key of \['code','auth_refresh','route','google_auth_return'\]\)target\.searchParams\.delete\(key\)/);
+  assert.match(integration,/sessionStorage\.removeItem\(oauthReturnPathKey\)/);
   assert.match(integration,/const returnUrl=new URL\(sitePath\(''\),location\.origin\)/);
   assert.match(integration,/!oauthReturnDetected\)window\.addEventListener\('load'/);
   assert.match(fallback404,/var hash = location\.hash \|\| ''/);
