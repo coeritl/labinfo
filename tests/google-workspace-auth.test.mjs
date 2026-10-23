@@ -34,12 +34,14 @@ test('frontend usa OAuth Google como única identificação para ações pessoai
   assert.match(integration,/hd:'ifms\.edu\.br'/);
   assert.match(integration,/searchParams\.set\('auth_refresh',Date\.now\(\)\.toString\(\)\)/);
   assert.match(integration,/const oauthReturnPathKey='labinfo_oauth_return_path'/);
-  assert.match(integration,/sessionStorage\.setItem\(oauthReturnPathKey,JSON\.stringify\(\{path:requestedReturn\.pathname\+requestedReturn\.search,createdAt:Date\.now\(\)\}\)\)/);
+  assert.match(integration,/const oauthReturnStores=\(\)=>\[sessionStorage,localStorage\]/);
+  assert.match(integration,/savePendingOAuthReturnPath\(requestedReturn\.pathname\+requestedReturn\.search\)/);
+  assert.match(integration,/const clearPendingOAuthReturnPath=/);
   assert.match(integration,/requestedRoute=routeParam\|\|routeFromPath\(pendingOAuthReturnPath\)\|\|location\.pathname/);
   assert.match(integration,/new URLSearchParams\(location\.search\)\.has\('auth_refresh'\)\|\|Boolean\(pendingOAuthReturnPath\)/);
   assert.match(integration,/const target=new URL\(pendingOAuthReturnPath\|\|sitePath\(requestedRoute\),location\.origin\)/);
   assert.match(integration,/for\(const key of \['code','auth_refresh','route','google_auth_return'\]\)target\.searchParams\.delete\(key\)/);
-  assert.match(integration,/sessionStorage\.removeItem\(oauthReturnPathKey\)/);
+  assert.match(integration,/clearPendingOAuthReturnPath\(\)/);
   assert.match(integration,/const returnUrl=new URL\(sitePath\(''\),location\.origin\)/);
   assert.match(integration,/!oauthReturnDetected\)window\.addEventListener\('load'/);
   assert.match(fallback404,/var hash = location\.hash \|\| ''/);
@@ -47,6 +49,8 @@ test('frontend usa OAuth Google como única identificação para ações pessoai
   assert.match(integration,/if\(session&&\(isAdminRoute\|\|document\.body\.classList\.contains\('admin-route'\)\)&&!state\.profile\)/);
   assert.match(reservations,/google_auth_return/);
   assert.match(reservations,/sessionStorage\.setItem\('labinfo_google_auth_return',context\)/);
+  assert.match(reservations,/window\.labinfoOAuthReturnPath/);
+  assert.match(software,/window\.labinfoOAuthReturnPath/);
   assert.match(reservations,/const isReservationGoogleReturn=googleAuthReturn==='reservation'\|\|googleAuthReturn==='my-reservations'/);
   assert.match(reservations,/if\(isReservationGoogleReturn\)\{[\s\S]*?showPublic\('reservations',false\)[\s\S]*?history\.replaceState\(\{\},'',sitePath\('reservas'\)\)/);
   assert.doesNotMatch(reservations,/isReservationGoogleReturn[^;=]*=.*software-request/);

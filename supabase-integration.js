@@ -9,6 +9,7 @@
   const siteBase=location.hostname.endsWith('.github.io')?'/labinfo':'';
   const sitePath=route=>`${siteBase}/${route?String(route).replace(/^\/+|\/+$/g,'')+'/':''}`;
   const oauthReturnPathKey='labinfo_oauth_return_path',oauthReturnMaxAge=30*60*1000;
+  const oauthReturnStores=()=>[sessionStorage,localStorage];
   const normalizeOAuthReturnPath=value=>{
     try{
       const url=new URL(value||sitePath(''),location.origin),basePrefix=siteBase?`${siteBase}/`:'/';
@@ -18,13 +19,17 @@
     }catch{return sitePath('')}
   };
   const readPendingOAuthReturnPath=()=>{
-    try{
-      const raw=sessionStorage.getItem(oauthReturnPathKey);if(!raw)return '';
-      const saved=JSON.parse(raw);
-      if(!saved?.path||!saved?.createdAt||Date.now()-Number(saved.createdAt)>oauthReturnMaxAge){sessionStorage.removeItem(oauthReturnPathKey);return ''}
-      return normalizeOAuthReturnPath(saved.path);
-    }catch{sessionStorage.removeItem(oauthReturnPathKey);return ''}
+    let newest=null;
+    for(const storage of oauthReturnStores())try{
+      const raw=storage.getItem(oauthReturnPathKey);if(!raw)continue;
+      const saved=JSON.parse(raw),age=Date.now()-Number(saved?.createdAt);
+      if(!saved?.path||!Number.isFinite(age)||age<0||age>oauthReturnMaxAge){storage.removeItem(oauthReturnPathKey);continue}
+      if(!newest||Number(saved.createdAt)>Number(newest.createdAt))newest=saved;
+    }catch{try{storage.removeItem(oauthReturnPathKey)}catch{}}
+    return newest?normalizeOAuthReturnPath(newest.path):'';
   };
+  const savePendingOAuthReturnPath=path=>{const value=JSON.stringify({path,createdAt:Date.now()});for(const storage of oauthReturnStores())try{storage.setItem(oauthReturnPathKey,value)}catch{}};
+  const clearPendingOAuthReturnPath=()=>{for(const storage of oauthReturnStores())try{storage.removeItem(oauthReturnPathKey)}catch{}};
   const routeFromPath=value=>new URL(value||sitePath(''),location.origin).pathname.slice(siteBase.length).replace(/^\/+|\/+$/g,'');
   const pendingOAuthReturnPath=readPendingOAuthReturnPath(),routeParam=new URLSearchParams(location.search).get('route'),
         feedbackParam=new URLSearchParams(location.search).get('feedback'),
@@ -32,6 +37,7 @@
   const oauthReturnDetected=new URLSearchParams(location.search).has('code')||
     new URLSearchParams(location.search).has('auth_refresh')||Boolean(pendingOAuthReturnPath)||
     /(?:^|[#&])(access_token|refresh_token|error|error_code)=/.test(location.hash);
+  window.labinfoOAuthReturnPath=pendingOAuthReturnPath;
   const adminRouteSlug=requestedRoute==='admin'?'chamados':requestedRoute.startsWith('admin/')?requestedRoute.slice(6):'';
   const validAdminRouteSlugs=new Set(['chamados','relatorios','reservas','chat','cadastros','supervisor','horarios','manutencao','softwares']);
   const isAdminRoute=validAdminRouteSlugs.has(adminRouteSlug);
@@ -76,7 +82,7 @@
     // redireciona de volta, o navegador nao reaproveita um HTML antigo que
     // ainda possa estar no cache do Pages/CDN.
     const requestedReturn=new URL(normalizeOAuthReturnPath(returnPath),location.origin);
-    sessionStorage.setItem(oauthReturnPathKey,JSON.stringify({path:requestedReturn.pathname+requestedReturn.search,createdAt:Date.now()}));
+    savePendingOAuthReturnPath(requestedReturn.pathname+requestedReturn.search);
     // A raiz existe fisicamente no Pages. Rotas como /admin/ e /reservas/
     // passam por 404.html e podem perder o fragmento OAuth durante o salto.
     // Retorne pela raiz e transporte a rota como query string.
@@ -90,7 +96,7 @@
       provider:'google',
       options:{redirectTo,queryParams:{hd:'ifms.edu.br',prompt:'select_account'}}
     });
-    if(error){sessionStorage.removeItem(oauthReturnPathKey);throw error}
+    if(error){clearPendingOAuthReturnPath();throw error}
   }
   async function signOutInstitutional(){await sb.auth.signOut();await refreshInstitutionalAuth()}
   window.labinfoInstitutionalAuth={
@@ -2571,7 +2577,7 @@
       const target=new URL(pendingOAuthReturnPath||sitePath(requestedRoute),location.origin);
       for(const key of ['code','auth_refresh','route','google_auth_return'])target.searchParams.delete(key);
       history.replaceState({},'',target.pathname+target.search);
-      sessionStorage.removeItem(oauthReturnPathKey);
+      clearPendingOAuthReturnPath();
     }
     // A inicialização da rota administrativa pode acontecer antes de o
     // Supabase concluir a troca do código OAuth pela sessão. Retome a entrada

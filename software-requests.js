@@ -266,7 +266,8 @@
     window.addEventListener('labinfo:institutional-auth',event=>applyInstitutionalAuth(event.detail));
     const currentInstitutionalAuth=window.labinfoInstitutionalAuth?.getState()||{};
     applyInstitutionalAuth(currentInstitutionalAuth);
-    const softwareAuthReturn=new URLSearchParams(location.search).get('google_auth_return')||sessionStorage.getItem('labinfo_google_auth_return');
+    const persistedSoftwareAuthReturn=(()=>{try{return new URL(window.labinfoOAuthReturnPath||'',location.origin).searchParams.get('google_auth_return')}catch{return null}})();
+    const softwareAuthReturn=new URLSearchParams(location.search).get('google_auth_return')||sessionStorage.getItem('labinfo_google_auth_return')||persistedSoftwareAuthReturn;
     if(softwareAuthReturn==='software-request'){
       const openReturnedSoftwareForm=()=>{sessionStorage.removeItem('labinfo_google_auth_return');const form=$('#softwareRequestForm'),toggle=$('#toggleSoftwareRequestForm');form.hidden=false;toggle.textContent='Fechar formulário';toggle.setAttribute('aria-expanded','true');history.replaceState({},'',sitePath(''));setTimeout(()=>form.scrollIntoView({behavior:'smooth',block:'start'}),50)};
       if(currentInstitutionalAuth.identity)openReturnedSoftwareForm();

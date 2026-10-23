@@ -297,7 +297,8 @@
   $('#closePublicReservationNotice').onclick=closePublicReservationNotice;
   $('#confirmPublicReservationNotice').onclick=closePublicReservationNotice;
   publicNotice.addEventListener('click',event=>{if(event.target===publicNotice)closePublicReservationNotice()});
-  const googleAuthReturn=new URLSearchParams(location.search).get('google_auth_return')||sessionStorage.getItem('labinfo_google_auth_return');
+  const persistedGoogleAuthReturn=(()=>{try{return new URL(window.labinfoOAuthReturnPath||'',location.origin).searchParams.get('google_auth_return')}catch{return null}})();
+  const googleAuthReturn=new URLSearchParams(location.search).get('google_auth_return')||sessionStorage.getItem('labinfo_google_auth_return')||persistedGoogleAuthReturn;
   const isReservationGoogleReturn=googleAuthReturn==='reservation'||googleAuthReturn==='my-reservations';
   const googleReturnPath=context=>{
     const url=new URL(location.href);url.search='';url.hash='';
