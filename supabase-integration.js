@@ -80,8 +80,7 @@
   document.body.insertAdjacentHTML('beforeend',`
     <div id="institutionalAccessModal" class="institutional-access-backdrop" hidden>
       <section class="card institutional-access-card" role="dialog" aria-modal="true" aria-labelledby="institutionalAccessTitle" aria-describedby="institutionalAccessMessage">
-        <span class="institutional-access-icon" aria-hidden="true">IF</span>
-        <span class="eyebrow">ACESSO INSTITUCIONAL</span>
+        <img class="institutional-access-logo" src="assets/ifms-campus-tres-lagoas.png" alt="IFMS Campus Três Lagoas">
         <h2 id="institutionalAccessTitle">Entre uma única vez</h2>
         <p id="institutionalAccessMessage">Sua sessão @ifms.edu.br identifica você em todas as áreas do LabInfo.</p>
         <button id="institutionalAccessLogin" class="google-auth-button" type="button"><span aria-hidden="true">G</span> Entrar com a conta @ifms.edu.br</button>

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadSqlCorpus, resolveFunctionGrants } from './lib/sql-corpus.mjs';
 
@@ -47,6 +47,10 @@ test('frontend usa OAuth Google como única identificação para ações pessoai
   assert.match(integration,/applySharedInstitutionalIdentity/);
   assert.match(integration,/labinfoRequireInstitutionalAccess/);
   assert.match(integration,/id="institutionalAccessModal"/);
+  assert.match(integration,/assets\/ifms-campus-tres-lagoas\.png/);
+  assert.doesNotMatch(integration,/ACESSO INSTITUCIONAL/);
+  assert.match(styles,/\.institutional-access-logo\{/);
+  assert.equal(existsSync(join(root,'assets/ifms-campus-tres-lagoas.png')),true);
   assert.match(reservations,/requestInstitutionalAccess\('support'/);
   assert.match(reservations,/requestInstitutionalAccess\('reservation',googleReturnPath\('reservation'\)\)/);
   assert.doesNotMatch(html,/(?:chat|ticket|reservation|myReservations|myTickets)GoogleLogin/);
