@@ -56,6 +56,11 @@ test('frontend usa OAuth Google como única identificação para ações pessoai
   assert.doesNotMatch(reservations,/isReservationGoogleReturn[^;=]*=.*software-request/);
   assert.match(integration,/publicSessionLogin/);
   assert.match(integration,/applySharedInstitutionalIdentity/);
+  assert.match(integration,/const syncPublicAuthHeader=/);
+  assert.match(integration,/adminActive=document\.body\.classList\.contains\('admin-route'\)\|\|Boolean\(admin&&!admin\.hidden\)/);
+  assert.match(integration,/document\.body\.classList\.add\('admin-route'\);[\s\S]*?await loadAdmin\(\)/);
+  assert.match(integration,/accountActions\.hidden=\$\('#adminView'\)\.hidden;syncPublicAuthHeader\(\)/);
+  assert.match(reservations,/window\.labinfoSyncPublicAuthHeader\?\.\(\)/);
   assert.match(integration,/labinfoRequireInstitutionalAccess/);
   assert.match(integration,/id="institutionalAccessModal"/);
   assert.match(integration,/assets\/ifms-campus-tres-lagoas\.png/);

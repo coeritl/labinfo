@@ -145,6 +145,8 @@
     else if(supportVisible&&!feedbackParam)openInstitutionalAccess({context:'support',returnPath:sitePath('suporte')});
   }
   window.labinfoRequireInstitutionalAccess=requireInstitutionalAccess;
+  const syncPublicAuthHeader=()=>{const header=$('#publicAuthHeader'),admin=$('#adminView'),adminActive=document.body.classList.contains('admin-route')||Boolean(admin&&!admin.hidden);if(header)header.hidden=adminActive};
+  window.labinfoSyncPublicAuthHeader=syncPublicAuthHeader;
   institutionalAccessLogin.onclick=async()=>{
     institutionalAccessLogin.disabled=true;institutionalAccessLogin.textContent='Abrindo acesso institucional…';institutionalAccessError.hidden=true;
     try{
@@ -208,6 +210,7 @@
       if(protocolResult)protocolResult.innerHTML='';
     }
     syncInstitutionalAccessGate();
+    syncPublicAuthHeader();
   }
   const startPublicGoogleLogin=async button=>{button.disabled=true;try{await signInWithGoogle(location.pathname+location.search)}catch(error){button.disabled=false;fail(error,'Não foi possível iniciar o login institucional.')}};
   $('#publicSessionLogin')?.addEventListener('click',event=>startPublicGoogleLogin(event.currentTarget));
@@ -271,6 +274,7 @@
       const cp=$('#chatPublicView');if(cp)cp.hidden=true;
       $('#adminToggle').textContent='Área técnica';
       history.pushState({},'',sitePath(''));
+      syncPublicAuthHeader();
     }
   };
   $('#closeLogin').onclick=()=>closeLogin();
@@ -306,6 +310,7 @@
     $('#adminToggle').textContent='Área técnica';
     $('#adminToggle').hidden=false;
     history.pushState({},'',sitePath(''));
+    syncPublicAuthHeader();
     window.scrollTo({top:0,behavior:'smooth'});
     toast('Você saiu do sistema.');
   }
@@ -329,7 +334,7 @@
     </div>
   `);
   $('.topbar').insertBefore(accountActions,$('#adminToggle'));
-  new MutationObserver(()=>{accountActions.hidden=$('#adminView').hidden}).observe($('#adminView'),{attributes:true,attributeFilter:['hidden']});
+  new MutationObserver(()=>{accountActions.hidden=$('#adminView').hidden;syncPublicAuthHeader()}).observe($('#adminView'),{attributes:true,attributeFilter:['hidden']});
   const accountDropdown=$('#accountDropdown');
   $('#accountButton').onclick=()=>{accountDropdown.hidden=!accountDropdown.hidden;$('#accountButton').setAttribute('aria-expanded',String(!accountDropdown.hidden))};
   $('#accountLogout').onclick=performLogout;
@@ -607,6 +612,7 @@
     // perfil finalmente é encontrado, retire o modal que pode ter sido aberto
     // pela primeira tentativa (ainda sem sessão).
     closeLogin(true);
+    document.body.classList.add('admin-route');
     await loadAdmin();
     $('#adminView').hidden=false;
     $('#teacherView').hidden=true;
@@ -615,6 +621,7 @@
     const cp=$('#chatPublicView');if(cp)cp.hidden=true;
     $('#adminToggle').textContent='Sair';
     $('#adminToggle').hidden=true;
+    syncPublicAuthHeader();
     $('#accountName').textContent=p.full_name;
     $('#accountMenuName').textContent=p.full_name;
     $('#accountEmail').textContent=p.email;

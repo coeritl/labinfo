@@ -103,6 +103,7 @@
     if($('#teacherView'))$('#teacherView').hidden=view!=='support';
     const chatView=$('#chatPublicView');if(chatView)chatView.hidden=view!=='chat';
     if($('#adminView'))$('#adminView').hidden=true;
+    window.labinfoSyncPublicAuthHeader?.();
     if(push)history.pushState({},'',view==='home'?sitePath(''):view==='reservations'?sitePath('reservas'):view==='chat'?sitePath('chat'):sitePath('suporte'));
     window.scrollTo(0,0);
     if(view==='reservations'&&publicLabs.length===0){
