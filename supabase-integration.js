@@ -680,6 +680,28 @@
   const adminForm=$('#adminTicketForm');adminForm.onsubmit=async e=>{e.preventDefault();const server=data.teachers.find(x=>x.siape===$('#adminTeacher').value),lab=data.labs.find(x=>x.name===$('#adminLab').value),cat=data.categories.find(x=>x.name===$('#adminCategory').value);const protocol=await sb.rpc('next_protocol',{p_lab:lab?.id||null});if(protocol.error)return fail(protocol.error);const {data:row,error}=await sb.from('tickets').insert({protocol:protocol.data,server_id:server.id,lab_id:lab?.id,category_id:cat?.id,title:$('#adminTicketSubject').value.trim(),description:$('#adminTicketDescription').value.trim(),source:'Tecnico'}).select().single();if(error)return fail(error);try{await uploadFiles(row.id,server.siape,'admin')}catch(err){fail(err)}adminForm.reset();$('#adminTicketModal').hidden=true;document.body.classList.remove('modal-open');await loadAdmin();toast('Chamado '+row.protocol+' criado.')};
 
   $('.registration-tabs').insertAdjacentHTML('afterend','<section id="serverCsvImport" class="card csv-import"><div><span class="eyebrow">CADASTRO EM LOTE</span><h2>Importar servidores por CSV</h2><p>Envie um arquivo com as colunas SIAPE, NOME COMPLETO e E-MAIL.</p></div><div class="csv-actions"><button id="downloadServerCsv" class="secondary" type="button">Baixar modelo</button><label class="secondary csv-file-button">Selecionar CSV<input id="serverCsvFile" type="file" accept=".csv,text/csv" hidden></label></div><div id="serverCsvPreview" class="csv-preview" hidden></div></section>');
+  $('#serverCsvImport .csv-actions').insertAdjacentHTML('beforeend','<button id="exportServersSiglab" class="secondary" type="button">Exportar para o SIGLAB</button>');
+  $('#exportServersSiglab').onclick=async()=>{
+    if(!state.profile||!['admin','tecnico'].includes(state.profile.role))return toast('Entre com uma conta técnica autorizada para exportar.');
+    const button=$('#exportServersSiglab');button.disabled=true;button.textContent='Exportando…';
+    try{
+      const rows=[];
+      // Paginação explícita para não truncar a exportação no limite do Supabase.
+      for(let offset=0;;offset+=500){
+        const result=await sb.from('servers').select('id,full_name,email,siape,active').order('id').range(offset,offset+499);
+        if(result.error)throw result.error;
+        rows.push(...(result.data||[]));
+        if((result.data||[]).length<500)break;
+      }
+      if(!rows.length)return toast('Nenhum servidor cadastrado para exportar.');
+      rows.sort((a,b)=>String(a.full_name).localeCompare(String(b.full_name),'pt-BR'));
+      const url=URL.createObjectURL(new Blob([window.labinfoServerCsvExport.build(rows)],{type:'text/csv;charset=utf-8'}));
+      const link=document.createElement('a');link.href=url;link.download='servidores-labinfo-para-siglab-'+new Date().toISOString().slice(0,10)+'.csv';
+      document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      toast(rows.length+' servidor(es) exportado(s). O arquivo contém dados pessoais; compartilhe apenas com a administração do SIGLAB.');
+    }catch(error){fail(error,'Não foi possível exportar os servidores.');}
+    finally{button.disabled=false;button.textContent='Exportar para o SIGLAB';}
+  };
   let csvServerRows=[];
   const csvEsc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const headerKey=v=>String(v||'').replace(/^\uFEFF/,'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');
