@@ -31,6 +31,8 @@ on:
       - 'styles.css'
       - 'app.js'
       - 'supabase-integration.js'
+      - 'staff-tasks.js'
+      - 'staff-tasks.css'
       - 'reservations.js'
       - 'software-requests.js'
       - 'supabase-config.js'

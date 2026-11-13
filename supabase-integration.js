@@ -39,7 +39,7 @@
     /(?:^|[#&])(access_token|refresh_token|error|error_code)=/.test(location.hash);
   window.labinfoOAuthReturnPath=pendingOAuthReturnPath;
   const adminRouteSlug=requestedRoute==='admin'?'chamados':requestedRoute.startsWith('admin/')?requestedRoute.slice(6):'';
-  const validAdminRouteSlugs=new Set(['chamados','relatorios','reservas','chat','cadastros','supervisor','horarios','manutencao','softwares']);
+  const validAdminRouteSlugs=new Set(['chamados','relatorios','reservas','chat','cadastros','supervisor','horarios','manutencao','softwares','tarefas']);
   const isAdminRoute=validAdminRouteSlugs.has(adminRouteSlug);
   const isSupportRoute=requestedRoute==='suporte'||Boolean(feedbackParam);
   // Em retornos OAuth, o codigo PKCE ou os tokens podem estar na URL. Nao os
@@ -342,7 +342,12 @@
   $('#adminMenuDropdown').querySelector('[data-section="tickets"]')?.remove();$('#adminMenuDropdown').querySelector('[data-section="analytics"]')?.remove();$('#adminMenuDropdown').querySelector('[data-section="supervisor"]').textContent='Relatórios';$('#adminMenuDropdown').insertAdjacentHTML('beforeend','<button id="chatMenuButton" type="button"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg> Chat ao vivo <span id="chatMenuBadge" class="chat-menu-badge" hidden>0</span></button><button id="hoursMenuButton">Horários</button><button id="maintenanceMenuButton">Manutenção</button><button id="softwareRequestsMenuButton" type="button">Solicitações de software</button><button id="reservationsMenuButton" type="button">Reservas</button>');
   const adminMenuDropdown=$('#adminMenuDropdown'),registrationsMenuButton=adminMenuDropdown.querySelector('[data-section="registrations"]'),supervisorMenuButton=adminMenuDropdown.querySelector('[data-section="supervisor"]'),reservationsMenuButton=$('#reservationsMenuButton'),chatMenuButton=$('#chatMenuButton'),softwareRequestsMenuButton=$('#softwareRequestsMenuButton');
   const primaryAdminNav=document.createElement('nav');primaryAdminNav.className='primary-admin-nav';primaryAdminNav.setAttribute('aria-label','Navegação principal do painel');
+  const tasksMenuButton=document.createElement('button');tasksMenuButton.id='tasksMenuButton';tasksMenuButton.type='button';tasksMenuButton.textContent='Tarefas';tasksMenuButton.dataset.adminNav='primary';
   [supervisorMenuButton,reservationsMenuButton,chatMenuButton].forEach(button=>{button.dataset.adminNav='primary';primaryAdminNav.append(button)});
+  primaryAdminNav.append(tasksMenuButton);
+  tasksMenuButton.onclick=()=>{void getProfile().then(p=>window.labinfoTasks.open(p)).catch(error=>toast(error.message))};
+  const showSectionWithTasks=showSection;
+  showSection=function(section){showSectionWithTasks(section);if(section==='tickets'&&state.profile?.role==='tecnico')void window.labinfoTasks.dock(state.profile)};
   [registrationsMenuButton,$('#hoursMenuButton'),$('#maintenanceMenuButton'),softwareRequestsMenuButton].forEach(button=>button.dataset.adminNav='management');
   $('#adminMenuButton').textContent='Administração ▾';
   const mobileAdminMenuButton=document.createElement('button');mobileAdminMenuButton.id='mobileAdminMenuButton';mobileAdminMenuButton.className='mobile-admin-menu-button';mobileAdminMenuButton.type='button';mobileAdminMenuButton.setAttribute('aria-label','Abrir menu do painel');mobileAdminMenuButton.setAttribute('aria-expanded','false');mobileAdminMenuButton.innerHTML='<span></span><span></span><span></span>';
@@ -462,7 +467,7 @@
   async function openSoftwareRequestsWhenReady(attempt=0){const ready=window.labinfoSoftwareRequestsReady;if(ready?.then)await ready;if(window.labinfoOpenSoftwareRequests)return window.labinfoOpenSoftwareRequests();if(attempt<20)return new Promise(resolve=>setTimeout(resolve,25)).then(()=>openSoftwareRequestsWhenReady(attempt+1));toast('O módulo de softwares ainda está sendo preparado. Tente novamente.')}
   $('#softwareRequestsMenuButton').onclick=()=>{void openSoftwareRequestsWhenReady()};
   const adminRouteByTarget={
-    registrations:'cadastros',supervisor:'relatorios',
+    registrations:'cadastros',supervisor:'relatorios',tasksMenuButton:'tarefas',
     reservationsMenuButton:'reservas',chatMenuButton:'chat',hoursMenuButton:'horarios',maintenanceMenuButton:'manutencao',softwareRequestsMenuButton:'softwares'
   };
   function openAdminRoute(slug,{push=false}={}){
@@ -477,13 +482,14 @@
     else if(route==='horarios')$('#hoursMenuButton').onclick();
     else if(route==='manutencao')$('#maintenanceMenuButton').onclick();
     else if(route==='softwares')void openSoftwareRequestsWhenReady();
+    else if(route==='tarefas')tasksMenuButton.onclick();
     accountActions.querySelectorAll('[data-admin-nav]').forEach(item=>item.classList.toggle('active',(item.dataset.section&&adminRouteByTarget[item.dataset.section]===route)||adminRouteByTarget[item.id]===route));
     closeMobileAdminMenu();
     window.scrollTo(0,0);
   }
   window.labinfoOpenAdminRoute=openAdminRoute;
   accountActions.addEventListener('click',event=>{
-    const target=event.target.closest('[data-section], #reservationsMenuButton, #chatMenuButton, #hoursMenuButton, #maintenanceMenuButton, #softwareRequestsMenuButton');
+    const target=event.target.closest('[data-section], #reservationsMenuButton, #chatMenuButton, #hoursMenuButton, #maintenanceMenuButton, #softwareRequestsMenuButton, #tasksMenuButton');
     if(!target)return;
     const slug=target.dataset.section?adminRouteByTarget[target.dataset.section]:adminRouteByTarget[target.id];
     if(slug&&location.pathname!==sitePath('admin/'+slug))history.pushState({},'',sitePath('admin/'+slug));
