@@ -1,4 +1,10 @@
 .tasks-section { --task-ink:#18372b; --task-muted:#6d7d74; color:var(--task-ink); }
+.queue-completed-tools { padding:12px 18px; border-top:1px solid #e4ebe6; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; background:#fbfdfb; }
+.queue-completed-tools>span { color:#718075; font-size:11px; }
+.queue-completed-tools button { width:auto; margin:0; padding:9px 12px; font-size:12px; }
+#completedArchiveConfirmation { flex-basis:100%; padding:12px; background:#edf6f0; border-radius:10px; font-size:12px; line-height:1.6; }
+#completedArchiveConfirmation p { margin:0 0 12px; }
+#completedArchiveConfirmation button { margin:3px; }
 #ticketTasksWorkspace:has(>.tasks-docked:not([hidden])) { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; align-items:start; }
 #ticketTasksWorkspace>.queue { min-width:0; }
 #ticketTasksWorkspace .queue-head { flex-wrap:wrap; gap:12px; }

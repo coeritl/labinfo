@@ -598,8 +598,34 @@
     return reportDataPromise;
   }
   const selectedForArchive=new Set();
+  let completedArchiveBusy=false,pendingCompletedArchive=[];
+  function completedTicketIds(rows){return rows.filter(t=>t.status==='Concluído'&&!t.archivedAt&&!t.deletedAt).map(t=>t.dbId)}
+  $('.queue').insertAdjacentHTML('beforeend','<div class="queue-completed-tools"><span id="completedArchiveCount"></span><button id="archiveCompletedTickets" class="secondary" type="button">Arquivar concluídos</button><div id="completedArchiveConfirmation" hidden><p id="completedArchiveQuestion"></p><button id="confirmCompletedArchive" class="primary" type="button">Sim, arquivar concluídos</button><button id="cancelCompletedArchive" class="secondary" type="button">Voltar</button></div></div>');
+  function updateCompletedArchive(){const count=completedTicketIds(tickets).length;$('#completedArchiveCount').textContent=count+' concluído(s) na fila';$('#archiveCompletedTickets').disabled=completedArchiveBusy||!count;}
+  $('#archiveCompletedTickets').onclick=()=>{
+    if(completedArchiveBusy||state.profile?.role!=='tecnico')return;
+    pendingCompletedArchive=completedTicketIds(tickets);if(!pendingCompletedArchive.length)return;
+    $('#completedArchiveQuestion').textContent=`Arquivar os ${pendingCompletedArchive.length} chamado(s) concluído(s) da fila, independentemente da pesquisa atual? Eles continuarão disponíveis em Chamados arquivados. Dados e anexos serão preservados.`;
+    $('#completedArchiveConfirmation').hidden=false;
+  };
+  $('#cancelCompletedArchive').onclick=()=>{if(!completedArchiveBusy)$('#completedArchiveConfirmation').hidden=true};
+  $('#confirmCompletedArchive').onclick=async()=>{
+    if(completedArchiveBusy||state.profile?.role!=='tecnico'||!pendingCompletedArchive.length)return;
+    completedArchiveBusy=true;updateCompletedArchive();$('#confirmCompletedArchive').disabled=true;$('#cancelCompletedArchive').disabled=true;
+    try{
+      const timestamp=new Date().toISOString();
+      const {data:archived,error}=await sb.from('tickets').update({archived_at:timestamp,updated_at:timestamp})
+        .in('id',pendingCompletedArchive).eq('status','Concluído').is('archived_at',null).is('deleted_at',null).select('id');
+      if(error)throw error;
+      const ids=new Set((archived||[]).map(row=>row.id));ids.forEach(id=>selectedForArchive.delete(id));
+      if(selected&&ids.has(selected.dbId)){selected=null;$('#ticketDetail').classList.remove('detail-expanded');document.body.classList.remove('detail-open')}
+      $('#completedArchiveConfirmation').hidden=true;pendingCompletedArchive=[];
+      await loadAdmin();toast(ids.size?ids.size+' chamado(s) concluído(s) arquivado(s). Dados e anexos preservados.':'Nenhum chamado elegível. A fila pode ter sido atualizada por outro técnico.');
+    }catch(error){fail(error,'Não foi possível arquivar os chamados concluídos.');}
+    finally{completedArchiveBusy=false;$('#confirmCompletedArchive').disabled=false;$('#cancelCompletedArchive').disabled=false;updateCompletedArchive();}
+  };
   const queueCreate=$('#adminOpenTicket'),queueActions=document.createElement('div');queueActions.className='queue-actions';queueCreate.before(queueActions);queueActions.append(queueCreate);queueActions.insertAdjacentHTML('beforeend','<button id="archiveTickets" class="primary archive-tickets" type="button" disabled>Arquivar selecionados</button>');
-  function updateArchiveButton(){const button=$('#archiveTickets');if(!button)return;button.disabled=!selectedForArchive.size;button.textContent=selectedForArchive.size?`Arquivar selecionados (${selectedForArchive.size})`:'Arquivar selecionados'}
+  function updateArchiveButton(){const button=$('#archiveTickets');if(!button)return;button.disabled=!selectedForArchive.size;button.textContent=selectedForArchive.size?`Arquivar selecionados (${selectedForArchive.size})`:'Arquivar selecionados';updateCompletedArchive()}
   $('#archiveTickets').onclick=async()=>{const ids=[...selectedForArchive];if(!ids.length)return;const files=tickets.filter(t=>ids.includes(t.dbId)).flatMap(t=>t.attachments||[]);if(files.length){const {error:storageError}=await sb.storage.from('ticket-attachments').remove(files.map(x=>x.path));if(storageError)return fail(storageError);const {error:attachmentError}=await sb.from('attachments').delete().in('ticket_id',ids);if(attachmentError)return fail(attachmentError)}const {error}=await sb.from('tickets').update({archived_at:new Date().toISOString(),updated_at:new Date().toISOString()}).in('id',ids);if(error)return fail(error);selectedForArchive.clear();if(selected&&ids.includes(selected.dbId)){selected=null;$('#ticketDetail').classList.remove('detail-expanded');document.body.classList.remove('detail-open')}await loadAdmin();toast(ids.length+' chamado(s) arquivado(s) e anexos removidos.')};
   function refreshMetrics(){const visible=tickets.filter(x=>!x.deletedAt),queue=visible.filter(x=>!x.archivedAt),received=queue.filter(x=>x.status==='Recebido').length,active=queue.filter(x=>x.status==='Em atendimento').length,waiting=queue.filter(x=>x.status==='Aguardando').length,due=queue.filter(isWaitingReviewDue).length,done=visible.filter(x=>x.status==='Concluído').length,stale=queue.filter(isTicketStale).length,articles=document.querySelectorAll('#ticketsSection .metrics article');const values=[[received,received+' aguardando atribuição na fila'],[active,active+' chamado(s) ativo(s) na fila'],[waiting,due?due+' com revisão vencida':waiting+' com revisão programada'],[done,'Em todo o período do sistema'],[stale,stale?stale+' precisam de acompanhamento':'Nenhum chamado parado há 7 dias']];articles.forEach((a,i)=>{a.querySelector('strong').textContent=values[i][0];a.querySelector('em').textContent=values[i][1]});const staleCard=$('#staleTicketsMetric'),icon=staleCard?.querySelector('.metric-icon');staleCard?.classList.toggle('has-stale',stale>0);icon?.classList.toggle('amber',stale>0);icon?.classList.toggle('green',stale===0);$('#waitingTicketsMetric')?.classList.toggle('has-stale',due>0)}
   const showStaleTickets=()=>{const filter=$('#statusFilter');if(!filter)return;filter.value='Sem atualização';renderTickets();document.querySelector('.queue')?.scrollIntoView({behavior:'smooth',block:'start'})};
