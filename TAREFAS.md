@@ -19,7 +19,9 @@ em `/admin/tarefas/`.
 - Atualização manual e automática a cada minuto quando o quadro está visível.
   Edições concorrentes são rejeitadas pelo número de versão; fechar o editor e
   atualizar o quadro antes de editar novamente. Não há sobrescrita silenciosa.
-- Não há exclusão de tarefas nesta primeira versão; conclusão mantém o histórico.
+- Para habilitar exclusão, aplique também `20261113_staff_tasks_delete.sql`.
+  Abra a tarefa, clique em Excluir tarefa e confirme. A exclusão é lógica:
+  retira do quadro e preserva os eventos de auditoria. Sem exclusão física.
 
 ## Validação após aplicar SQL
 

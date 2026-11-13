@@ -25,7 +25,8 @@
       <label>Laboratório <small>opcional</small><select name="lab"><option value="">Sem laboratório</option></select></label>
       <fieldset class="task-ticket-field"><legend>Chamado vinculado <small>opcional</small></legend><div><input id="taskTicketSearch" aria-label="Procurar chamado pelo protocolo" placeholder="Buscar protocolo, ex.: LAB-00058" maxlength="60"><button id="findTaskTicket" class="secondary" type="button">Buscar</button></div><select name="ticket" aria-label="Chamado vinculado"><option value="">Sem chamado</option></select><small id="taskTicketHint" role="status">O vínculo é apenas uma referência; não muda o chamado.</small></fieldset>
       <details id="taskHistory"><summary>Histórico da tarefa</summary><div id="taskHistoryList"></div></details>
-      <p id="taskFormError" class="error-text" role="alert"></p><footer><button id="cancelStaffTask" class="secondary" type="button">Voltar</button><button id="saveStaffTask" class="primary" type="submit">Salvar tarefa</button></footer></form>`;
+      <div id="taskDeleteConfirmation" class="task-delete-confirmation" hidden><strong>Excluir esta tarefa do quadro?</strong><p>Ela deixará de aparecer nas colunas. O histórico será preservado.</p><button id="confirmDeleteStaffTask" class="danger-button" type="button">Sim, excluir tarefa</button><button id="keepStaffTask" class="secondary" type="button">Manter tarefa</button></div>
+      <p id="taskFormError" class="error-text" role="alert"></p><footer><button id="deleteStaffTask" class="danger-button" type="button" hidden>Excluir tarefa</button><button id="cancelStaffTask" class="secondary" type="button">Voltar</button><button id="saveStaffTask" class="primary" type="submit">Salvar tarefa</button></footer></form>`;
     document.body.append(dialog);
     $('#newStaffTask').onclick=()=>openEditor();
     $('#refreshStaffTasks').onclick=()=>refresh();
@@ -34,6 +35,9 @@
     dialog.querySelector('#closeStaffTask').onclick=close;dialog.querySelector('#cancelStaffTask').onclick=close;
     dialog.addEventListener('cancel',event=>{if(busy)event.preventDefault();else searchGeneration++});
     dialog.querySelector('#staffTaskForm').onsubmit=save;
+    dialog.querySelector('#deleteStaffTask').onclick=()=>{dialog.querySelector('#taskDeleteConfirmation').hidden=false;dialog.querySelector('#confirmDeleteStaffTask').focus()};
+    dialog.querySelector('#keepStaffTask').onclick=()=>{dialog.querySelector('#taskDeleteConfirmation').hidden=true};
+    dialog.querySelector('#confirmDeleteStaffTask').onclick=remove;
     dialog.querySelector('#findTaskTicket').onclick=findTicket;
     dialog.querySelector('#taskTicketSearch').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();findTicket()}};
     dialog.querySelector('#taskHistory').ontoggle=()=>{if(dialog.querySelector('#taskHistory').open)loadHistory()};
@@ -41,6 +45,7 @@
     db()?.auth.onAuthStateChange(event=>{if(event==='SIGNED_OUT'){loadGeneration++;rows=[];profile=null;section.hidden=true;dialog.close();$('#tasksBoard').innerHTML=''}});
   }
   function errorText(error){
+    if(error?.code==='PGRST202'&&String(error.message).includes('delete_staff_task'))return 'Para habilitar a exclusão, execute 20261113_staff_tasks_delete.sql no Supabase do LabInfo.';
     if(['42P01','PGRST205','PGRST202'].includes(error?.code))return 'Tarefas ainda não ativadas no banco. Execute a migração 20261113_staff_tasks.sql no Supabase do LabInfo.';
     return error?.message||'Não foi possível acessar as tarefas. Tente novamente.';
   }
@@ -60,7 +65,7 @@
       ]);
       if(labResult.error||peopleResult.error)throw labResult.error||peopleResult.error;
       if(generation!==loadGeneration)return;
-      rows=all;labs=labResult.data||[];people=peopleResult.data||[];
+      rows=all.filter(t=>!t.deleted_at);labs=labResult.data||[];people=peopleResult.data||[];
       const selected=$('#taskAssigneeFilter').value;
       $('#taskAssigneeFilter').innerHTML='<option value="">Toda a equipe</option>'+people.filter(p=>p.role==='tecnico'||rows.some(t=>t.assignee_id===p.id)).map(p=>`<option value="${p.id}">${esc(p.full_name)}${p.active?'':' (inativo)'}</option>`).join('');
       $('#taskAssigneeFilter').value=selected;
@@ -112,6 +117,7 @@
     form.elements.lab.innerHTML='<option value="">Sem laboratório</option>'+labs.filter(l=>l.active||l.id===task?.lab_id).map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('');form.elements.lab.value=task?.lab_id||'';
     form.elements.ticket.innerHTML='<option value="">Sem chamado</option>'+(task?.ticket_id?`<option value="${task.ticket_id}">${esc(ticketNames.get(task.ticket_id)||'Chamado vinculado')}</option>`:'');form.elements.ticket.value=task?.ticket_id||'';
     dialog.querySelector('#taskFormError').textContent='';dialog.querySelector('#taskHistory').hidden=!task;dialog.querySelector('#taskHistory').open=false;
+    dialog.querySelector('#deleteStaffTask').hidden=!task;dialog.querySelector('#taskDeleteConfirmation').hidden=true;
     dialog.querySelector('#taskTicketHint').textContent='O vínculo é apenas uma referência; não muda o chamado.';
     dialog.showModal();form.elements.title.focus();
     if(task?.ticket_id){
@@ -147,6 +153,16 @@
     try{
       const {error}=await db().rpc('save_staff_task',{p_id:editing?.id||null,p_title:form.elements.title.value.trim(),p_description:form.elements.description.value,p_status:form.elements.status.value,p_lab:form.elements.lab.value||null,p_ticket:form.elements.ticket.value||null,p_assignee:form.elements.assignee.value,p_version:editing?.version||null});
       if(error)throw error;dialog.close();notify(editing?'Tarefa atualizada.':'Tarefa criada.');
+    }catch(error){dialog.querySelector('#taskFormError').textContent=errorText(error);}
+    finally{busy=false;controls.forEach(c=>c.disabled=false);if(!dialog.open)await refresh();}
+  }
+  async function remove(){
+    if(busy||!editing)return;
+    busy=true;const controls=[...dialog.querySelectorAll('button,input,select,textarea')];controls.forEach(c=>c.disabled=true);
+    dialog.querySelector('#taskFormError').textContent='';
+    try{
+      const {error}=await db().rpc('delete_staff_task',{p_id:editing.id,p_version:editing.version});
+      if(error)throw error;dialog.close();notify('Tarefa excluída do quadro. Histórico preservado.');
     }catch(error){dialog.querySelector('#taskFormError').textContent=errorText(error);}
     finally{busy=false;controls.forEach(c=>c.disabled=false);if(!dialog.open)await refresh();}
   }

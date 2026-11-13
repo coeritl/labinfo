@@ -41,3 +41,14 @@ test('rota do painel e quadro dividido preservam chamados',()=>{
   const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
   assert.ok(html.indexOf('staff-tasks.js')<html.indexOf('src="supabase-integration.js'));
 });
+test('exclusão é lógica, autenticada, versionada e auditada',()=>{
+  const migration=fs.readFileSync(new URL('../supabase/migrations/20261113_staff_tasks_delete.sql',import.meta.url),'utf8');
+  assert.match(migration,/public.current_role\(\) is distinct from 'tecnico'/);
+  assert.match(migration,/p_version is distinct from task.version/);
+  assert.match(migration,/set deleted_at=now\(\)/);
+  assert.match(migration,/deleted_at is null/);
+  assert.match(migration,/revoke all on function public.delete_staff_task\(uuid,bigint\) from public,anon/);
+  assert.doesNotMatch(migration,/delete from public.staff_tasks/i);
+  assert.match(js,/taskDeleteConfirmation/);
+  assert.match(js,/rpc\('delete_staff_task',\{p_id:editing.id,p_version:editing.version\}\)/);
+});
